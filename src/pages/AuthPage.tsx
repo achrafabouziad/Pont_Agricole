@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { store } from '../services/store';
 import { BusinessType } from '../types';
-import { ShieldCheck, UserCheck, AlertTriangle, ArrowRight, Building2, Phone, Mail, Lock, MapPin, User, Navigation, ExternalLink } from 'lucide-react';
+import { UserCheck, AlertTriangle, ExternalLink } from 'lucide-react';
 
 interface AuthPageProps {
   onSuccess: () => void;
@@ -9,7 +9,7 @@ interface AuthPageProps {
 }
 
 // Google Maps Pin Logo Component
-const GoogleMapsIcon: React.FC<{ size?: number }> = ({ size = 18 }) => (
+const GoogleMapsIcon: React.FC<{ size?: number }> = ({ size = 16 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ flexShrink: 0 }}>
     <path d="M12 2C7.58 2 4 5.58 4 10C4 16 12 22 12 22C12 22 20 16 20 10C20 5.58 16.42 2 12 2Z" fill="#EA4335" />
     <path d="M12 2C9.5 2 7.3 3.1 5.9 4.8L12 11V2Z" fill="#4285F4" />
@@ -71,6 +71,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
   const [password, setPassword] = useState('');
   const [city, setCity] = useState('Casablanca');
   const [deliveryAddress, setDeliveryAddress] = useState('');
+  const [termsAgreed, setTermsAgreed] = useState<boolean>(true);
 
   // Automatic Geolocation state
   const [locating, setLocating] = useState<boolean>(false);
@@ -158,6 +159,11 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
     e.preventDefault();
     setErrorMsg(null);
 
+    if (!termsAgreed) {
+      setErrorMsg("Veuillez accepter les conditions d'accès B2B pour continuer.");
+      return;
+    }
+
     const activeCode = countryCode === 'other' ? customCode.trim() : countryCode;
     const fullPhone = `${activeCode} ${phoneNumber.trim()}`.trim();
 
@@ -187,95 +193,112 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
 
       if (res.success) {
         setSuccessNotice(
-          `Votre compte professionnel a été créé avec succès ! Vous pouvez vous connecter avec votre N° de téléphone (${fullPhone}), votre nom ou votre email.`
+          `Compte créé avec succès ! Bienvenue sur la plateforme Pont Agricole.`
         );
         setTimeout(() => {
           onSuccess();
-        }, 1300);
+        }, 1100);
       } else {
-        setErrorMsg(res.error || 'Erreur lors de l’inscription.');
+        setErrorMsg(res.error || "Erreur lors de l'inscription.");
       }
     } catch (err: any) {
-      setErrorMsg(err.message || 'Erreur lors de l’inscription.');
+      setErrorMsg(err.message || "Erreur lors de l'inscription.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="auth-container-mobile" style={{ minHeight: '80vh', display: 'flex', alignItems: 'center' }}>
-      <div className="container" style={{ maxWidth: '580px', padding: '0 0.85rem' }}>
-        {/* Card */}
-        <div className="card auth-card-mobile" style={{ backgroundColor: '#ffffff', boxShadow: 'var(--shadow-md)' }}>
-          {/* Header */}
-          <div style={{ textAlign: 'center', marginBottom: '1.25rem' }}>
-            <img src="/logo.png" alt="Pont Agricole" style={{ width: '42px', height: '42px', objectFit: 'contain', margin: '0 auto 0.4rem' }} />
-            <h1 style={{ fontSize: '1.25rem', color: 'var(--primary-900)', marginBottom: '0.25rem' }}>
-              {isLoginMode ? 'Espace Professionnel CHR' : 'Créer un Compte Professionnel'}
+    <div className="auth-split-wrapper">
+      <div className="auth-split-card">
+        {/* LEFT COLUMN: THE CLEAN FORM */}
+        <div className="auth-split-form-col">
+          {/* Header Switcher Row (Identical to "Already a member? Sign in" in reference) */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.75rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+              <img src="/logo.png" alt="Pont Agricole" style={{ width: '28px', height: '28px', objectFit: 'contain' }} />
+              <span style={{ fontWeight: 800, fontSize: '0.95rem', color: '#166534', letterSpacing: '-0.01em' }}>
+                Pont Agricole
+              </span>
+            </div>
+
+            <div style={{ fontSize: '0.84rem', color: '#64748b' }}>
+              {isLoginMode ? (
+                <>
+                  Pas de compte ?{' '}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsLoginMode(false);
+                      setErrorMsg(null);
+                    }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#166534',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      padding: 0,
+                      textDecoration: 'underline',
+                    }}
+                  >
+                    S'inscrire
+                  </button>
+                </>
+              ) : (
+                <>
+                  Already a member?{' '}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsLoginMode(true);
+                      setErrorMsg(null);
+                    }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#166534',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      padding: 0,
+                      textDecoration: 'underline',
+                    }}
+                  >
+                    Sign in
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Form Title & Minimal Subtitle */}
+          <div style={{ marginBottom: '1.5rem' }}>
+            <h1 style={{ fontSize: '2.1rem', fontWeight: 500, color: '#1e293b', margin: '0 0 0.35rem 0', letterSpacing: '-0.025em' }}>
+              {isLoginMode ? 'Sign in' : 'Sign up'}
             </h1>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', lineHeight: 1.4 }}>
+            <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b' }}>
               {isLoginMode
-                ? 'Accédez à vos commandes, vos tarifs de gros et vos livraisons matinales.'
-                : 'Réservé aux cafés, restaurants, hôtels et traiteurs au Maroc.'}
+                ? 'Accédez à votre espace professionnel et consultez les cours du jour.'
+                : 'Créez votre compte B2B pour commander vos fruits et légumes frais.'}
             </p>
           </div>
 
-          {/* Tab Switcher */}
-          <div style={{ display: 'flex', borderRadius: 'var(--radius-md)', backgroundColor: 'var(--bg-main)', padding: '0.25rem', marginBottom: '1.1rem' }}>
-            <button
-              onClick={() => {
-                setIsLoginMode(false);
-                setErrorMsg(null);
-              }}
-              style={{
-                flex: 1,
-                padding: '0.5rem',
-                borderRadius: 'var(--radius-sm)',
-                fontWeight: !isLoginMode ? 700 : 500,
-                fontSize: '0.85rem',
-                backgroundColor: !isLoginMode ? '#ffffff' : 'transparent',
-                color: !isLoginMode ? 'var(--primary-800)' : 'var(--text-muted)',
-                boxShadow: !isLoginMode ? 'var(--shadow-sm)' : 'none',
-              }}
-            >
-              Inscription B2B
-            </button>
-            <button
-              onClick={() => {
-                setIsLoginMode(true);
-                setErrorMsg(null);
-              }}
-              style={{
-                flex: 1,
-                padding: '0.5rem',
-                borderRadius: 'var(--radius-sm)',
-                fontWeight: isLoginMode ? 700 : 500,
-                fontSize: '0.85rem',
-                backgroundColor: isLoginMode ? '#ffffff' : 'transparent',
-                color: isLoginMode ? 'var(--primary-800)' : 'var(--text-muted)',
-                boxShadow: isLoginMode ? 'var(--shadow-sm)' : 'none',
-              }}
-            >
-              Connexion
-            </button>
-          </div>
-
-          {/* Feedback Banners */}
+          {/* Feedback Alerts */}
           {errorMsg && (
             <div
               style={{
-                padding: '0.75rem 1rem',
+                padding: '0.7rem 0.9rem',
                 backgroundColor: '#fee2e2',
                 color: '#991b1b',
-                borderRadius: 'var(--radius-md)',
-                fontSize: '0.85rem',
+                borderRadius: '8px',
+                fontSize: '0.82rem',
                 marginBottom: '1.25rem',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '0.5rem',
               }}
             >
-              <AlertTriangle size={18} />
+              <AlertTriangle size={16} />
               <span>{errorMsg}</span>
             </div>
           )}
@@ -283,18 +306,18 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
           {successNotice && (
             <div
               style={{
-                padding: '0.75rem 1rem',
+                padding: '0.7rem 0.9rem',
                 backgroundColor: '#dcfce7',
                 color: '#166534',
-                borderRadius: 'var(--radius-md)',
-                fontSize: '0.85rem',
+                borderRadius: '8px',
+                fontSize: '0.82rem',
                 marginBottom: '1.25rem',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '0.5rem',
               }}
             >
-              <UserCheck size={18} />
+              <UserCheck size={16} />
               <span>{successNotice}</span>
             </div>
           )}
@@ -302,62 +325,56 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
           {/* LOGIN FORM */}
           {isLoginMode ? (
             <form onSubmit={handleLoginSubmit}>
-              <div className="form-group" style={{ marginBottom: '1.25rem' }}>
-                <label className="form-label" style={{ fontWeight: 600 }}>
-                  Identifiant de Connexion (N° Téléphone, Nom d’utilisateur ou Email)
+              <div style={{ marginBottom: '1.2rem' }}>
+                <label className="auth-minimal-label">
+                  Identifiant de connexion (Téléphone, Nom ou Email)
                 </label>
-                <div style={{ position: 'relative' }}>
-                  <User size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-light)' }} />
-                  <input
-                    type="text"
-                    className="form-input"
-                    placeholder="N° Téléphone (ex: 0661234567), Nom (ex: karimalami) ou Email"
-                    value={loginIdentifier}
-                    onChange={(e) => setLoginIdentifier(e.target.value)}
-                    style={{ paddingLeft: '2.4rem' }}
-                    required
-                  />
-                </div>
-                <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', marginTop: '0.35rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                  <ShieldCheck size={13} color="var(--primary-600)" />
-                  <span>Connexion autorisée par N° de téléphone, nom d’utilisateur ou e-mail pro.</span>
-                </span>
+                <input
+                  type="text"
+                  className="auth-minimal-input"
+                  placeholder="Ex: 0661234567, karimalami ou email"
+                  value={loginIdentifier}
+                  onChange={(e) => setLoginIdentifier(e.target.value)}
+                  required
+                />
               </div>
 
-              <div className="form-group" style={{ marginBottom: '1.5rem' }}>
-                <label className="form-label" style={{ fontWeight: 600 }}>Mot de Passe</label>
-                <div style={{ position: 'relative' }}>
-                  <Lock size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-light)' }} />
-                  <input
-                    type="password"
-                    className="form-input"
-                    placeholder="••••••••"
-                    value={loginPassword}
-                    onChange={(e) => setLoginPassword(e.target.value)}
-                    style={{ paddingLeft: '2.4rem' }}
-                    required
-                  />
-                </div>
+              <div style={{ marginBottom: '1.5rem' }}>
+                <label className="auth-minimal-label">
+                  Mot de passe
+                </label>
+                <input
+                  type="password"
+                  className="auth-minimal-input"
+                  placeholder="6+ caractères"
+                  value={loginPassword}
+                  onChange={(e) => setLoginPassword(e.target.value)}
+                  required
+                />
               </div>
 
               <button
                 type="submit"
                 disabled={loading}
-                className="btn btn-primary"
-                style={{ width: '100%', padding: '0.85rem', fontSize: '0.95rem' }}
+                className="auth-pill-btn"
+                style={{ width: '100%', marginBottom: '1.5rem' }}
               >
-                {loading ? 'Connexion en cours...' : 'Se Connecter'}
+                {loading ? 'Connexion en cours...' : 'Sign in'}
               </button>
+
+              <div style={{ textAlign: 'center', fontSize: '0.82rem', color: '#64748b' }}>
+                <span>Plateforme sécurisée pour professionnels de la restauration et hôtellerie.</span>
+              </div>
             </form>
           ) : (
             /* REGISTER B2B FORM */
             <form onSubmit={handleRegisterSubmit}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.65rem' }}>
-                <div className="form-group">
-                  <label className="form-label">Nom du Responsable / Chef *</label>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem', marginBottom: '0.85rem' }}>
+                <div>
+                  <label className="auth-minimal-label">Nom du Responsable / Chef *</label>
                   <input
                     type="text"
-                    className="form-input"
+                    className="auth-minimal-input"
                     placeholder="Ex: Chef Karim Alami"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
@@ -365,11 +382,11 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
                   />
                 </div>
 
-                <div className="form-group">
-                  <label className="form-label">Nom de l’Établissement *</label>
+                <div>
+                  <label className="auth-minimal-label">Nom de l'Établissement *</label>
                   <input
                     type="text"
-                    className="form-input"
+                    className="auth-minimal-input"
                     placeholder="Ex: Le Bistrot Gourmet"
                     value={businessName}
                     onChange={(e) => setBusinessName(e.target.value)}
@@ -378,13 +395,14 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.65rem' }}>
-                <div className="form-group">
-                  <label className="form-label">Type d’Établissement</label>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem', marginBottom: '0.85rem' }}>
+                <div>
+                  <label className="auth-minimal-label">Type d'Établissement</label>
                   <select
-                    className="form-select"
+                    className="auth-minimal-input"
                     value={businessType}
                     onChange={(e) => setBusinessType(e.target.value as BusinessType)}
+                    style={{ cursor: 'pointer' }}
                   >
                     <option value="restaurant">Restaurant / Brasserie</option>
                     <option value="cafe">Café / Salon de Thé</option>
@@ -394,15 +412,15 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
                   </select>
                 </div>
 
-                {/* NUMERO DE TELEPHONE MONDIAL */}
-                <div className="form-group">
-                  <label className="form-label">Numéro de Téléphone (Mondial) *</label>
+                {/* International Phone */}
+                <div>
+                  <label className="auth-minimal-label">Numéro de Téléphone *</label>
                   <div style={{ display: 'flex', gap: '0.35rem' }}>
                     <select
-                      className="form-select"
+                      className="auth-minimal-input"
                       value={countryCode}
                       onChange={(e) => setCountryCode(e.target.value)}
-                      style={{ width: '98px', flexShrink: 0, fontSize: '0.82rem', fontWeight: 600, padding: '0.6rem 0.35rem' }}
+                      style={{ width: '92px', flexShrink: 0, padding: '0.72rem 0.4rem', fontWeight: 600, cursor: 'pointer' }}
                     >
                       {WORLD_COUNTRY_CODES.map((c) => (
                         <option key={c.code} value={c.code}>
@@ -414,52 +432,46 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
                     {countryCode === 'other' && (
                       <input
                         type="text"
-                        className="form-input"
+                        className="auth-minimal-input"
                         placeholder="+XXX"
                         value={customCode}
                         onChange={(e) => setCustomCode(e.target.value)}
-                        style={{ width: '70px', flexShrink: 0, padding: '0.6rem 0.4rem' }}
+                        style={{ width: '65px', flexShrink: 0, padding: '0.72rem 0.4rem' }}
                         required
                       />
                     )}
 
                     <input
                       type="tel"
-                      className="form-input"
-                      placeholder="06 61 XX XX XX ou direct"
+                      className="auth-minimal-input"
+                      placeholder="06 61 XX XX XX"
                       value={phoneNumber}
                       onChange={(e) => setPhoneNumber(e.target.value)}
                       style={{ flex: 1, minWidth: 0 }}
                       required
                     />
                   </div>
-                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.2rem', display: 'block' }}>
-                    Numéro direct utilisé pour le suivi logistique et la livraison matinale.
-                  </span>
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.65rem' }}>
-                <div className="form-group">
-                  <label className="form-label">Adresse E-mail (Facultative)</label>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem', marginBottom: '0.85rem' }}>
+                <div>
+                  <label className="auth-minimal-label">Email Professionnel (Optionnel)</label>
                   <input
                     type="email"
-                    className="form-input"
-                    placeholder="contact@restaurant.ma (optionnel)"
+                    className="auth-minimal-input"
+                    placeholder="contact@restaurant.ma"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                   />
-                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                    Connexion possible par téléphone ou nom.
-                  </span>
                 </div>
 
-                <div className="form-group">
-                  <label className="form-label">Mot de Passe *</label>
+                <div>
+                  <label className="auth-minimal-label">Mot de Passe *</label>
                   <input
                     type="password"
-                    className="form-input"
-                    placeholder="Minimum 6 caractères"
+                    className="auth-minimal-input"
+                    placeholder="6+ caractères"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
@@ -467,14 +479,14 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
                 </div>
               </div>
 
-              {/* LOCALISATION AVEC GOOGLE MAPS AUTOMATIQUE */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.65rem' }}>
-                <div className="form-group">
-                  <label className="form-label">Ville de Livraison</label>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem', marginBottom: '1.1rem' }}>
+                <div>
+                  <label className="auth-minimal-label">Ville de Livraison</label>
                   <select
-                    className="form-select"
+                    className="auth-minimal-input"
                     value={city}
                     onChange={(e) => setCity(e.target.value)}
+                    style={{ cursor: 'pointer' }}
                   >
                     <option value="Casablanca">Casablanca</option>
                     <option value="Rabat - Salé">Rabat - Salé</option>
@@ -485,74 +497,133 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
                   </select>
                 </div>
 
-                <div className="form-group">
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.3rem', flexWrap: 'wrap', gap: '0.35rem' }}>
-                    <label className="form-label" style={{ marginBottom: 0 }}>Adresse Complète *</label>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
+                    <label className="auth-minimal-label" style={{ marginBottom: 0 }}>Adresse Complète *</label>
                     <button
                       type="button"
                       onClick={handleAutoLocate}
                       disabled={locating}
-                      className="btn btn-secondary btn-sm"
                       style={{
-                        padding: '0.2rem 0.5rem',
+                        background: 'none',
+                        border: 'none',
+                        color: '#15803d',
                         fontSize: '0.72rem',
+                        fontWeight: 700,
+                        cursor: locating ? 'wait' : 'pointer',
                         display: 'inline-flex',
                         alignItems: 'center',
-                        gap: '0.3rem',
-                        backgroundColor: '#fff5f5',
-                        borderColor: '#fca5a5',
-                        color: '#dc2626',
-                        fontWeight: 600,
-                        cursor: locating ? 'wait' : 'pointer',
+                        gap: '0.25rem',
+                        padding: 0,
                       }}
-                      title="Détecter automatiquement ma position avec Google Maps"
+                      title="Détecter automatiquement avec Google Maps"
                     >
-                      <GoogleMapsIcon size={13} />
-                      <span>{locating ? 'GPS...' : 'Position Google Maps'}</span>
+                      <GoogleMapsIcon size={12} />
+                      <span>{locating ? 'GPS...' : 'Position Maps'}</span>
                     </button>
                   </div>
-
                   <input
                     type="text"
-                    className="form-input"
-                    placeholder="Boulevard, quartier, point de repère"
+                    className="auth-minimal-input"
+                    placeholder="Quartier, rue, repère"
                     value={deliveryAddress}
                     onChange={(e) => setDeliveryAddress(e.target.value)}
                     required
                   />
 
                   {gpsCoords && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: '0.3rem', fontSize: '0.74rem', color: '#166534' }}>
-                      <GoogleMapsIcon size={12} />
-                      <span>GPS détecté :</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', marginTop: '0.25rem', fontSize: '0.72rem', color: '#166534' }}>
+                      <GoogleMapsIcon size={11} />
+                      <span>Position GPS enregistrée :</span>
                       <a
                         href={gpsCoords.url}
                         target="_blank"
                         rel="noopener noreferrer"
                         style={{ fontWeight: 700, color: '#15803d', textDecoration: 'underline', display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}
                       >
-                        Voir sur Maps <ExternalLink size={10} />
+                        Vérifier sur Maps <ExternalLink size={10} />
                       </a>
                     </div>
                   )}
                 </div>
               </div>
 
-              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1.25rem', backgroundColor: 'var(--bg-main)', padding: '0.75rem', borderRadius: 'var(--radius-sm)', display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
-                <ShieldCheck size={16} color="var(--primary-600)" style={{ flexShrink: 0 }} />
-                <span><strong>Accès Direct B2B :</strong> Votre compte professionnel est activé immédiatement dès validation.</span>
+              {/* Checkbox (Matching reference photo: "I agree to all the statements included in the terms of service") */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', marginBottom: '1.5rem' }}>
+                <input
+                  type="checkbox"
+                  id="auth-terms"
+                  checked={termsAgreed}
+                  onChange={(e) => setTermsAgreed(e.target.checked)}
+                  style={{ width: '16px', height: '16px', accentColor: '#166534', cursor: 'pointer' }}
+                />
+                <label htmlFor="auth-terms" style={{ fontSize: '0.8rem', color: '#64748b', cursor: 'pointer', lineHeight: 1.3 }}>
+                  J'accepte les conditions d'accès B2B de la plateforme <span style={{ color: '#166534', fontWeight: 600 }}>Pont Agricole</span>
+                </label>
               </div>
 
+              {/* Create Account Pill Button (Identical to reference image) */}
               <button
                 type="submit"
                 disabled={loading}
-                className="btn btn-primary"
-                style={{ width: '100%', padding: '0.85rem', fontSize: '0.95rem' }}
+                className="auth-pill-btn"
+                style={{ width: '100%' }}
               >
-                {loading ? 'Création du compte...' : 'Créer Mon Compte Professionnel'}
+                {loading ? 'Création du compte...' : 'Create Account'}
               </button>
             </form>
           )}
+        </div>
+
+        {/* RIGHT COLUMN: EDITORIAL VISUAL PANEL (MATCHING REFERENCE IMAGE) */}
+        <div className="auth-split-visual-col">
+          {/* Top Spaced Brand Tag (Matching "L I N K E D . S P A C E S") */}
+          <div style={{ letterSpacing: '0.28em', fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
+            P O N T . A G R I C O L E
+          </div>
+
+          {/* Catchphrase (Matching "Access your city's best shared spaces") */}
+          <div style={{ position: 'relative', zIndex: 2, margin: '2rem 0' }}>
+            <h2
+              style={{
+                fontSize: '2.3rem',
+                fontWeight: 400,
+                lineHeight: 1.22,
+                color: '#1e293b',
+                letterSpacing: '-0.025em',
+                maxWidth: '340px',
+                margin: 0,
+              }}
+            >
+              Access your kitchen's best{' '}
+              <span style={{ color: '#16a34a', fontWeight: 600 }}>fresh produce</span>
+            </h2>
+            <p style={{ marginTop: '0.75rem', fontSize: '0.85rem', color: '#64748b', lineHeight: 1.5, maxWidth: '300px' }}>
+              Sélection maraîchère premium en direct des terroirs marocains pour chefs et gestionnaires CHR.
+            </p>
+          </div>
+
+          {/* Clean Botanical Branch Art (Saved to public/auth_botanical.jpg) */}
+          <img
+            src="/auth_botanical.jpg"
+            alt="Botanical branch"
+            style={{
+              position: 'absolute',
+              right: '-10px',
+              bottom: '-10px',
+              width: '66%',
+              height: '84%',
+              objectFit: 'contain',
+              objectPosition: 'right bottom',
+              pointerEvents: 'none',
+              opacity: 0.95,
+            }}
+          />
+
+          {/* Subtle Bottom Brand Note */}
+          <div style={{ position: 'relative', zIndex: 2, fontSize: '0.75rem', color: '#94a3b8', letterSpacing: '0.02em' }}>
+            Casablanca · Rabat · Marrakech · Tanger · Agadir · Fès
+          </div>
         </div>
       </div>
     </div>

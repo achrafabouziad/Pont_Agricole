@@ -62,38 +62,8 @@ export function App() {
   // VERROUILLAGE B2B STRICT : Le visiteur ne peut pas voir l'accueil sans être inscrit / connecté
   if (!currentUser) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', backgroundColor: 'var(--bg-main)' }}>
-        {/* En-tête exclusif B2B responsive */}
-        <header className="site-header" style={{ backgroundColor: '#ffffff', borderBottom: '1px solid var(--border-light)', boxShadow: 'var(--shadow-sm)' }}>
-          <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.65rem 1rem' }}>
-            <div className="brand-logo" style={{ cursor: 'default', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-              <img src="/logo.png" alt="Pont Agricole Logo" className="brand-img" style={{ width: '38px', height: '38px', objectFit: 'contain' }} />
-              <div className="brand-text">
-                <div className="brand-title" style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--primary-900)', lineHeight: 1.1 }}>
-                  Pont Agricole
-                </div>
-                <div className="brand-subtitle" style={{ fontSize: '0.62rem', letterSpacing: '0.06em', color: 'var(--primary-700)' }}>
-                  PRODUITS FRAIS CHR MAROC
-                </div>
-              </div>
-            </div>
-            <div className="badge badge-brand" style={{ fontSize: '0.72rem', fontWeight: 700, padding: '0.3rem 0.65rem', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
-              <Lock size={12} />
-              <span>Accès B2B Réservé</span>
-            </div>
-          </div>
-        </header>
-
-        {/* Message d'accueil / Verrouillage B2B compact */}
-        <div style={{ backgroundColor: '#f0fdf4', borderBottom: '1px solid #bbf7d0', padding: '0.65rem 1rem', textAlign: 'center' }}>
-          <p style={{ margin: 0, fontSize: '0.82rem', color: '#166534', fontWeight: 600, lineHeight: 1.4, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
-            <ShieldCheck size={15} color="#15803d" />
-            <span><strong>Plateforme B2B :</strong> Accès réservé aux professionnels de la restauration et de l’hôtellerie. Connectez-vous ou créez votre compte pour consulter les cours du jour en MAD.</span>
-          </p>
-        </div>
-
-        {/* Formulaire d'inscription / connexion obligatoire */}
-        <main style={{ flex: 1 }}>
+      <div style={{ minHeight: '100vh', backgroundColor: '#f6f7f6', display: 'flex', flexDirection: 'column' }}>
+        <main style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <AuthPage
             initialMode="register"
             onSuccess={() => {
@@ -106,8 +76,6 @@ export function App() {
             }}
           />
         </main>
-
-        <Footer onNavigate={() => {}} />
       </div>
     );
   }
