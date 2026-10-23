@@ -78,12 +78,30 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
           <div>
             <h4 style={{ color: '#ffffff', marginBottom: '1rem', fontSize: '1rem', fontWeight: 700 }}>Zones de Desserte Quotidienne</h4>
             <ul style={{ listStyle: 'none', padding: 0, fontSize: '0.88rem', color: '#a1b8ab', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              <li>📍 <strong>Grand Casablanca</strong> : Anfa, Maarif, Gauthier, Ain Diab</li>
-              <li>📍 <strong>Rabat - Salé</strong> : Agdal, Souissi, Hay Riad</li>
-              <li>📍 <strong>Marrakech</strong> : Guéliz, Hivernage, Palmeraie</li>
-              <li>📍 <strong>Tanger</strong> : Centre-Ville, Malabata & Zones CHR</li>
-              <li>📍 <strong>Fès & Meknès</strong> : Hôtels & Restauration</li>
-              <li>📍 <strong>Agadir</strong> : Front de Mer & Baie</li>
+              <li style={{ display: 'flex', alignItems: 'flex-start', gap: '0.4rem' }}>
+                <MapPin size={14} color="#4ade80" style={{ flexShrink: 0, marginTop: '3px' }} />
+                <span><strong>Grand Casablanca</strong> : Anfa, Maarif, Gauthier, Ain Diab</span>
+              </li>
+              <li style={{ display: 'flex', alignItems: 'flex-start', gap: '0.4rem' }}>
+                <MapPin size={14} color="#4ade80" style={{ flexShrink: 0, marginTop: '3px' }} />
+                <span><strong>Rabat - Salé</strong> : Agdal, Souissi, Hay Riad</span>
+              </li>
+              <li style={{ display: 'flex', alignItems: 'flex-start', gap: '0.4rem' }}>
+                <MapPin size={14} color="#4ade80" style={{ flexShrink: 0, marginTop: '3px' }} />
+                <span><strong>Marrakech</strong> : Guéliz, Hivernage, Palmeraie</span>
+              </li>
+              <li style={{ display: 'flex', alignItems: 'flex-start', gap: '0.4rem' }}>
+                <MapPin size={14} color="#4ade80" style={{ flexShrink: 0, marginTop: '3px' }} />
+                <span><strong>Tanger</strong> : Centre-Ville, Malabata & Zones CHR</span>
+              </li>
+              <li style={{ display: 'flex', alignItems: 'flex-start', gap: '0.4rem' }}>
+                <MapPin size={14} color="#4ade80" style={{ flexShrink: 0, marginTop: '3px' }} />
+                <span><strong>Fès & Meknès</strong> : Hôtels & Restauration</span>
+              </li>
+              <li style={{ display: 'flex', alignItems: 'flex-start', gap: '0.4rem' }}>
+                <MapPin size={14} color="#4ade80" style={{ flexShrink: 0, marginTop: '3px' }} />
+                <span><strong>Agadir</strong> : Front de Mer & Baie</span>
+              </li>
             </ul>
           </div>
 

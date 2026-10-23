@@ -15,6 +15,7 @@ import {
   User,
   Truck,
   Eye,
+  Phone,
 } from 'lucide-react';
 
 interface ClientDashboardPageProps {
@@ -103,10 +104,16 @@ export const ClientDashboardPage: React.FC<ClientDashboardPageProps> = ({ onNavi
               </h1>
               <span className="badge badge-status-delivered">Compte Professionnel Actif</span>
             </div>
-            <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)', display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
-              <span>👤 {user?.fullName}</span>
-              <span>📞 {user?.phone}</span>
-              <span>📍 {business?.deliveryAddress}, {business?.city}</span>
+            <div style={{ fontSize: '0.88rem', color: 'var(--text-muted)', display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center' }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                <User size={14} color="var(--primary-600)" /> {user?.fullName}
+              </span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                <Phone size={14} color="var(--primary-600)" /> {user?.phone}
+              </span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                <MapPin size={14} color="var(--primary-600)" /> {business?.deliveryAddress}, {business?.city}
+              </span>
             </div>
           </div>
 

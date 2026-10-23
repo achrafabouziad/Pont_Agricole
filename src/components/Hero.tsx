@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowRight, CheckCircle2, ShieldCheck, Sparkles, Clock, Truck } from 'lucide-react';
+import { ArrowRight, CheckCircle2, ShieldCheck, Sparkles, Clock, Truck, MapPin } from 'lucide-react';
 
 interface HeroProps {
   onExploreCatalog: () => void;
@@ -112,7 +112,8 @@ export const Hero: React.FC<HeroProps> = ({ onExploreCatalog, onCreateAccount })
 
             {/* Floating Top Tag */}
             <div className="hero-floating-pill">
-              <span>🇲🇦 Terroirs du Maroc</span>
+              <MapPin size={13} />
+              <span>Filières Maraîchères du Maroc</span>
             </div>
           </div>
         </div>

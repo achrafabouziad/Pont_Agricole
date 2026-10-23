@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ShoppingCart, User, ShieldCheck, Menu, X, LogOut, ChevronDown, CheckCircle, Clock } from 'lucide-react';
+import { ShoppingCart, User, ShieldCheck, Menu, X, LogOut, ChevronDown, CheckCircle, Clock, Home, Store } from 'lucide-react';
 import { store } from '../services/store';
 import { UserProfile, Business } from '../types';
 
@@ -236,7 +236,8 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, onOpenC
               }}
               className={`mobile-menu-link ${currentPage === 'home' ? 'active' : ''}`}
             >
-              🌱 Accueil
+              <Home size={18} />
+              <span>Accueil</span>
             </button>
             <button
               onClick={() => {
@@ -245,7 +246,8 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, onOpenC
               }}
               className={`mobile-menu-link ${currentPage === 'catalog' ? 'active' : ''}`}
             >
-              📦 Catalogue Produits Frais
+              <Store size={18} />
+              <span>Catalogue Produits</span>
             </button>
             {user?.role === 'customer' && (
               <button
@@ -255,7 +257,8 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, onOpenC
                 }}
                 className={`mobile-menu-link ${currentPage === 'client-dashboard' ? 'active' : ''}`}
               >
-                👤 Mon Espace Pro & Commandes
+                <User size={18} />
+                <span>Mon Espace Pro</span>
               </button>
             )}
             {user?.role === 'admin' && (

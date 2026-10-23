@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Trash2, Plus, Minus, Calendar, MapPin, Truck, AlertTriangle, CheckCircle, ShieldAlert, ArrowRight } from 'lucide-react';
+import { X, Trash2, Plus, Minus, Calendar, MapPin, Truck, AlertTriangle, CheckCircle, ShieldAlert, ArrowRight, ShoppingBag, AlertCircle } from 'lucide-react';
 import { store } from '../services/store';
 import { CartItem, DeliveryZone, Order } from '../types';
 
@@ -152,13 +152,17 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
         {/* Content Body */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '1.25rem' }}>
           {cart.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-muted)' }}>
-              <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🧺</div>
-              <h3 style={{ fontSize: '1.1rem', marginBottom: '0.5rem', color: 'var(--primary-900)' }}>
-                Votre panier est vide
+            <div style={{ textAlign: 'center', padding: '3.5rem 1rem', color: 'var(--text-muted)' }}>
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.25rem' }}>
+                <div style={{ width: '64px', height: '64px', borderRadius: '50%', backgroundColor: 'var(--primary-50)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary-700)' }}>
+                  <ShoppingBag size={28} strokeWidth={1.75} />
+                </div>
+              </div>
+              <h3 style={{ fontSize: '1.1rem', marginBottom: '0.4rem', color: 'var(--primary-900)', fontWeight: 700 }}>
+                Votre panier est actuellement vide
               </h3>
-              <p style={{ fontSize: '0.88rem', marginBottom: '1.5rem' }}>
-                Sélectionnez vos fruits, légumes et herbes fraîches dans notre catalogue pro.
+              <p style={{ fontSize: '0.85rem', marginBottom: '1.5rem', maxWidth: '280px', margin: '0 auto 1.5rem', lineHeight: 1.5 }}>
+                Sélectionnez vos fruits, légumes et herbes fraîches directement depuis la mercuriale pro.
               </p>
               <button onClick={onClose} className="btn btn-primary btn-sm">
                 Consulter le catalogue
@@ -350,8 +354,9 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
 
             {/* Minimum order progress */}
             {!isMinOrderMet && (
-              <div style={{ fontSize: '0.78rem', color: '#b45309', marginBottom: '0.5rem' }}>
-                ⚠️ Minimum requis pour {selectedCity} : <strong>{minOrderAmount} DH</strong> (Manque {(minOrderAmount - subtotal).toFixed(2)} DH)
+              <div style={{ fontSize: '0.78rem', color: '#b45309', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                <AlertCircle size={14} color="#b45309" style={{ flexShrink: 0 }} />
+                <span>Minimum requis pour {selectedCity} : <strong>{minOrderAmount} DH</strong> (Manque {(minOrderAmount - subtotal).toFixed(2)} DH)</span>
               </div>
             )}
 

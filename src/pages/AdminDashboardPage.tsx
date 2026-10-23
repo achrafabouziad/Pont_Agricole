@@ -43,18 +43,18 @@ import {
 } from 'lucide-react';
 
 const QUICK_PHOTO_PRESETS = [
-  { label: '🍅 Tomates', url: 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?auto=format&fit=crop&w=800&q=80' },
-  { label: '🥔 Pommes de Terre', url: 'https://images.unsplash.com/photo-1518977676601-b53f82aba655?auto=format&fit=crop&w=800&q=80' },
-  { label: '🧅 Oignons', url: 'https://images.unsplash.com/photo-1587049352846-4a222e784d38?auto=format&fit=crop&w=800&q=80' },
-  { label: '🥕 Carottes', url: 'https://images.unsplash.com/photo-1598170845058-32b9d6a5c317?auto=format&fit=crop&w=800&q=80' },
-  { label: '🥒 Courgettes', url: 'https://images.unsplash.com/photo-1590779033100-9f60a05a013d?auto=format&fit=crop&w=800&q=80' },
-  { label: '🍌 Bananes', url: 'https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?auto=format&fit=crop&w=800&q=80' },
-  { label: '🍊 Oranges', url: 'https://images.unsplash.com/photo-1547514701-42782101795e?auto=format&fit=crop&w=800&q=80' },
-  { label: '🍎 Pommes', url: 'https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?auto=format&fit=crop&w=800&q=80' },
-  { label: '🍋 Citrons', url: 'https://images.unsplash.com/photo-1534706936160-d5ee67737249?auto=format&fit=crop&w=800&q=80' },
-  { label: '🌿 Menthe & Herbes', url: 'https://images.unsplash.com/photo-1628556270448-4d4e4148e1b1?auto=format&fit=crop&w=800&q=80' },
-  { label: '🍓 Fraises', url: 'https://images.unsplash.com/photo-1464965911861-746a04b4bca6?auto=format&fit=crop&w=800&q=80' },
-  { label: '🥑 Avocats', url: 'https://images.unsplash.com/photo-1523049673857-eb18f1d7b578?auto=format&fit=crop&w=800&q=80' },
+  { label: 'Tomates', url: 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?auto=format&fit=crop&w=800&q=80' },
+  { label: 'Pommes de Terre', url: 'https://images.unsplash.com/photo-1518977676601-b53f82aba655?auto=format&fit=crop&w=800&q=80' },
+  { label: 'Oignons', url: 'https://images.unsplash.com/photo-1587049352846-4a222e784d38?auto=format&fit=crop&w=800&q=80' },
+  { label: 'Carottes', url: 'https://images.unsplash.com/photo-1598170845058-32b9d6a5c317?auto=format&fit=crop&w=800&q=80' },
+  { label: 'Courgettes', url: 'https://images.unsplash.com/photo-1590779033100-9f60a05a013d?auto=format&fit=crop&w=800&q=80' },
+  { label: 'Bananes', url: 'https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?auto=format&fit=crop&w=800&q=80' },
+  { label: 'Oranges', url: 'https://images.unsplash.com/photo-1547514701-42782101795e?auto=format&fit=crop&w=800&q=80' },
+  { label: 'Pommes', url: 'https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?auto=format&fit=crop&w=800&q=80' },
+  { label: 'Citrons', url: 'https://images.unsplash.com/photo-1534706936160-d5ee67737249?auto=format&fit=crop&w=800&q=80' },
+  { label: 'Menthe & Herbes', url: 'https://images.unsplash.com/photo-1628556270448-4d4e4148e1b1?auto=format&fit=crop&w=800&q=80' },
+  { label: 'Fraises', url: 'https://images.unsplash.com/photo-1464965911861-746a04b4bca6?auto=format&fit=crop&w=800&q=80' },
+  { label: 'Avocats', url: 'https://images.unsplash.com/photo-1523049673857-eb18f1d7b578?auto=format&fit=crop&w=800&q=80' },
 ];
 
 interface AdminDashboardPageProps {
@@ -207,7 +207,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
     setInitialPrices(newInitials);
 
     setSavingDaily(false);
-    setDailySaveNotice(`✅ ${updates.length} prix de vente du jour enregistrés avec succès ! Le catalogue est actualisé.`);
+    setDailySaveNotice(`${updates.length} prix de vente du jour enregistrés avec succès. Le catalogue B2B est actualisé.`);
     setTimeout(() => setDailySaveNotice(null), 4000);
   };
 
@@ -430,9 +430,10 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
           <button
             onClick={() => setActiveTab('daily-prices')}
             className={`btn btn-sm ${activeTab === 'daily-prices' ? 'btn-primary' : 'btn-secondary'}`}
-            style={activeTab === 'daily-prices' ? { backgroundColor: 'var(--amber-500)', borderColor: 'var(--amber-600)', color: '#082817', fontWeight: 800 } : { borderColor: 'var(--amber-400)', color: 'var(--amber-800)', fontWeight: 700 }}
+            style={activeTab === 'daily-prices' ? { backgroundColor: 'var(--amber-500)', borderColor: 'var(--amber-600)', color: '#082817', fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: '0.35rem' } : { borderColor: 'var(--amber-400)', color: 'var(--amber-800)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
           >
-            ⚡ Cours du Jour (Prix Quotidiens)
+            <Zap size={14} />
+            <span>Mercuriale Quotidienne</span>
           </button>
           <button
             onClick={() => setActiveTab('overview')}
@@ -576,11 +577,11 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
                 {/* Category Pills */}
                 <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
                   {[
-                    { id: 'all', label: `Tous (${products.length})` },
-                    { id: 'cat-legumes', label: `🥦 Légumes (${products.filter((p) => p.categoryId === 'cat-legumes').length})` },
-                    { id: 'cat-fruits', label: `🍎 Fruits (${products.filter((p) => p.categoryId === 'cat-fruits').length})` },
-                    { id: 'cat-herbes', label: `🌿 Herbes (${products.filter((p) => p.categoryId === 'cat-herbes').length})` },
-                    { id: 'cat-saison', label: `🍓 Primeurs (${products.filter((p) => p.categoryId === 'cat-saison').length})` },
+                    { id: 'all', label: `Tous les produits (${products.length})` },
+                    { id: 'cat-legumes', label: `Légumes (${products.filter((p) => p.categoryId === 'cat-legumes').length})` },
+                    { id: 'cat-fruits', label: `Fruits (${products.filter((p) => p.categoryId === 'cat-fruits').length})` },
+                    { id: 'cat-herbes', label: `Herbes Aromatiques (${products.filter((p) => p.categoryId === 'cat-herbes').length})` },
+                    { id: 'cat-saison', label: `Primeurs & Saison (${products.filter((p) => p.categoryId === 'cat-saison').length})` },
                   ].map((cat) => (
                     <button
                       key={cat.id}
@@ -728,7 +729,9 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
                             </button>
                           </div>
                           <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.15rem' }}>
-                            <span>📍 {product.origin || 'Maroc'}</span>
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}>
+                              <MapPin size={11} color="var(--primary-600)" /> {product.origin || 'Maroc'}
+                            </span>
                             <span>•</span>
                             <span style={{ fontWeight: 600, color: 'var(--primary-700)', textTransform: 'capitalize' }}>
                               Unité : {product.unit}
@@ -935,10 +938,13 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
                   color: '#082817',
                   fontWeight: 800,
                   border: 'none',
-                  padding: '0.5rem 1rem',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
                 }}
               >
-                ⚡ Modifier les prix du jour
+                <SlidersHorizontal size={14} />
+                <span>Actualiser la Mercuriale</span>
               </button>
             </div>
             {/* KPI Cards */}
@@ -1269,7 +1275,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
                               }}
                               title="Ouvrir la position dans Google Maps"
                             >
-                              📍 Itinéraire Google Maps ↗
+                              <MapPin size={11} /> Itinéraire Google Maps
                             </a>
                           )}
                         </td>
@@ -1349,8 +1355,9 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
                     </div>
 
                     <div style={{ backgroundColor: 'var(--bg-main)', borderRadius: 'var(--radius-sm)', padding: '0.65rem 0.75rem', fontSize: '0.82rem' }}>
-                      <div style={{ fontWeight: 600, color: 'var(--primary-900)' }}>
-                        👤 {biz.contactName || 'Responsable CHR'}
+                      <div style={{ fontWeight: 600, color: 'var(--primary-900)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                        <User size={13} color="var(--primary-700)" />
+                        <span>{biz.contactName || 'Responsable CHR'}</span>
                       </div>
                       {biz.phone && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.35rem' }}>
@@ -1380,8 +1387,9 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
                           )}
                         </div>
                       )}
-                      <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.35rem' }}>
-                        📍 {biz.deliveryAddress}
+                      <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.35rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                        <MapPin size={13} color="var(--primary-700)" />
+                        <span>{biz.deliveryAddress}</span>
                       </div>
                       {(biz.googleMapsUrl || biz.deliveryAddress.includes('google.com/maps')) && (
                         <a
@@ -1399,7 +1407,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
                             textDecoration: 'underline',
                           }}
                         >
-                          📍 Itinéraire Google Maps ↗
+                          <MapPin size={11} /> Itinéraire Google Maps
                         </a>
                       )}
                     </div>
@@ -1674,7 +1682,8 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
                         width: 'fit-content',
                       }}
                     >
-                      <Upload size={15} /> 📸 Importer depuis téléphone / PC
+                      <Camera size={15} />
+                      <span>Téléverser une photo (mobile / PC)</span>
                       <input
                         type="file"
                         accept="image/*"
@@ -1705,8 +1714,9 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
 
                 {/* Quick Presets for Fresh Produce */}
                 <div style={{ marginTop: '0.85rem' }}>
-                  <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.4rem', textTransform: 'uppercase' }}>
-                    ⚡ Suggestions de photos haute qualité :
+                  <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.4rem', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                    <Sparkles size={13} color="var(--primary-600)" />
+                    <span>Suggestions photographiques calibrées :</span>
                   </div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
                     {QUICK_PHOTO_PRESETS.map((preset) => (

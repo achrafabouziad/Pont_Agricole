@@ -175,12 +175,16 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({ initialCategoryId, onO
         {/* Products Grid */}
         {filteredProducts.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '4rem 1rem', backgroundColor: '#ffffff', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-light)' }}>
-            <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🔍</div>
-            <h3 style={{ fontSize: '1.2rem', color: 'var(--primary-900)', marginBottom: '0.5rem' }}>
-              Aucun produit ne correspond à votre recherche
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.25rem' }}>
+              <div style={{ width: '64px', height: '64px', borderRadius: '50%', backgroundColor: 'var(--primary-50)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary-700)' }}>
+                <Search size={28} strokeWidth={1.75} />
+              </div>
+            </div>
+            <h3 style={{ fontSize: '1.15rem', color: 'var(--primary-900)', marginBottom: '0.4rem', fontWeight: 700 }}>
+              Aucun produit ne correspond à vos critères
             </h3>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.92rem', marginBottom: '1.5rem' }}>
-              Essayez de réinitialiser vos filtres ou de modifier votre terme de recherche.
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', marginBottom: '1.5rem', maxWidth: '380px', margin: '0 auto 1.5rem', lineHeight: 1.5 }}>
+              Vérifiez l’orthographe ou réinitialisez vos filtres pour afficher l’ensemble de la mercuriale.
             </p>
             <button
               onClick={() => {

@@ -10,7 +10,8 @@ import { AuthPage } from './pages/AuthPage';
 import { ClientDashboardPage } from './pages/ClientDashboardPage';
 import { AdminDashboardPage } from './pages/AdminDashboardPage';
 import { store } from './services/store';
-import { Order } from './types';
+import { Order, UserProfile } from './types';
+import { Lock, ShieldCheck } from 'lucide-react';
 
 export function App() {
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(store.getCurrentUser());
@@ -76,16 +77,18 @@ export function App() {
                 </div>
               </div>
             </div>
-            <div className="badge badge-brand" style={{ fontSize: '0.72rem', fontWeight: 700, padding: '0.3rem 0.65rem', whiteSpace: 'nowrap' }}>
-              🔒 Accès B2B Pro
+            <div className="badge badge-brand" style={{ fontSize: '0.72rem', fontWeight: 700, padding: '0.3rem 0.65rem', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+              <Lock size={12} />
+              <span>Accès B2B Réservé</span>
             </div>
           </div>
         </header>
 
         {/* Message d'accueil / Verrouillage B2B compact */}
         <div style={{ backgroundColor: '#f0fdf4', borderBottom: '1px solid #bbf7d0', padding: '0.65rem 1rem', textAlign: 'center' }}>
-          <p style={{ margin: 0, fontSize: '0.82rem', color: '#166534', fontWeight: 600, lineHeight: 1.4 }}>
-            🌱 <strong>Espace Réservé CHR :</strong> Créez votre compte pro ou connectez-vous pour consulter le catalogue, les cours du jour en MAD et passer commande.
+          <p style={{ margin: 0, fontSize: '0.82rem', color: '#166534', fontWeight: 600, lineHeight: 1.4, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
+            <ShieldCheck size={15} color="#15803d" />
+            <span><strong>Plateforme B2B :</strong> Accès réservé aux professionnels de la restauration et de l’hôtellerie. Connectez-vous ou créez votre compte pour consulter les cours du jour en MAD.</span>
           </p>
         </div>
 

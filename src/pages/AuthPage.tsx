@@ -21,30 +21,30 @@ const GoogleMapsIcon: React.FC<{ size?: number }> = ({ size = 18 }) => (
 
 // Liste des indicatifs mondiaux
 const WORLD_COUNTRY_CODES = [
-  { code: '+212', flag: '🇲🇦', name: 'Maroc (+212)' },
-  { code: '+33', flag: '🇫🇷', name: 'France (+33)' },
-  { code: '+34', flag: '🇪🇸', name: 'Espagne (+34)' },
-  { code: '+971', flag: '🇦🇪', name: 'Émirats Arabes Unis (+971)' },
-  { code: '+966', flag: '🇸🇦', name: 'Arabie Saoudite (+966)' },
-  { code: '+1', flag: '🇺🇸', name: 'USA / Canada (+1)' },
-  { code: '+44', flag: '🇬🇧', name: 'Royaume-Uni (+44)' },
-  { code: '+32', flag: '🇧🇪', name: 'Belgique (+32)' },
-  { code: '+49', flag: '🇩🇪', name: 'Allemagne (+49)' },
-  { code: '+39', flag: '🇮🇹', name: 'Italie (+39)' },
-  { code: '+31', flag: '🇳🇱', name: 'Pays-Bas (+31)' },
-  { code: '+41', flag: '🇨🇭', name: 'Suisse (+41)' },
-  { code: '+351', flag: '🇵🇹', name: 'Portugal (+351)' },
-  { code: '+90', flag: '🇹🇷', name: 'Turquie (+90)' },
-  { code: '+221', flag: '🇸🇳', name: 'Sénégal (+221)' },
-  { code: '+225', flag: '🇨🇮', name: "Côte d'Ivoire (+225)" },
-  { code: '+222', flag: '🇲🇷', name: 'Mauritanie (+222)' },
-  { code: '+216', flag: '🇹🇳', name: 'Tunisie (+216)' },
-  { code: '+213', flag: '🇩🇿', name: 'Algérie (+213)' },
-  { code: '+20', flag: '🇪🇬', name: 'Égypte (+20)' },
-  { code: '+974', flag: '🇶🇦', name: 'Qatar (+974)' },
-  { code: '+965', flag: '🇰🇼', name: 'Koweït (+965)' },
-  { code: '+86', flag: '🇨🇳', name: 'Chine (+86)' },
-  { code: 'other', flag: '🌐', name: 'Autre indicatif...' },
+  { code: '+212', label: 'MA +212', name: 'Maroc (+212)' },
+  { code: '+33', label: 'FR +33', name: 'France (+33)' },
+  { code: '+34', label: 'ES +34', name: 'Espagne (+34)' },
+  { code: '+971', label: 'AE +971', name: 'Émirats Arabes Unis (+971)' },
+  { code: '+966', label: 'SA +966', name: 'Arabie Saoudite (+966)' },
+  { code: '+1', label: 'US/CA +1', name: 'USA / Canada (+1)' },
+  { code: '+44', label: 'GB +44', name: 'Royaume-Uni (+44)' },
+  { code: '+32', label: 'BE +32', name: 'Belgique (+32)' },
+  { code: '+49', label: 'DE +49', name: 'Allemagne (+49)' },
+  { code: '+39', label: 'IT +39', name: 'Italie (+39)' },
+  { code: '+31', label: 'NL +31', name: 'Pays-Bas (+31)' },
+  { code: '+41', label: 'CH +41', name: 'Suisse (+41)' },
+  { code: '+351', label: 'PT +351', name: 'Portugal (+351)' },
+  { code: '+90', label: 'TR +90', name: 'Turquie (+90)' },
+  { code: '+221', label: 'SN +221', name: 'Sénégal (+221)' },
+  { code: '+225', label: 'CI +225', name: "Côte d'Ivoire (+225)" },
+  { code: '+222', label: 'MR +222', name: 'Mauritanie (+222)' },
+  { code: '+216', label: 'TN +216', name: 'Tunisie (+216)' },
+  { code: '+213', label: 'DZ +213', name: 'Algérie (+213)' },
+  { code: '+20', label: 'EG +20', name: 'Égypte (+20)' },
+  { code: '+974', label: 'QA +974', name: 'Qatar (+974)' },
+  { code: '+965', label: 'KW +965', name: 'Koweït (+965)' },
+  { code: '+86', label: 'CN +86', name: 'Chine (+86)' },
+  { code: 'other', label: 'Autre', name: 'Autre indicatif international' },
 ];
 
 export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 'register' }) => {
@@ -318,8 +318,9 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
                     required
                   />
                 </div>
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.35rem', display: 'block' }}>
-                  💡 Vous pouvez vous connecter soit avec votre <strong>N° de téléphone</strong> (mondial), votre <strong>nom/prénom</strong>, ou votre <strong>email</strong>.
+                <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', marginTop: '0.35rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                  <ShieldCheck size={13} color="var(--primary-600)" />
+                  <span>Connexion autorisée par N° de téléphone, nom d’utilisateur ou e-mail pro.</span>
                 </span>
               </div>
 
@@ -405,7 +406,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
                     >
                       {WORLD_COUNTRY_CODES.map((c) => (
                         <option key={c.code} value={c.code}>
-                          {c.flag} {c.code === 'other' ? 'Autre' : c.code}
+                          {c.label}
                         </option>
                       ))}
                     </select>
@@ -433,7 +434,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
                     />
                   </div>
                   <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.2rem', display: 'block' }}>
-                    🌍 Numéro marocain ou international accepté.
+                    Numéro direct utilisé pour le suivi logistique et la livraison matinale.
                   </span>
                 </div>
               </div>
@@ -537,8 +538,9 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
                 </div>
               </div>
 
-              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1.25rem', backgroundColor: 'var(--bg-main)', padding: '0.75rem', borderRadius: 'var(--radius-sm)' }}>
-                ✨ <strong>Accès direct :</strong> Votre compte est activé immédiatement. Vous pouvez passer votre première commande sans délai.
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1.25rem', backgroundColor: 'var(--bg-main)', padding: '0.75rem', borderRadius: 'var(--radius-sm)', display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                <ShieldCheck size={16} color="var(--primary-600)" style={{ flexShrink: 0 }} />
+                <span><strong>Accès Direct B2B :</strong> Votre compte professionnel est activé immédiatement dès validation.</span>
               </div>
 
               <button

@@ -76,7 +76,27 @@ h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-heading);
   color: var(--primary-900);
   font-weight: 700;
-  line-height: 1.25;
+  line-height: 1.2;
+  letter-spacing: -0.025em;
+}
+
+h1 {
+  letter-spacing: -0.035em;
+  font-weight: 800;
+}
+
+h2 {
+  letter-spacing: -0.025em;
+  font-weight: 700;
+}
+
+h3 {
+  letter-spacing: -0.015em;
+  font-weight: 700;
+}
+
+p {
+  line-height: 1.6;
 }
 
 a {
@@ -382,12 +402,13 @@ input, select, textarea {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  padding: 0.25rem 0.65rem;
-  border-radius: 9999px;
-  font-size: 0.75rem;
+  padding: 0.22rem 0.6rem;
+  border-radius: 6px;
+  font-size: 0.72rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
 }
 
 .badge-brand {
