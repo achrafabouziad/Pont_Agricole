@@ -122,20 +122,18 @@ class StoreService {
       try {
         const { data, error } = await supabase.auth.signInWithPassword({ email: cleanEmail, password: pass });
         if (error) {
-          // If Supabase returns error (e.g. Email not confirmed) and user is owner:
-          if (isOwner) {
-            this.currentUser = {
-              id: 'usr-achraf-master',
-              fullName: 'Achraf Abouziad (Directeur)',
-              phone: '+212 6 61 98 76 54',
-              role: 'admin',
-              createdAt: new Date().toISOString(),
+          const msg = error.message.toLowerCase();
+          if (msg.includes('email not confirmed')) {
+            return {
+              success: false,
+              error: "Votre email n'est pas encore confirmé dans Supabase. Veuillez le valider dans Supabase Auth ou exécuter le script SQL.",
             };
-            this.currentBusiness = null;
-            setStored(KEY_USER, this.currentUser);
-            setStored(KEY_BUSINESS, this.currentBusiness);
-            this.notify();
-            return { success: true };
+          }
+          if (msg.includes('invalid login credentials') || msg.includes('invalid grant')) {
+            return {
+              success: false,
+              error: "Mot de passe incorrect ou compte introuvable.",
+            };
           }
           return { success: false, error: error.message };
         }
@@ -182,21 +180,7 @@ class StoreService {
           return { success: true };
         }
       } catch (err: any) {
-        if (isOwner) {
-          this.currentUser = {
-            id: 'usr-achraf-master',
-            fullName: 'Achraf Abouziad (Directeur)',
-            phone: '+212 6 61 98 76 54',
-            role: 'admin',
-            createdAt: new Date().toISOString(),
-          };
-          this.currentBusiness = null;
-          setStored(KEY_USER, this.currentUser);
-          setStored(KEY_BUSINESS, this.currentBusiness);
-          this.notify();
-          return { success: true };
-        }
-        return { success: false, error: err.message };
+        return { success: false, error: err.message || 'Erreur lors de la connexion.' };
       }
     }
 
