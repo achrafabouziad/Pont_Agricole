@@ -203,7 +203,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess }) => {
                   <input
                     type="text"
                     className="form-input"
-                    placeholder="achrafabouziad@gmail.com ou identifiant"
+                    placeholder="contact@restaurant.ma"
                     value={loginEmail}
                     onChange={(e) => setLoginEmail(e.target.value)}
                     style={{ paddingLeft: '2.4rem' }}
