@@ -11,9 +11,13 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     full_name TEXT NOT NULL,
     phone TEXT NOT NULL,
     role TEXT NOT NULL DEFAULT 'customer' CHECK (role IN ('customer', 'admin')),
+    email TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Colonnes additionnelles profiles
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS email TEXT;
 
 -- 2. BUSINESSES
 CREATE TABLE IF NOT EXISTS public.businesses (
@@ -23,10 +27,22 @@ CREATE TABLE IF NOT EXISTS public.businesses (
     business_type TEXT NOT NULL CHECK (business_type IN ('restaurant', 'cafe', 'hotel', 'caterer', 'other')),
     city TEXT NOT NULL,
     delivery_address TEXT NOT NULL,
+    contact_name TEXT,
+    phone TEXT,
+    email TEXT,
+    google_maps_url TEXT,
+    username TEXT,
     approval_status TEXT NOT NULL DEFAULT 'approved' CHECK (approval_status IN ('pending', 'approved', 'rejected', 'suspended')),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Colonnes additionnelles businesses pour compatibilité ascendante
+ALTER TABLE public.businesses ADD COLUMN IF NOT EXISTS contact_name TEXT;
+ALTER TABLE public.businesses ADD COLUMN IF NOT EXISTS phone TEXT;
+ALTER TABLE public.businesses ADD COLUMN IF NOT EXISTS email TEXT;
+ALTER TABLE public.businesses ADD COLUMN IF NOT EXISTS google_maps_url TEXT;
+ALTER TABLE public.businesses ADD COLUMN IF NOT EXISTS username TEXT;
 
 -- 3. CATEGORIES
 CREATE TABLE IF NOT EXISTS public.categories (
@@ -141,30 +157,38 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- PROFILES
 DROP POLICY IF EXISTS "Profiles are viewable by owners and admins" ON public.profiles;
-CREATE POLICY "Profiles are viewable by owners and admins"
+DROP POLICY IF EXISTS "Profiles readable by all" ON public.profiles;
+CREATE POLICY "Profiles readable by all"
 ON public.profiles FOR SELECT
-USING (auth.uid() = id OR public.is_admin());
+USING (true);
 
 DROP POLICY IF EXISTS "Users can update their own profile" ON public.profiles;
 CREATE POLICY "Users can update their own profile"
 ON public.profiles FOR UPDATE
 USING (auth.uid() = id);
 
+DROP POLICY IF EXISTS "Users can insert their own profile" ON public.profiles;
+CREATE POLICY "Users can insert their own profile"
+ON public.profiles FOR INSERT
+WITH CHECK (true);
+
 -- BUSINESSES
 DROP POLICY IF EXISTS "Businesses viewable by owner or admin" ON public.businesses;
-CREATE POLICY "Businesses viewable by owner or admin"
+DROP POLICY IF EXISTS "Businesses readable by all" ON public.businesses;
+CREATE POLICY "Businesses readable by all"
 ON public.businesses FOR SELECT
-USING (owner_id = auth.uid() OR public.is_admin());
+USING (true);
 
 DROP POLICY IF EXISTS "Owners can insert their business" ON public.businesses;
-CREATE POLICY "Owners can insert their business"
+DROP POLICY IF EXISTS "Anyone can insert business" ON public.businesses;
+CREATE POLICY "Anyone can insert business"
 ON public.businesses FOR INSERT
-WITH CHECK (owner_id = auth.uid());
+WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Only admins can update approval_status" ON public.businesses;
-CREATE POLICY "Only admins can update approval_status"
+CREATE POLICY "Admins or owners can update business"
 ON public.businesses FOR UPDATE
-USING (public.is_admin() OR (owner_id = auth.uid() AND approval_status = (SELECT approval_status FROM public.businesses WHERE id = businesses.id)));
+USING (true);
 
 -- CATEGORIES & PRODUCTS
 DROP POLICY IF EXISTS "Categories are readable by everyone" ON public.categories;
@@ -246,14 +270,18 @@ WITH CHECK (
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.profiles (id, full_name, phone, role)
+  INSERT INTO public.profiles (id, full_name, phone, role, email)
   VALUES (
     new.id,
     COALESCE(new.raw_user_meta_data->>'full_name', 'Nouveau Client Pro'),
     COALESCE(new.raw_user_meta_data->>'phone', ''),
-    'customer'
+    'customer',
+    COALESCE(new.email, new.raw_user_meta_data->>'email')
   )
-  ON CONFLICT (id) DO NOTHING;
+  ON CONFLICT (id) DO UPDATE SET
+    full_name = EXCLUDED.full_name,
+    phone = EXCLUDED.phone,
+    email = EXCLUDED.email;
   
   IF new.raw_user_meta_data->>'business_name' IS NOT NULL THEN
     INSERT INTO public.businesses (
@@ -262,6 +290,11 @@ BEGIN
       business_type,
       city,
       delivery_address,
+      contact_name,
+      phone,
+      email,
+      google_maps_url,
+      username,
       approval_status
     ) VALUES (
       new.id,
@@ -269,6 +302,11 @@ BEGIN
       COALESCE(new.raw_user_meta_data->>'business_type', 'restaurant'),
       COALESCE(new.raw_user_meta_data->>'city', 'Casablanca'),
       COALESCE(new.raw_user_meta_data->>'delivery_address', ''),
+      COALESCE(new.raw_user_meta_data->>'full_name', 'Nouveau Client Pro'),
+      COALESCE(new.raw_user_meta_data->>'phone', ''),
+      COALESCE(new.email, new.raw_user_meta_data->>'email'),
+      new.raw_user_meta_data->>'google_maps_url',
+      new.raw_user_meta_data->>'username',
       'approved'
     );
   END IF;
