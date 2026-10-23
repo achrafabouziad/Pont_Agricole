@@ -864,6 +864,15 @@ input, select, textarea {
   to { transform: translateY(0); opacity: 1; }
 }
 
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.spin {
+  animation: spin 0.75s linear infinite;
+}
+
 /* Drawer Cart */
 .drawer-backdrop {
   position: fixed;

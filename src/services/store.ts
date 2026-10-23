@@ -983,51 +983,95 @@ class StoreService {
 
   // --- CLIENTS & BUSINESSES (ADMIN) ---
   public async getBusinesses(): Promise<Business[]> {
+    const list: Business[] = [];
+    const seenIds = new Set<string>();
+    const seenPhones = new Set<string>();
+
     if (isSupabaseConfigured && supabase) {
       try {
-        const { data, error } = await supabase
+        // 1. Fetch from businesses table
+        const { data: bizData, error: bizError } = await supabase
           .from('businesses')
           .select('*')
           .order('created_at', { ascending: false });
 
-        if (!error && data && data.length > 0) {
-          let profMap = new Map<string, any>();
-          try {
-            const { data: profs } = await supabase.from('profiles').select('*');
-            if (profs) {
-              profMap = new Map(profs.map((p: any) => [p.id, p]));
-            }
-          } catch {
-            // Profils optionnels
-          }
+        // 2. Fetch from profiles table to ensure any registered user is included
+        const { data: profData } = await supabase
+          .from('profiles')
+          .select('*')
+          .order('created_at', { ascending: false });
 
-          const mapped: Business[] = data.map((b: any) => {
+        let profMap = new Map<string, any>();
+        if (profData) {
+          profMap = new Map(profData.map((p: any) => [p.id, p]));
+        }
+
+        const bOwnerIds = new Set<string>();
+
+        if (!bizError && bizData && bizData.length > 0) {
+          for (const b of bizData) {
             const prof = profMap.get(b.owner_id);
-            return {
+            const bPhone = b.phone || prof?.phone || '';
+            const normPhone = normalizePhone(bPhone);
+
+            const bizObj: Business = {
               id: b.id,
               ownerId: b.owner_id,
-              businessName: b.business_name,
-              businessType: b.business_type,
-              city: b.city,
-              deliveryAddress: b.delivery_address,
+              businessName: b.business_name || prof?.business_name || 'Établissement Pro',
+              businessType: b.business_type || 'restaurant',
+              city: b.city || 'Casablanca',
+              deliveryAddress: b.delivery_address || 'Adresse à préciser',
               approvalStatus: b.approval_status || 'approved',
-              createdAt: b.created_at,
+              createdAt: b.created_at || new Date().toISOString(),
               contactName: b.contact_name || prof?.full_name || 'Client Professionnel',
-              phone: b.phone || prof?.phone || '',
+              phone: bPhone,
               email: b.email || prof?.email || '',
               googleMapsUrl: b.google_maps_url || undefined,
               username: b.username || undefined,
             };
-          });
 
-          setStored(KEY_BUSINESSES, mapped);
-          return mapped;
+            list.push(bizObj);
+            seenIds.add(bizObj.id);
+            if (bizObj.ownerId) seenIds.add(bizObj.ownerId);
+            if (normPhone) seenPhones.add(normPhone);
+            if (b.owner_id) bOwnerIds.add(b.owner_id);
+          }
+        }
+
+        // 3. Any customer in profiles not in businesses
+        if (profData && profData.length > 0) {
+          for (const prof of profData) {
+            if (prof.role !== 'admin' && !bOwnerIds.has(prof.id) && !seenIds.has(prof.id)) {
+              const pPhone = prof.phone || '';
+              const pNorm = normalizePhone(pPhone);
+              if (!pNorm || !seenPhones.has(pNorm)) {
+                const syntheticBiz: Business = {
+                  id: `biz-${prof.id}`,
+                  ownerId: prof.id,
+                  businessName: prof.business_name || prof.full_name || 'Client Inscrit',
+                  businessType: prof.business_type || 'restaurant',
+                  city: prof.city || 'Maroc',
+                  deliveryAddress: prof.delivery_address || 'Adresse non renseignée',
+                  approvalStatus: 'approved',
+                  createdAt: prof.created_at || new Date().toISOString(),
+                  contactName: prof.full_name,
+                  phone: pPhone,
+                  email: prof.email || '',
+                };
+                list.push(syntheticBiz);
+                seenIds.add(syntheticBiz.id);
+                if (pNorm) seenPhones.add(pNorm);
+              }
+            }
+          }
         }
       } catch (e) {
         console.warn('Error fetching businesses from Supabase', e);
       }
     }
-    return getStored<Business[]>(KEY_BUSINESSES, [
+
+    // 4. Merge with local businesses saved from registrations
+    const localBusinesses = getStored<Business[]>(KEY_BUSINESSES, [
       {
         ...DEMO_CLIENT_BUSINESS,
         contactName: DEMO_CLIENT_PROFILE.fullName,
@@ -1039,6 +1083,26 @@ class StoreService {
         phone: DEMO_PENDING_CLIENT_PROFILE.phone,
       },
     ]);
+
+    for (const lb of localBusinesses) {
+      const lbNorm = normalizePhone(lb.phone || '');
+      const isAlreadyIncluded =
+        seenIds.has(lb.id) ||
+        (lb.ownerId && seenIds.has(lb.ownerId)) ||
+        (lbNorm && seenPhones.has(lbNorm));
+
+      if (!isAlreadyIncluded) {
+        list.push(lb);
+        seenIds.add(lb.id);
+        if (lbNorm) seenPhones.add(lbNorm);
+      }
+    }
+
+    // Sort by newest registration first
+    list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+    setStored(KEY_BUSINESSES, list);
+    return list;
   }
 
   public async updateBusinessApproval(businessId: string, status: ApprovalStatus): Promise<void> {
@@ -1057,6 +1121,20 @@ class StoreService {
       }
       this.notify();
     }
+  }
+
+  public async deleteBusiness(businessId: string): Promise<void> {
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from('businesses').delete().eq('id', businessId);
+      } catch (e) {
+        console.warn('Error deleting business from Supabase', e);
+      }
+    }
+    const businesses = getStored<Business[]>(KEY_BUSINESSES, []);
+    const filtered = businesses.filter((b) => b.id !== businessId);
+    setStored(KEY_BUSINESSES, filtered);
+    this.notify();
   }
 
   // --- DELIVERY ZONES & SETTINGS ---
