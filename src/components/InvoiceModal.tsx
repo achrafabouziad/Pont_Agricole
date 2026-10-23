@@ -317,9 +317,9 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ order, onClose, sett
               </div>
 
               <div style={{ padding: '0.75rem 1rem', display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #e2e8f0', fontSize: '0.85rem' }}>
-                <span style={{ color: '#475569' }}>Frais de Livraison Matinale</span>
-                <span style={{ fontWeight: 700, color: '#0f172a' }}>
-                  {order.deliveryFee > 0 ? `${order.deliveryFee.toFixed(2)} DH` : 'Gratuit (Inclus)'}
+                <span style={{ color: '#475569' }}>Frais de Livraison</span>
+                <span style={{ fontWeight: 700, color: '#166534' }}>
+                  {order.deliveryFee > 0 ? `${order.deliveryFee.toFixed(2)} DH` : 'Gratuite (Offerte)'}
                 </span>
               </div>
 

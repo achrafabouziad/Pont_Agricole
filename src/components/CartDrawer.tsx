@@ -59,10 +59,10 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
 
   const currentZone = zones.find((z) => z.city.toLowerCase() === selectedCity.toLowerCase()) || zones[0];
   const subtotal = store.getCartSubtotal();
-  const deliveryFee = subtotal >= 1200 ? 0 : currentZone ? currentZone.deliveryFee : 35;
-  const total = subtotal + deliveryFee;
-  const minOrderAmount = currentZone ? currentZone.minimumOrderAmount : 300;
-  const isMinOrderMet = subtotal >= minOrderAmount;
+  const deliveryFee = 0; // Livraison 100% offerte
+  const total = subtotal;
+  const minOrderAmount = 0;
+  const isMinOrderMet = true;
 
   // Account status check
   const isApproved = currentUser?.role === 'admin' || currentBusiness?.approvalStatus === 'approved';
@@ -81,11 +81,6 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
 
     if (!currentUser) {
       setErrorMessage('Veuillez vous connecter à votre compte professionnel.');
-      return;
-    }
-
-    if (!isMinOrderMet) {
-      setErrorMessage(`Le montant minimum de commande pour ${selectedCity} est de ${minOrderAmount} DH.`);
       return;
     }
 
@@ -238,7 +233,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label" style={{ fontSize: '0.8rem' }}>Ville & Zone</label>
+                  <label className="form-label" style={{ fontSize: '0.8rem' }}>Ville de livraison</label>
                   <select
                     className="form-select"
                     value={selectedCity}
@@ -247,7 +242,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                   >
                     {zones.map((z) => (
                       <option key={z.id} value={z.city}>
-                        {z.city} (Min. {z.minimumOrderAmount} DH - Frais: {z.deliveryFee} DH)
+                        {z.city}
                       </option>
                     ))}
                   </select>
@@ -352,14 +347,6 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
               </div>
             ) : null}
 
-            {/* Minimum order progress */}
-            {!isMinOrderMet && (
-              <div style={{ fontSize: '0.78rem', color: '#b45309', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                <AlertCircle size={14} color="#b45309" style={{ flexShrink: 0 }} />
-                <span>Minimum requis pour {selectedCity} : <strong>{minOrderAmount} DH</strong> (Manque {(minOrderAmount - subtotal).toFixed(2)} DH)</span>
-              </div>
-            )}
-
             {/* Calculations lines */}
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.88rem', color: 'var(--text-muted)', marginBottom: '0.35rem' }}>
               <span>Sous-total HT</span>
@@ -368,8 +355,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
 
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.88rem', color: 'var(--text-muted)', marginBottom: '0.6rem' }}>
               <span>Frais de livraison ({selectedCity})</span>
-              <span style={{ fontWeight: 600 }}>
-                {deliveryFee === 0 ? <span style={{ color: 'var(--primary-600)', fontWeight: 700 }}>Offerts (dès 1200 DH)</span> : `${deliveryFee.toFixed(2)} DH`}
+              <span style={{ color: 'var(--primary-600)', fontWeight: 700 }}>
+                Gratuits (0 DH)
               </span>
             </div>
 
@@ -381,14 +368,14 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
             {/* Checkout Action */}
             <button
               onClick={handleCheckout}
-              disabled={submitting || !isMinOrderMet || !currentUser}
+              disabled={submitting || !currentUser}
               className="btn btn-primary"
               style={{
                 width: '100%',
                 padding: '0.85rem',
                 fontSize: '1rem',
-                opacity: submitting || !isMinOrderMet || !currentUser ? 0.6 : 1,
-                cursor: submitting || !isMinOrderMet || !currentUser ? 'not-allowed' : 'pointer',
+                opacity: submitting || !currentUser ? 0.6 : 1,
+                cursor: submitting || !currentUser ? 'not-allowed' : 'pointer',
               }}
             >
               {submitting ? (

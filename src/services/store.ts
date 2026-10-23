@@ -852,21 +852,10 @@ class StoreService {
       return { success: false, error: 'Votre panier est vide.' };
     }
 
-    // 4. Fetch delivery zone to get fee & min order
-    const zones = await this.getDeliveryZones();
-    const zone = zones.find((z) => z.city.toLowerCase() === params.deliveryCity.toLowerCase()) || zones[0];
+    // 4. Cart subtotal and Free Delivery
     const subtotal = this.getCartSubtotal();
-
-    if (zone && subtotal < zone.minimumOrderAmount) {
-      return {
-        success: false,
-        error: `Le montant minimum de commande pour ${params.deliveryCity} est de ${zone.minimumOrderAmount} DH (Sous-total actuel : ${subtotal.toFixed(2)} DH).`,
-      };
-    }
-
-    const settings = await this.getCompanySettings();
-    const deliveryFee = subtotal >= settings.freeDeliveryThreshold ? 0 : zone ? zone.deliveryFee : 35;
-    const total = subtotal + deliveryFee;
+    const deliveryFee = 0; // Livraison 100% gratuite et offerte
+    const total = subtotal;
 
     // 5. Generate unique Moroccan B2B order identifier
     const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');

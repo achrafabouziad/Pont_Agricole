@@ -68,7 +68,7 @@ interface AdminDashboardPageProps {
 }
 
 export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNavigate }) => {
-  const [activeTab, setActiveTab] = useState<'daily-prices' | 'overview' | 'orders' | 'clients' | 'products' | 'zones' | 'settings'>('daily-prices');
+  const [activeTab, setActiveTab] = useState<'daily-prices' | 'overview' | 'orders' | 'clients' | 'products' | 'settings'>('daily-prices');
   const [orders, setOrders] = useState<Order[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [businesses, setBusinesses] = useState<Business[]>([]);
@@ -512,12 +512,6 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
             className={`btn btn-sm ${activeTab === 'products' ? 'btn-primary' : 'btn-secondary'}`}
           >
             Gestion des Produits ({products.length})
-          </button>
-          <button
-            onClick={() => setActiveTab('zones')}
-            className={`btn btn-sm ${activeTab === 'zones' ? 'btn-primary' : 'btn-secondary'}`}
-          >
-            Zones & Frais de Livraison
           </button>
         </div>
 
@@ -1382,8 +1376,8 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
                         <strong style={{ fontSize: '1rem', color: 'var(--primary-900)' }}>
                           {ord.total.toFixed(2)} DH
                         </strong>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                          (Livraison: {ord.deliveryFee} DH)
+                        <div style={{ fontSize: '0.75rem', color: 'var(--primary-700)', fontWeight: 600 }}>
+                          (Livraison gratuite)
                         </div>
                       </td>
                       <td>
@@ -2207,71 +2201,6 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
                             <Trash2 size={14} />
                           </button>
                         </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-        {/* TAB 5: DELIVERY ZONES */}
-        {activeTab === 'zones' && (
-          <div className="card" style={{ backgroundColor: '#ffffff', padding: '1.5rem' }}>
-            <h3 style={{ fontSize: '1.2rem', color: 'var(--primary-900)', marginBottom: '1.25rem' }}>
-              Villes & Zones de Desserte Quotidienne ({zones.length})
-            </h3>
-
-            <div className="table-responsive">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Ville</th>
-                    <th>Quartiers & Zones Couvertes</th>
-                    <th>Frais de Livraison (DH)</th>
-                    <th>Minimum de Commande (DH)</th>
-                    <th>Horaires Estimés</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {zones.map((z) => (
-                    <tr key={z.id}>
-                      <td>
-                        <strong>{z.city}</strong>
-                      </td>
-                      <td style={{ fontSize: '0.85rem' }}>{z.zoneName}</td>
-                      <td>
-                        <input
-                          type="number"
-                          className="form-input"
-                          style={{ width: '80px', padding: '0.35rem' }}
-                          defaultValue={z.deliveryFee}
-                          id={`fee-${z.id}`}
-                        />
-                      </td>
-                      <td>
-                        <input
-                          type="number"
-                          className="form-input"
-                          style={{ width: '90px', padding: '0.35rem' }}
-                          defaultValue={z.minimumOrderAmount}
-                          id={`min-${z.id}`}
-                        />
-                      </td>
-                      <td style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>{z.estimatedHours}</td>
-                      <td>
-                        <button
-                          onClick={() => {
-                            const feeVal = Number((document.getElementById(`fee-${z.id}`) as HTMLInputElement).value);
-                            const minVal = Number((document.getElementById(`min-${z.id}`) as HTMLInputElement).value);
-                            handleUpdateZoneFee(z, feeVal, minVal);
-                          }}
-                          className="btn btn-primary btn-sm"
-                        >
-                          <Save size={14} /> Enregistrer
-                        </button>
                       </td>
                     </tr>
                   ))}
