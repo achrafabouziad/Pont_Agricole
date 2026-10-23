@@ -7,7 +7,7 @@ interface FooterProps {
 
 export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
   return (
-    <footer style={{ backgroundColor: '#06170d', color: '#e5eee8', paddingTop: '4rem', paddingBottom: '2.5rem', marginTop: '4rem', borderTop: '1px solid #112d1b' }}>
+    <footer style={{ backgroundColor: '#0a2e19', color: '#e5eee8', paddingTop: '4rem', paddingBottom: '2.5rem', marginTop: '4rem', borderTop: '1px solid #144728' }}>
       <div className="container">
         {/* Top Feature Highlights */}
         <div

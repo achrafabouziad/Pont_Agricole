@@ -4,35 +4,35 @@
   --font-main: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-heading: 'Outfit', sans-serif;
 
-  /* Refined Corporate Forest Green Spectrum */
-  --primary-950: #06170d;
-  --primary-900: #0a2215;
-  --primary-850: #0d2e1c;
-  --primary-800: #113822;
-  --primary-700: #174d2f;
-  --primary-600: #1f683f;
-  --primary-500: #298251;
-  --primary-400: #3da26b;
-  --primary-100: #e5efe9;
-  --primary-50: #f2f7f4;
+  /* Fresh & Luminous Agricultural Green Spectrum (Vert Maraîcher Vivant) */
+  --primary-950: #0a2618;
+  --primary-900: #103b25;
+  --primary-850: #14532d;
+  --primary-800: #166534;
+  --primary-700: #15803d;
+  --primary-600: #16a34a;
+  --primary-500: #22c55e;
+  --primary-400: #4ade80;
+  --primary-100: #dcfce7;
+  --primary-50: #f0fdf4;
 
-  /* Restrained Natural Amber (Harvest Wheat) */
-  --amber-700: #92400e;
-  --amber-600: #b45309;
-  --amber-500: #d97706;
-  --amber-400: #f59e0b;
+  /* Fresh Sun Amber (Agrumes & Récoltes Ensoleillées) */
+  --amber-700: #b45309;
+  --amber-600: #d97706;
+  --amber-500: #f59e0b;
+  --amber-400: #fbbf24;
   --amber-100: #fef3c7;
   --amber-50: #fffbeb;
 
-  /* Warm White, Paper & Stone Neutrals */
-  --bg-main: #f9faf7;
+  /* Crisp Fresh Paper & Neutral Surfaces */
+  --bg-main: #f7fbf8;
   --bg-surface: #ffffff;
-  --bg-surface-secondary: #f2f5f0;
-  --border-light: #e1e7de;
-  --border-subtle: #edf1ea;
-  --text-main: #131c16;
-  --text-muted: #4e5e54;
-  --text-light: #7b8c81;
+  --bg-surface-secondary: #f0f7f2;
+  --border-light: #dbe7df;
+  --border-subtle: #edf4ef;
+  --text-main: #11261a;
+  --text-muted: #4b6354;
+  --text-light: #7b9484;
 
   /* System Statuses */
   --status-pending-bg: #fef3c7;
@@ -48,7 +48,7 @@
   --status-cancelled-bg: #fee2e2;
   --status-cancelled-text: #991b1b;
 
-  /* Layout & Architectural Radii (Human Craftsmanship: no oversized AI bubbles) */
+  /* Layout & Architectural Radii */
   --max-width: 1280px;
   --radius-xs: 3px;
   --radius-sm: 4px;
@@ -57,9 +57,9 @@
   --radius-xl: 12px;
   
   /* Multi-stop Crisp Ambient Shadows */
-  --shadow-sm: 0 1px 2px rgba(10, 34, 21, 0.04), 0 1px 1px rgba(10, 34, 21, 0.02);
-  --shadow-md: 0 4px 8px -2px rgba(10, 34, 21, 0.06), 0 2px 4px -2px rgba(10, 34, 21, 0.03);
-  --shadow-lg: 0 12px 24px -4px rgba(10, 34, 21, 0.08), 0 4px 8px -4px rgba(10, 34, 21, 0.04);
+  --shadow-sm: 0 1px 2px rgba(16, 59, 37, 0.04), 0 1px 1px rgba(16, 59, 37, 0.02);
+  --shadow-md: 0 4px 8px -2px rgba(16, 59, 37, 0.06), 0 2px 4px -2px rgba(16, 59, 37, 0.03);
+  --shadow-lg: 0 12px 24px -4px rgba(16, 59, 37, 0.08), 0 4px 8px -4px rgba(16, 59, 37, 0.04);
   --transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -367,23 +367,23 @@ input, select, textarea {
 }
 
 .btn-primary {
-  background-color: var(--primary-850);
+  background-color: var(--primary-700);
   color: #ffffff;
-  border: 1px solid var(--primary-950);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 1px 2px rgba(10, 34, 21, 0.08);
+  border: 1px solid var(--primary-800);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 2px 4px rgba(21, 128, 61, 0.16);
 }
 
 .btn-primary:hover {
-  background-color: var(--primary-700);
-  border-color: var(--primary-900);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 2px 4px rgba(10, 34, 21, 0.12);
+  background-color: var(--primary-800);
+  border-color: var(--primary-850);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 3px 6px rgba(21, 128, 61, 0.22);
 }
 
 .btn-accent {
   background-color: var(--amber-600);
   color: #ffffff;
   border: 1px solid var(--amber-700);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 1px 2px rgba(180, 83, 9, 0.15);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 2px 4px rgba(217, 119, 6, 0.18);
 }
 
 .btn-accent:hover {
@@ -391,27 +391,27 @@ input, select, textarea {
 }
 
 .btn-secondary {
-  background-color: var(--bg-surface-secondary);
-  color: var(--primary-900);
-  border: 1px solid var(--border-light);
-  box-shadow: 0 1px 2px rgba(10, 34, 21, 0.02);
+  background-color: var(--primary-50);
+  color: var(--primary-800);
+  border: 1px solid var(--primary-100);
+  box-shadow: 0 1px 2px rgba(16, 59, 37, 0.03);
 }
 
 .btn-secondary:hover {
-  background-color: #e9ece4;
-  border-color: #d1d8cc;
-  color: var(--primary-950);
+  background-color: var(--primary-100);
+  border-color: #bbf7d0;
+  color: var(--primary-900);
 }
 
 .btn-outline {
   background-color: transparent;
-  color: var(--primary-900);
+  color: var(--primary-800);
   border: 1px solid var(--border-light);
 }
 
 .btn-outline:hover {
   background-color: var(--primary-50);
-  border-color: var(--primary-500);
+  border-color: var(--primary-400);
   color: var(--primary-900);
 }
 
@@ -502,13 +502,13 @@ input, select, textarea {
 
 .card:hover {
   box-shadow: var(--shadow-md);
-  border-color: #ccd5c7;
+  border-color: #bbf7d0;
 }
 
 /* Hero Section */
 .hero-section {
   position: relative;
-  background-color: #ffffff;
+  background: linear-gradient(180deg, #ffffff 0%, #f0fdf4 100%);
   padding: 4.5rem 0 5rem;
   border-bottom: 1px solid var(--border-light);
 }
