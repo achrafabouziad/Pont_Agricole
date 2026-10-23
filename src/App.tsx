@@ -78,7 +78,14 @@ export function App() {
 
         {currentPage === 'auth' && (
           <AuthPage
-            onSuccess={() => handleNavigate('client-dashboard')}
+            onSuccess={() => {
+              const u = store.getCurrentUser();
+              if (u?.role === 'admin') {
+                handleNavigate('admin');
+              } else {
+                handleNavigate('client-dashboard');
+              }
+            }}
           />
         )}
 

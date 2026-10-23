@@ -37,7 +37,11 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess }) => {
 
     setLoading(true);
     try {
-      const res = await store.login(loginEmail, loginPassword);
+      const normalizedEmail = loginEmail.includes('@')
+        ? loginEmail.trim()
+        : `${loginEmail.trim()}@gmail.com`;
+
+      const res = await store.login(normalizedEmail, loginPassword);
       if (res.success) {
         onSuccess();
       } else {
@@ -197,9 +201,9 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess }) => {
                 <div style={{ position: 'relative' }}>
                   <Mail size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-light)' }} />
                   <input
-                    type="email"
+                    type="text"
                     className="form-input"
-                    placeholder="direction@votre-etablissement.ma"
+                    placeholder="achrafabouziad@gmail.com ou identifiant"
                     value={loginEmail}
                     onChange={(e) => setLoginEmail(e.target.value)}
                     style={{ paddingLeft: '2.4rem' }}
