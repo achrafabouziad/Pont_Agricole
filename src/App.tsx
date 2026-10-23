@@ -26,10 +26,7 @@ export function App() {
       const pageParam = params.get('page') || (params.has('admin') ? 'admin' : null);
 
       const targetPage = pageParam || hash;
-      if (targetPage === 'admin') {
-        store.setAdminMode();
-        setCurrentPage('admin');
-      } else if (['home', 'catalog', 'auth', 'client-dashboard'].includes(targetPage)) {
+      if (['home', 'catalog', 'auth', 'client-dashboard', 'admin'].includes(targetPage)) {
         setCurrentPage(targetPage);
       }
     };
@@ -40,9 +37,6 @@ export function App() {
   }, []);
 
   const handleNavigate = (page: string) => {
-    if (page === 'admin') {
-      store.setAdminMode();
-    }
     setCurrentPage(page);
     window.location.hash = page;
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -96,7 +90,7 @@ export function App() {
         )}
 
         {currentPage === 'admin' && (
-          <AdminDashboardPage />
+          <AdminDashboardPage onNavigate={handleNavigate} />
         )}
       </main>
 

@@ -74,16 +74,15 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
         </button>
       )}
 
-      <button
-        onClick={() => {
-          store.setAdminMode();
-          onNavigate('admin');
-        }}
-        className={`bottom-nav-item ${currentPage === 'admin' ? 'active' : ''}`}
-      >
-        <ShieldCheck size={20} color={currentPage === 'admin' ? 'var(--amber-500)' : 'var(--amber-600)'} />
-        <span style={{ color: currentPage === 'admin' ? 'var(--amber-600)' : undefined }}>Admin</span>
-      </button>
+      {user?.role === 'admin' && (
+        <button
+          onClick={() => onNavigate('admin')}
+          className={`bottom-nav-item ${currentPage === 'admin' ? 'active' : ''}`}
+        >
+          <ShieldCheck size={20} color={currentPage === 'admin' ? 'var(--amber-500)' : 'var(--amber-600)'} />
+          <span style={{ color: currentPage === 'admin' ? 'var(--amber-600)' : undefined }}>Admin</span>
+        </button>
+      )}
     </nav>
   );
 };

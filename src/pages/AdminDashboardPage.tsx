@@ -34,9 +34,14 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   SlidersHorizontal,
+  Lock,
 } from 'lucide-react';
 
-export const AdminDashboardPage: React.FC = () => {
+interface AdminDashboardPageProps {
+  onNavigate?: (page: string) => void;
+}
+
+export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNavigate }) => {
   const [activeTab, setActiveTab] = useState<'daily-prices' | 'overview' | 'orders' | 'clients' | 'products' | 'zones' | 'settings'>('daily-prices');
   const [orders, setOrders] = useState<Order[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -275,6 +280,41 @@ export const AdminDashboardPage: React.FC = () => {
     });
     await loadData();
   };
+
+  const currentUser = store.getCurrentUser();
+  if (!currentUser || currentUser.role !== 'admin') {
+    return (
+      <div style={{ padding: '5rem 1rem', minHeight: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div className="card" style={{ maxWidth: '480px', width: '100%', padding: '2.5rem', textAlign: 'center', backgroundColor: '#ffffff', boxShadow: 'var(--shadow-lg)', borderTop: '4px solid #dc2626' }}>
+          <div style={{ width: '64px', height: '64px', borderRadius: '50%', backgroundColor: '#fef2f2', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.25rem', color: '#dc2626' }}>
+            <Lock size={32} />
+          </div>
+          <h2 style={{ fontSize: '1.45rem', color: 'var(--primary-900)', marginBottom: '0.5rem' }}>
+            Accès Réservé à la Direction
+          </h2>
+          <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '1.75rem', lineHeight: 1.5 }}>
+            Ce tableau de bord et la gestion des cours de vente sont strictement réservés à l’administrateur de Pont Agricole. Les clients n’ont pas l’autorisation d’y accéder ni de modifier les prix.
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <button
+              onClick={() => onNavigate?.('auth')}
+              className="btn btn-primary"
+              style={{ width: '100%', justifyContent: 'center' }}
+            >
+              Se connecter en tant qu'Administrateur
+            </button>
+            <button
+              onClick={() => onNavigate?.('catalog')}
+              className="btn btn-outline"
+              style={{ width: '100%', justifyContent: 'center' }}
+            >
+              Consulter le catalogue produits
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ padding: '2.5rem 0 6rem', backgroundColor: 'var(--bg-main)', minHeight: '85vh' }}>

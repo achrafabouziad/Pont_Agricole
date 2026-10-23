@@ -41,37 +41,45 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, onOpenC
     else onNavigate('catalog');
   };
 
+  const isDemoEnabled = typeof window !== 'undefined' && (
+    window.location.search.includes('demo=true') || 
+    window.location.hostname === 'localhost' || 
+    window.location.hostname === '127.0.0.1'
+  );
+
   return (
     <header className="site-header">
-      {/* Quick Demo Switcher bar for testing in browser */}
-      <div className={`demo-bar ${demoBarCollapsed ? 'collapsed' : ''}`}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-          <span className="demo-label">Rôle démo :</span>
-          <span style={{ fontWeight: 700, color: 'var(--amber-400)', fontSize: '0.78rem' }}>
-            {user ? (user.role === 'admin' ? 'Admin' : 'Client Pro') : 'Visiteur'}
-          </span>
+      {/* Demo Switcher bar visible only in dev or with ?demo=true */}
+      {isDemoEnabled && (
+        <div className={`demo-bar ${demoBarCollapsed ? 'collapsed' : ''}`}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <span className="demo-label">Rôle démo :</span>
+            <span style={{ fontWeight: 700, color: 'var(--amber-400)', fontSize: '0.78rem' }}>
+              {user ? (user.role === 'admin' ? 'Admin' : 'Client Pro') : 'Visiteur'}
+            </span>
+          </div>
+          <div className="demo-actions">
+            <button
+              className={user?.role === 'admin' ? 'active' : ''}
+              onClick={() => handleRoleSwitch('admin')}
+            >
+              Admin
+            </button>
+            <button
+              className={user?.role === 'customer' ? 'active' : ''}
+              onClick={() => handleRoleSwitch('approved_client')}
+            >
+              Client Pro
+            </button>
+            <button
+              className={!user ? 'active' : ''}
+              onClick={() => handleRoleSwitch('visitor')}
+            >
+              Visiteur
+            </button>
+          </div>
         </div>
-        <div className="demo-actions">
-          <button
-            className={user?.role === 'admin' ? 'active' : ''}
-            onClick={() => handleRoleSwitch('admin')}
-          >
-            Admin
-          </button>
-          <button
-            className={user?.role === 'customer' ? 'active' : ''}
-            onClick={() => handleRoleSwitch('approved_client')}
-          >
-            Client Pro
-          </button>
-          <button
-            className={!user ? 'active' : ''}
-            onClick={() => handleRoleSwitch('visitor')}
-          >
-            Visiteur
-          </button>
-        </div>
-      </div>
+      )}
 
       {/* Main Navbar */}
       <div className="container nav-container">
@@ -135,18 +143,17 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, onOpenC
             Contact
           </button>
 
-          <button
-            onClick={() => {
-              store.setAdminMode();
-              onNavigate('admin');
-            }}
-            className={currentPage === 'admin' ? 'badge badge-amber admin-nav-badge active' : 'badge badge-amber admin-nav-badge'}
-            style={{ cursor: 'pointer', border: 'none' }}
-            title="Accéder au tableau de bord administrateur"
-          >
-            <ShieldCheck size={14} />
-            Admin
-          </button>
+          {user?.role === 'admin' && (
+            <button
+              onClick={() => onNavigate('admin')}
+              className={currentPage === 'admin' ? 'badge badge-amber admin-nav-badge active' : 'badge badge-amber admin-nav-badge'}
+              style={{ cursor: 'pointer', border: 'none' }}
+              title="Accéder au tableau de bord administrateur"
+            >
+              <ShieldCheck size={14} />
+              Admin
+            </button>
+          )}
         </nav>
 
         {/* Action Buttons */}
@@ -298,17 +305,18 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, onOpenC
                 👤 Mon Espace Pro & Commandes
               </button>
             )}
-            <button
-              onClick={() => {
-                store.setAdminMode();
-                onNavigate('admin');
-                setMobileMenuOpen(false);
-              }}
-              className="mobile-menu-link"
-              style={{ fontWeight: 800, color: 'var(--amber-600)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-            >
-              <ShieldCheck size={18} /> Tableau de Bord Administrateur
-            </button>
+            {user?.role === 'admin' && (
+              <button
+                onClick={() => {
+                  onNavigate('admin');
+                  setMobileMenuOpen(false);
+                }}
+                className="mobile-menu-link"
+                style={{ fontWeight: 800, color: 'var(--amber-600)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+              >
+                <ShieldCheck size={18} /> Tableau de Bord Administrateur
+              </button>
+            )}
             {!user ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>
                 <button
