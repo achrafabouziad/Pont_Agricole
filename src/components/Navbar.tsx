@@ -33,11 +33,10 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, onOpenC
     onNavigate('home');
   };
 
-  const handleRoleSwitch = (role: 'admin' | 'approved_client' | 'pending_client' | 'visitor') => {
+  const handleRoleSwitch = (role: 'approved_client' | 'pending_client' | 'visitor') => {
     store.switchRole(role);
     setMobileMenuOpen(false);
-    if (role === 'admin') onNavigate('admin');
-    else if (role === 'visitor') onNavigate('home');
+    if (role === 'visitor') onNavigate('home');
     else onNavigate('catalog');
   };
 
@@ -55,16 +54,10 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, onOpenC
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
             <span className="demo-label">Rôle démo :</span>
             <span style={{ fontWeight: 700, color: 'var(--amber-400)', fontSize: '0.78rem' }}>
-              {user ? (user.role === 'admin' ? 'Admin' : 'Client Pro') : 'Visiteur'}
+              {user ? (user.role === 'admin' ? 'Admin (Directeur)' : 'Client Pro') : 'Visiteur'}
             </span>
           </div>
           <div className="demo-actions">
-            <button
-              className={user?.role === 'admin' ? 'active' : ''}
-              onClick={() => handleRoleSwitch('admin')}
-            >
-              Admin
-            </button>
             <button
               className={user?.role === 'customer' ? 'active' : ''}
               onClick={() => handleRoleSwitch('approved_client')}

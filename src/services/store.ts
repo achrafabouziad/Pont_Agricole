@@ -116,51 +116,97 @@ class StoreService {
 
   public async login(email: string, pass: string): Promise<{ success: boolean; error?: string }> {
     const cleanEmail = email.includes('@') ? email.trim().toLowerCase() : `${email.trim().toLowerCase()}@gmail.com`;
-    const isOwner = cleanEmail === 'achrafabouziad@gmail.com' || cleanEmail.includes('admin') || cleanEmail.startsWith('achraf');
+    const isAdminAccount = cleanEmail === 'achrafabouziad@gmail.com';
 
+    // 1. COMPTE ADMINISTRATEUR STRICT (Seul achrafabouziad@gmail.com avec mot de passe Achrafgt6313 est Admin)
+    if (isAdminAccount) {
+      if (pass !== 'Achrafgt6313') {
+        return {
+          success: false,
+          error: 'Mot de passe incorrect pour le compte administrateur.',
+        };
+      }
+
+      // Mot de passe correct ! Tenter de lier la session Supabase si disponible
+      if (isSupabaseConfigured && supabase) {
+        try {
+          const { data } = await supabase.auth.signInWithPassword({
+            email: cleanEmail,
+            password: pass,
+          });
+          if (data?.user) {
+            this.currentUser = {
+              id: data.user.id,
+              fullName: 'Achraf Abouziad (Directeur Fondateur)',
+              phone: '+212 6 61 98 76 54',
+              role: 'admin',
+              createdAt: data.user.created_at,
+            };
+            this.currentBusiness = null;
+            setStored(KEY_USER, this.currentUser);
+            setStored(KEY_BUSINESS, this.currentBusiness);
+            this.notify();
+            return { success: true };
+          }
+        } catch {
+          // Continuer sur la session admin garantie ci-dessous
+        }
+      }
+
+      // Session Administrateur Autorisée
+      this.currentUser = {
+        id: 'usr-achraf-master-admin',
+        fullName: 'Achraf Abouziad (Directeur Fondateur)',
+        phone: '+212 6 61 98 76 54',
+        role: 'admin',
+        createdAt: new Date().toISOString(),
+      };
+      this.currentBusiness = null;
+      setStored(KEY_USER, this.currentUser);
+      setStored(KEY_BUSINESS, this.currentBusiness);
+      this.notify();
+      return { success: true };
+    }
+
+    // 2. TOUS LES AUTRES UTILISATEURS (Clients CHR inscrits : cafés, restaurants, hôtels)
+    // Authentification stricte via Supabase avec mot de passe personnel
     if (isSupabaseConfigured && supabase) {
       try {
-        const { data, error } = await supabase.auth.signInWithPassword({ email: cleanEmail, password: pass });
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: cleanEmail,
+          password: pass,
+        });
+
         if (error) {
           const msg = error.message.toLowerCase();
-          if (msg.includes('email not confirmed')) {
-            return {
-              success: false,
-              error: "Votre email n'est pas encore confirmé dans Supabase. Veuillez le valider dans Supabase Auth ou exécuter le script SQL.",
-            };
-          }
           if (msg.includes('invalid login credentials') || msg.includes('invalid grant')) {
             return {
               success: false,
-              error: "Mot de passe incorrect ou compte introuvable.",
+              error: 'Mot de passe incorrect ou compte introuvable. Veuillez vérifier vos identifiants ou créer un compte.',
+            };
+          }
+          if (msg.includes('email not confirmed')) {
+            return {
+              success: false,
+              error: 'Compte en attente de confirmation. Veuillez vérifier votre boîte email ou contacter le support.',
             };
           }
           return { success: false, error: error.message };
         }
 
         if (data.user) {
-          // Fetch profile & business
+          // Récupérer le profil et l'établissement
           const { data: prof } = await supabase.from('profiles').select('*').eq('id', data.user.id).single();
           const { data: biz } = await supabase.from('businesses').select('*').eq('owner_id', data.user.id).single();
-          const isAdmin = (prof && prof.role === 'admin') || isOwner;
 
-          if (prof) {
-            this.currentUser = {
-              id: prof.id,
-              fullName: prof.full_name,
-              phone: prof.phone,
-              role: isAdmin ? 'admin' : prof.role,
-              createdAt: prof.created_at,
-            };
-          } else {
-            this.currentUser = {
-              id: data.user.id,
-              fullName: data.user.user_metadata?.full_name || 'Achraf (Direction)',
-              phone: data.user.user_metadata?.phone || '',
-              role: isAdmin ? 'admin' : 'customer',
-              createdAt: data.user.created_at,
-            };
-          }
+          // Tous les autres utilisateurs ont strictement le rôle 'customer' (Client Pro)
+          this.currentUser = {
+            id: data.user.id,
+            fullName: prof?.full_name || data.user.user_metadata?.full_name || 'Client Professionnel',
+            phone: prof?.phone || data.user.user_metadata?.phone || '',
+            role: 'customer',
+            createdAt: data.user.created_at,
+          };
 
           if (biz) {
             this.currentBusiness = {
@@ -173,7 +219,19 @@ class StoreService {
               approvalStatus: 'approved',
               createdAt: biz.created_at,
             };
+          } else {
+            this.currentBusiness = {
+              id: `biz-${data.user.id}`,
+              ownerId: data.user.id,
+              businessName: data.user.user_metadata?.business_name || 'Mon Établissement',
+              businessType: data.user.user_metadata?.business_type || 'restaurant',
+              city: data.user.user_metadata?.city || 'Casablanca',
+              deliveryAddress: data.user.user_metadata?.delivery_address || '',
+              approvalStatus: 'approved',
+              createdAt: new Date().toISOString(),
+            };
           }
+
           setStored(KEY_USER, this.currentUser);
           setStored(KEY_BUSINESS, this.currentBusiness);
           this.notify();
@@ -184,21 +242,28 @@ class StoreService {
       }
     }
 
-    // Fallback simulation for local/demo mode
-    if (email.toLowerCase().includes('admin')) {
-      this.currentUser = DEMO_ADMIN_PROFILE;
-      this.currentBusiness = null;
-    } else if (email.toLowerCase().includes('pending')) {
-      this.currentUser = DEMO_PENDING_CLIENT_PROFILE;
-      this.currentBusiness = DEMO_PENDING_BUSINESS;
-    } else {
-      this.currentUser = DEMO_CLIENT_PROFILE;
-      this.currentBusiness = DEMO_CLIENT_BUSINESS;
+    // Fallback local pour clients inscrits localement
+    const allBusinesses = getStored<Business[]>(KEY_BUSINESSES, []);
+    const foundBiz = allBusinesses.find((b) => b.ownerId === cleanEmail || b.businessName.toLowerCase() === cleanEmail);
+    if (foundBiz) {
+      this.currentUser = {
+        id: foundBiz.ownerId,
+        fullName: foundBiz.businessName,
+        phone: '+212 6 00 00 00 00',
+        role: 'customer',
+        createdAt: new Date().toISOString(),
+      };
+      this.currentBusiness = foundBiz;
+      setStored(KEY_USER, this.currentUser);
+      setStored(KEY_BUSINESS, this.currentBusiness);
+      this.notify();
+      return { success: true };
     }
-    setStored(KEY_USER, this.currentUser);
-    setStored(KEY_BUSINESS, this.currentBusiness);
-    this.notify();
-    return { success: true };
+
+    return {
+      success: false,
+      error: 'Compte introuvable. Veuillez vous inscrire via l’onglet Inscription B2B.',
+    };
   }
 
   public async register(params: {
@@ -301,11 +366,11 @@ class StoreService {
     this.notify();
   }
 
-  // Quick switch for testing demo roles
+  // Quick switch for client testing (Admin is strictly locked to achrafabouziad credentials)
   public switchRole(role: 'admin' | 'approved_client' | 'pending_client' | 'visitor'): void {
     if (role === 'admin') {
-      this.currentUser = DEMO_ADMIN_PROFILE;
-      this.currentBusiness = null;
+      // Admin est strictement verrouillé aux identifiants réels achrafabouziad@gmail.com + Achrafgt6313
+      return;
     } else if (role === 'approved_client') {
       this.currentUser = DEMO_CLIENT_PROFILE;
       this.currentBusiness = DEMO_CLIENT_BUSINESS;
@@ -318,17 +383,6 @@ class StoreService {
     }
     setStored(KEY_USER, this.currentUser);
     setStored(KEY_BUSINESS, this.currentBusiness);
-    this.notify();
-  }
-
-  // Force direct admin mode
-  public setAdminMode(): void {
-    if (this.currentUser) {
-      this.currentUser = { ...this.currentUser, role: 'admin' };
-    } else {
-      this.currentUser = DEMO_ADMIN_PROFILE;
-    }
-    setStored(KEY_USER, this.currentUser);
     this.notify();
   }
 
