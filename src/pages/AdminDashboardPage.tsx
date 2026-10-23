@@ -35,6 +35,8 @@ import {
   ArrowDownRight,
   SlidersHorizontal,
   Lock,
+  Phone,
+  MessageCircle,
 } from 'lucide-react';
 
 interface AdminDashboardPageProps {
@@ -1092,72 +1094,128 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
                 <thead>
                   <tr>
                     <th>Établissement</th>
-                    <th>Type</th>
+                    <th>Responsable & Contact</th>
                     <th>Ville & Adresse</th>
                     <th>Statut d'Approbation</th>
                     <th>Action Commerciale</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {businesses.map((biz) => (
-                    <tr key={biz.id}>
-                      <td>
-                        <strong style={{ fontSize: '0.95rem' }}>{biz.businessName}</strong>
-                        <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                          Inscrit le {new Date(biz.createdAt).toLocaleDateString('fr-FR')}
-                        </div>
-                      </td>
-                      <td>
-                        <span className="badge badge-brand" style={{ textTransform: 'capitalize' }}>
-                          {biz.businessType}
-                        </span>
-                      </td>
-                      <td>
-                        <div style={{ fontWeight: 600 }}>{biz.city}</div>
-                        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{biz.deliveryAddress}</div>
-                      </td>
-                      <td>
-                        {biz.approvalStatus === 'approved' ? (
-                          <span className="badge badge-status-delivered">Approuvé</span>
-                        ) : biz.approvalStatus === 'pending' ? (
-                          <span className="badge badge-status-pending">En Attente</span>
-                        ) : (
-                          <span className="badge badge-status-cancelled">{biz.approvalStatus}</span>
-                        )}
-                      </td>
-                      <td>
-                        <div style={{ display: 'flex', gap: '0.5rem' }}>
-                          {biz.approvalStatus !== 'approved' && (
-                            <button
-                              onClick={() => handleUpdateBusinessStatus(biz.id, 'approved')}
-                              className="btn btn-primary btn-sm"
-                              style={{ backgroundColor: '#166534', fontSize: '0.78rem' }}
-                            >
-                              Approuver
-                            </button>
+                  {businesses.map((biz) => {
+                    const cleanPhone = (biz.phone || '').replace(/[^0-9]/g, '');
+                    const waPhone = cleanPhone.startsWith('0') ? `212${cleanPhone.slice(1)}` : cleanPhone.startsWith('212') ? cleanPhone : `212${cleanPhone}`;
+                    return (
+                      <tr key={biz.id}>
+                        <td>
+                          <strong style={{ fontSize: '0.95rem', color: 'var(--primary-900)' }}>{biz.businessName}</strong>
+                          <div style={{ marginTop: '0.2rem' }}>
+                            <span className="badge badge-brand" style={{ textTransform: 'capitalize' }}>
+                              {biz.businessType}
+                            </span>
+                          </div>
+                          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+                            Inscrit le {new Date(biz.createdAt).toLocaleDateString('fr-FR')}
+                          </div>
+                        </td>
+                        <td>
+                          <div style={{ fontWeight: 600, color: 'var(--primary-900)' }}>
+                            {biz.contactName || 'Gérant / Chef Économe'}
+                          </div>
+                          {biz.phone ? (
+                            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.4rem', marginTop: '0.35rem' }}>
+                              <a
+                                href={`tel:${biz.phone}`}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '0.25rem',
+                                  fontSize: '0.82rem',
+                                  color: 'var(--primary-800)',
+                                  textDecoration: 'none',
+                                  fontWeight: 600,
+                                }}
+                              >
+                                <Phone size={13} style={{ color: 'var(--primary-600)' }} /> {biz.phone}
+                              </a>
+                              {cleanPhone && (
+                                <a
+                                  href={`https://wa.me/${waPhone}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '0.25rem',
+                                    fontSize: '0.74rem',
+                                    backgroundColor: '#25D366',
+                                    color: '#ffffff',
+                                    padding: '0.18rem 0.5rem',
+                                    borderRadius: '12px',
+                                    textDecoration: 'none',
+                                    fontWeight: 700,
+                                  }}
+                                  title="Discuter directement sur WhatsApp"
+                                >
+                                  <MessageCircle size={12} /> WhatsApp
+                                </a>
+                              )}
+                            </div>
+                          ) : (
+                            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Non renseigné</span>
                           )}
-                          {biz.approvalStatus !== 'suspended' && (
-                            <button
-                              onClick={() => handleUpdateBusinessStatus(biz.id, 'suspended')}
-                              className="btn btn-secondary btn-sm"
-                              style={{ color: '#b45309', fontSize: '0.78rem' }}
-                            >
-                              Suspendre
-                            </button>
+                          {biz.email && (
+                            <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+                              {biz.email}
+                            </div>
                           )}
-                          {biz.approvalStatus !== 'rejected' && (
-                            <button
-                              onClick={() => handleUpdateBusinessStatus(biz.id, 'rejected')}
-                              className="btn btn-secondary btn-sm"
-                              style={{ color: '#991b1b', fontSize: '0.78rem' }}
-                            >
-                              Refuser
-                            </button>
+                        </td>
+                        <td>
+                          <div style={{ fontWeight: 600, color: 'var(--primary-900)' }}>{biz.city}</div>
+                          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{biz.deliveryAddress}</div>
+                        </td>
+                        <td>
+                          {biz.approvalStatus === 'approved' ? (
+                            <span className="badge badge-status-delivered">Approuvé</span>
+                          ) : biz.approvalStatus === 'pending' ? (
+                            <span className="badge badge-status-pending">En Attente</span>
+                          ) : (
+                            <span className="badge badge-status-cancelled">{biz.approvalStatus}</span>
                           )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                        <td>
+                          <div style={{ display: 'flex', gap: '0.5rem' }}>
+                            {biz.approvalStatus !== 'approved' && (
+                              <button
+                                onClick={() => handleUpdateBusinessStatus(biz.id, 'approved')}
+                                className="btn btn-primary btn-sm"
+                                style={{ backgroundColor: '#166534', fontSize: '0.78rem' }}
+                              >
+                                Approuver
+                              </button>
+                            )}
+                            {biz.approvalStatus !== 'suspended' && (
+                              <button
+                                onClick={() => handleUpdateBusinessStatus(biz.id, 'suspended')}
+                                className="btn btn-secondary btn-sm"
+                                style={{ color: '#b45309', fontSize: '0.78rem' }}
+                              >
+                                Suspendre
+                              </button>
+                            )}
+                            {biz.approvalStatus !== 'rejected' && (
+                              <button
+                                onClick={() => handleUpdateBusinessStatus(biz.id, 'rejected')}
+                                className="btn btn-secondary btn-sm"
+                                style={{ color: '#991b1b', fontSize: '0.78rem' }}
+                              >
+                                Refuser
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

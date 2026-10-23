@@ -31,6 +31,9 @@ export interface Business {
   deliveryAddress: string;
   approvalStatus: ApprovalStatus;
   createdAt: string;
+  contactName?: string;
+  phone?: string;
+  email?: string;
 }
 
 export interface Category {

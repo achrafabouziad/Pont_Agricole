@@ -310,7 +310,18 @@ class StoreService {
             deliveryAddress: params.deliveryAddress,
             approvalStatus: 'approved',
             createdAt: new Date().toISOString(),
+            contactName: params.fullName,
+            phone: params.phone,
+            email: params.email,
           };
+
+          // Sauvegarder dans la liste pour consultation admin
+          const allBiz = getStored<Business[]>(KEY_BUSINESSES, []);
+          const existingIdx = allBiz.findIndex(b => b.ownerId === data.user.id);
+          if (existingIdx >= 0) allBiz[existingIdx] = this.currentBusiness;
+          else allBiz.unshift(this.currentBusiness);
+          setStored(KEY_BUSINESSES, allBiz);
+
           setStored(KEY_USER, this.currentUser);
           setStored(KEY_BUSINESS, this.currentBusiness);
           this.notify();
@@ -340,11 +351,14 @@ class StoreService {
       deliveryAddress: params.deliveryAddress,
       approvalStatus: 'approved',
       createdAt: new Date().toISOString(),
+      contactName: params.fullName,
+      phone: params.phone,
+      email: params.email,
     };
 
     // Save in all businesses list for admin
     const allBusinesses = getStored<Business[]>(KEY_BUSINESSES, []);
-    allBusinesses.push(newBusiness);
+    allBusinesses.unshift(newBusiness);
     setStored(KEY_BUSINESSES, allBusinesses);
 
     this.currentUser = newProfile;
@@ -756,21 +770,55 @@ class StoreService {
   // --- CLIENTS & BUSINESSES (ADMIN) ---
   public async getBusinesses(): Promise<Business[]> {
     if (isSupabaseConfigured && supabase) {
-      const { data, error } = await supabase.from('businesses').select('*').order('created_at', { ascending: false });
-      if (!error && data) {
-        return data.map((b: any) => ({
-          id: b.id,
-          ownerId: b.owner_id,
-          businessName: b.business_name,
-          businessType: b.business_type,
-          city: b.city,
-          deliveryAddress: b.delivery_address,
-          approvalStatus: b.approval_status,
-          createdAt: b.created_at,
-        }));
+      try {
+        const { data, error } = await supabase
+          .from('businesses')
+          .select(`
+            id,
+            owner_id,
+            business_name,
+            business_type,
+            city,
+            delivery_address,
+            approval_status,
+            created_at,
+            profiles:owner_id (
+              full_name,
+              phone
+            )
+          `)
+          .order('created_at', { ascending: false });
+
+        if (!error && data && data.length > 0) {
+          return data.map((b: any) => ({
+            id: b.id,
+            ownerId: b.owner_id,
+            businessName: b.business_name,
+            businessType: b.business_type,
+            city: b.city,
+            deliveryAddress: b.delivery_address,
+            approvalStatus: b.approval_status,
+            createdAt: b.created_at,
+            contactName: b.profiles?.full_name || '',
+            phone: b.profiles?.phone || '',
+          }));
+        }
+      } catch (e) {
+        console.warn('Error fetching businesses with joined profiles', e);
       }
     }
-    return getStored<Business[]>(KEY_BUSINESSES, [DEMO_CLIENT_BUSINESS, DEMO_PENDING_BUSINESS]);
+    return getStored<Business[]>(KEY_BUSINESSES, [
+      {
+        ...DEMO_CLIENT_BUSINESS,
+        contactName: DEMO_CLIENT_PROFILE.fullName,
+        phone: DEMO_CLIENT_PROFILE.phone,
+      },
+      {
+        ...DEMO_PENDING_BUSINESS,
+        contactName: DEMO_PENDING_CLIENT_PROFILE.fullName,
+        phone: DEMO_PENDING_CLIENT_PROFILE.phone,
+      },
+    ]);
   }
 
   public async updateBusinessApproval(businessId: string, status: ApprovalStatus): Promise<void> {
