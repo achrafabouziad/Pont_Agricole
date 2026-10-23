@@ -380,8 +380,7 @@ ON CONFLICT (id) DO UPDATE SET
 
 -- 1. Auto-confirmer immédiatement tous les utilisateurs existants
 UPDATE auth.users 
-SET email_confirmed_at = COALESCE(email_confirmed_at, NOW()),
-    confirmed_at = COALESCE(confirmed_at, NOW())
+SET email_confirmed_at = COALESCE(email_confirmed_at, NOW())
 WHERE email_confirmed_at IS NULL;
 
 -- 2. Activer tous les établissements en statut 'approved'
@@ -394,7 +393,6 @@ CREATE OR REPLACE FUNCTION public.auto_confirm_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
   NEW.email_confirmed_at = COALESCE(NEW.email_confirmed_at, NOW());
-  NEW.confirmed_at = COALESCE(NEW.confirmed_at, NOW());
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;

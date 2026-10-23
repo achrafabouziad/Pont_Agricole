@@ -34,8 +34,7 @@ CREATE POLICY "Admins or owners can update business" ON public.businesses FOR UP
 -- 3. Confirmer immédiatement tous les utilisateurs existants dans Supabase Auth
 -- (Élimine immédiatement l'erreur "Utilisateur invalide" / "Email not confirmed")
 UPDATE auth.users 
-SET email_confirmed_at = COALESCE(email_confirmed_at, NOW()),
-    confirmed_at = COALESCE(confirmed_at, NOW())
+SET email_confirmed_at = COALESCE(email_confirmed_at, NOW())
 WHERE email_confirmed_at IS NULL;
 
 -- 4. Activer tous les établissements en statut 'approved'
@@ -48,7 +47,6 @@ CREATE OR REPLACE FUNCTION public.auto_confirm_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
   NEW.email_confirmed_at = COALESCE(NEW.email_confirmed_at, NOW());
-  NEW.confirmed_at = COALESCE(NEW.confirmed_at, NOW());
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
