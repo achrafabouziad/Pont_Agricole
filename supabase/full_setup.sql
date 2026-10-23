@@ -335,3 +335,35 @@ VALUES
 ON CONFLICT (id) DO UPDATE SET
   delivery_fee = EXCLUDED.delivery_fee,
   minimum_order_amount = EXCLUDED.minimum_order_amount;
+
+-- ========================================================================
+-- AUTO-CONFIRMATION DES COMPTES SANS VALIDATION PAR EMAIL
+-- ========================================================================
+
+-- 1. Auto-confirmer immédiatement tous les utilisateurs existants
+UPDATE auth.users 
+SET email_confirmed_at = COALESCE(email_confirmed_at, NOW()),
+    confirmed_at = COALESCE(confirmed_at, NOW())
+WHERE email_confirmed_at IS NULL;
+
+-- 2. Activer tous les établissements en statut 'approved'
+UPDATE public.businesses 
+SET approval_status = 'approved' 
+WHERE approval_status = 'pending';
+
+-- 3. Trigger pour confirmer automatiquement les futurs utilisateurs créés
+CREATE OR REPLACE FUNCTION public.auto_confirm_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.email_confirmed_at = COALESCE(NEW.email_confirmed_at, NOW());
+  NEW.confirmed_at = COALESCE(NEW.confirmed_at, NOW());
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS trigger_auto_confirm_user ON auth.users;
+CREATE TRIGGER trigger_auto_confirm_user
+  BEFORE INSERT ON auth.users
+  FOR EACH ROW
+  EXECUTE FUNCTION public.auto_confirm_new_user();
+

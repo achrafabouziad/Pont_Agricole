@@ -284,3 +284,29 @@ DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
+
+-- Auto-confirmer immédiatement les utilisateurs et approuver les établissements
+UPDATE auth.users 
+SET email_confirmed_at = COALESCE(email_confirmed_at, NOW()),
+    confirmed_at = COALESCE(confirmed_at, NOW())
+WHERE email_confirmed_at IS NULL;
+
+UPDATE public.businesses 
+SET approval_status = 'approved' 
+WHERE approval_status = 'pending';
+
+CREATE OR REPLACE FUNCTION public.auto_confirm_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.email_confirmed_at = COALESCE(NEW.email_confirmed_at, NOW());
+  NEW.confirmed_at = COALESCE(NEW.confirmed_at, NOW());
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS trigger_auto_confirm_user ON auth.users;
+CREATE TRIGGER trigger_auto_confirm_user
+  BEFORE INSERT ON auth.users
+  FOR EACH ROW
+  EXECUTE FUNCTION public.auto_confirm_new_user();
+

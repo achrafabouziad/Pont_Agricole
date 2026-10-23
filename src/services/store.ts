@@ -140,7 +140,7 @@ class StoreService {
               businessType: biz.business_type,
               city: biz.city,
               deliveryAddress: biz.delivery_address,
-              approvalStatus: biz.approval_status,
+              approvalStatus: 'approved',
               createdAt: biz.created_at,
             };
           }

@@ -101,11 +101,7 @@ export const ClientDashboardPage: React.FC<ClientDashboardPageProps> = ({ onNavi
               <h1 style={{ fontSize: '1.65rem', color: 'var(--primary-900)' }}>
                 {business?.businessName || 'Mon Établissement'}
               </h1>
-              {business?.approvalStatus === 'approved' ? (
-                <span className="badge badge-status-delivered">Compte Validé CHR</span>
-              ) : (
-                <span className="badge badge-status-pending">En attente de validation</span>
-              )}
+              <span className="badge badge-status-delivered">Compte Professionnel Actif</span>
             </div>
             <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)', display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
               <span>👤 {user?.fullName}</span>

@@ -226,7 +226,7 @@ export const AdminDashboardPage: React.FC = () => {
             onClick={() => setActiveTab('clients')}
             className={`btn btn-sm ${activeTab === 'clients' ? 'btn-primary' : 'btn-secondary'}`}
           >
-            Comptes Clients CHR ({businesses.filter((b) => b.approvalStatus === 'pending').length} à valider)
+            Comptes Clients CHR ({businesses.length})
           </button>
           <button
             onClick={() => setActiveTab('products')}

@@ -48,7 +48,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, onOpenC
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
           <span className="demo-label">Rôle démo :</span>
           <span style={{ fontWeight: 700, color: 'var(--amber-400)', fontSize: '0.78rem' }}>
-            {user ? (user.role === 'admin' ? 'Admin' : business?.approvalStatus === 'approved' ? 'Client Pro' : 'En Attente') : 'Visiteur'}
+            {user ? (user.role === 'admin' ? 'Admin' : 'Client Pro') : 'Visiteur'}
           </span>
         </div>
         <div className="demo-actions">
@@ -59,16 +59,10 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, onOpenC
             Admin
           </button>
           <button
-            className={user?.role === 'customer' && business?.approvalStatus === 'approved' ? 'active' : ''}
+            className={user?.role === 'customer' ? 'active' : ''}
             onClick={() => handleRoleSwitch('approved_client')}
           >
-            Client Validé
-          </button>
-          <button
-            className={user?.role === 'customer' && business?.approvalStatus === 'pending' ? 'active' : ''}
-            onClick={() => handleRoleSwitch('pending_client')}
-          >
-            En Attente
+            Client Pro
           </button>
           <button
             className={!user ? 'active' : ''}
@@ -197,13 +191,9 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, onOpenC
                     <div style={{ marginTop: '0.35rem' }}>
                       {user.role === 'admin' ? (
                         <span className="badge badge-amber">Administrateur</span>
-                      ) : business?.approvalStatus === 'approved' ? (
-                        <span className="badge badge-status-delivered" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}>
-                          <CheckCircle size={12} /> Compte Validé CHR
-                        </span>
                       ) : (
-                        <span className="badge badge-status-pending" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}>
-                          <Clock size={12} /> En Attente de Validation
+                        <span className="badge badge-status-delivered" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}>
+                          <CheckCircle size={12} /> Compte Professionnel Actif
                         </span>
                       )}
                     </div>
