@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { store } from '../services/store';
 import { BusinessType } from '../types';
-import { UserCheck, AlertTriangle, ExternalLink } from 'lucide-react';
+import { UserCheck, AlertTriangle, ExternalLink, ArrowRight } from 'lucide-react';
 
 interface AuthPageProps {
   onSuccess: () => void;
@@ -9,7 +9,7 @@ interface AuthPageProps {
 }
 
 // Google Maps Pin Logo Component
-const GoogleMapsIcon: React.FC<{ size?: number }> = ({ size = 16 }) => (
+const GoogleMapsIcon: React.FC<{ size?: number }> = ({ size = 14 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ flexShrink: 0 }}>
     <path d="M12 2C7.58 2 4 5.58 4 10C4 16 12 22 12 22C12 22 20 16 20 10C20 5.58 16.42 2 12 2Z" fill="#EA4335" />
     <path d="M12 2C9.5 2 7.3 3.1 5.9 4.8L12 11V2Z" fill="#4285F4" />
@@ -44,7 +44,7 @@ const WORLD_COUNTRY_CODES = [
   { code: '+974', label: 'QA +974', name: 'Qatar (+974)' },
   { code: '+965', label: 'KW +965', name: 'Koweït (+965)' },
   { code: '+86', label: 'CN +86', name: 'Chine (+86)' },
-  { code: 'other', label: 'Autre', name: 'Autre indicatif international' },
+  { code: 'other', label: 'Autre', name: 'Autre indicatif' },
 ];
 
 export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 'register' }) => {
@@ -126,7 +126,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
       },
       (err) => {
         setLocating(false);
-        setErrorMsg("Accès GPS refusé ou indisponible (" + err.message + "). Vous pouvez renseigner l'adresse manuellement.");
+        setErrorMsg("Accès GPS indisponible (" + err.message + "). Vous pouvez renseigner l'adresse manuellement.");
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
     );
@@ -213,73 +213,85 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
       <div className="auth-split-card">
         {/* LEFT COLUMN: THE CLEAN FORM */}
         <div className="auth-split-form-col">
-          {/* Header Switcher Row (Identical to "Already a member? Sign in" in reference) */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.75rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
-              <img src="/logo.png" alt="Pont Agricole" style={{ width: '28px', height: '28px', objectFit: 'contain' }} />
-              <span style={{ fontWeight: 800, fontSize: '0.95rem', color: '#166534', letterSpacing: '-0.01em' }}>
-                Pont Agricole
-              </span>
+          {/* Top Brand & Prominent Switcher Row */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <img src="/logo.png" alt="Pont Agricole" style={{ width: '30px', height: '30px', objectFit: 'contain' }} />
+              <div>
+                <span style={{ fontWeight: 800, fontSize: '1rem', color: '#166534', letterSpacing: '-0.02em', display: 'block', lineHeight: 1.1 }}>
+                  Pont Agricole
+                </span>
+                <span style={{ fontSize: '0.62rem', letterSpacing: '0.12em', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>
+                  B2B CHR MAROC
+                </span>
+              </div>
             </div>
 
-            <div style={{ fontSize: '0.84rem', color: '#64748b' }}>
-              {isLoginMode ? (
-                <>
-                  Pas de compte ?{' '}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsLoginMode(false);
-                      setErrorMsg(null);
-                    }}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: '#166534',
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      padding: 0,
-                      textDecoration: 'underline',
-                    }}
-                  >
-                    S'inscrire
-                  </button>
-                </>
-              ) : (
-                <>
-                  Already a member?{' '}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsLoginMode(true);
-                      setErrorMsg(null);
-                    }}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: '#166534',
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      padding: 0,
-                      textDecoration: 'underline',
-                    }}
-                  >
-                    Sign in
-                  </button>
-                </>
-              )}
-            </div>
+            {/* Clear, Clickable Pill Badge for Quick Switching */}
+            {isLoginMode ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsLoginMode(false);
+                  setErrorMsg(null);
+                }}
+                className="auth-switch-badge-btn"
+                title="Passer au formulaire d'inscription"
+              >
+                <span>Nouveau client ?</span>
+                <span style={{ textDecoration: 'underline' }}>S'inscrire</span>
+                <ArrowRight size={13} />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsLoginMode(true);
+                  setErrorMsg(null);
+                }}
+                className="auth-switch-badge-btn"
+                title="Se connecter à un compte existant"
+              >
+                <span>Déjà inscrit ?</span>
+                <span style={{ textDecoration: 'underline' }}>Se connecter</span>
+                <ArrowRight size={13} />
+              </button>
+            )}
           </div>
 
-          {/* Form Title & Minimal Subtitle */}
-          <div style={{ marginBottom: '1.5rem' }}>
-            <h1 style={{ fontSize: '2.1rem', fontWeight: 500, color: '#1e293b', margin: '0 0 0.35rem 0', letterSpacing: '-0.025em' }}>
-              {isLoginMode ? 'Sign in' : 'Sign up'}
+          {/* Prominent Segmented Switcher (Impossible to miss) */}
+          <div className="auth-segmented-switcher">
+            <button
+              type="button"
+              onClick={() => {
+                setIsLoginMode(false);
+                setErrorMsg(null);
+              }}
+              className={`auth-switcher-tab ${!isLoginMode ? 'active' : ''}`}
+            >
+              Inscription (Sign up)
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setIsLoginMode(true);
+                setErrorMsg(null);
+              }}
+              className={`auth-switcher-tab ${isLoginMode ? 'active' : ''}`}
+            >
+              Connexion (Sign in)
+            </button>
+          </div>
+
+          {/* Form Title & Minimal Subtitle with High-End Typography */}
+          <div style={{ marginBottom: '1.4rem' }}>
+            <h1 className="auth-heading">
+              {isLoginMode ? 'Se connecter' : 'Créer un compte'}
             </h1>
-            <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b' }}>
+            <p className="auth-subheading">
               {isLoginMode
-                ? 'Accédez à votre espace professionnel et consultez les cours du jour.'
-                : 'Créez votre compte B2B pour commander vos fruits et légumes frais.'}
+                ? 'Accédez à votre espace professionnel, vos commandes et vos tarifs de gros.'
+                : 'Réservé aux restaurants, hôtels, cafés et traiteurs au Maroc.'}
             </p>
           </div>
 
@@ -287,18 +299,19 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
           {errorMsg && (
             <div
               style={{
-                padding: '0.7rem 0.9rem',
+                padding: '0.75rem 1rem',
                 backgroundColor: '#fee2e2',
                 color: '#991b1b',
                 borderRadius: '8px',
-                fontSize: '0.82rem',
+                fontSize: '0.84rem',
                 marginBottom: '1.25rem',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '0.5rem',
+                fontWeight: 500,
               }}
             >
-              <AlertTriangle size={16} />
+              <AlertTriangle size={16} style={{ flexShrink: 0 }} />
               <span>{errorMsg}</span>
             </div>
           )}
@@ -306,18 +319,19 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
           {successNotice && (
             <div
               style={{
-                padding: '0.7rem 0.9rem',
+                padding: '0.75rem 1rem',
                 backgroundColor: '#dcfce7',
                 color: '#166534',
                 borderRadius: '8px',
-                fontSize: '0.82rem',
+                fontSize: '0.84rem',
                 marginBottom: '1.25rem',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '0.5rem',
+                fontWeight: 600,
               }}
             >
-              <UserCheck size={16} />
+              <UserCheck size={16} style={{ flexShrink: 0 }} />
               <span>{successNotice}</span>
             </div>
           )}
@@ -327,7 +341,8 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
             <form onSubmit={handleLoginSubmit}>
               <div style={{ marginBottom: '1.2rem' }}>
                 <label className="auth-minimal-label">
-                  Identifiant de connexion (Téléphone, Nom ou Email)
+                  <span>Identifiant de connexion *</span>
+                  <span style={{ fontSize: '0.7rem', color: '#94a3b8', fontWeight: 400 }}>Téléphone, Nom ou Email</span>
                 </label>
                 <input
                   type="text"
@@ -341,12 +356,12 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
 
               <div style={{ marginBottom: '1.5rem' }}>
                 <label className="auth-minimal-label">
-                  Mot de passe
+                  <span>Mot de passe *</span>
                 </label>
                 <input
                   type="password"
                   className="auth-minimal-input"
-                  placeholder="6+ caractères"
+                  placeholder="••••••••"
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
                   required
@@ -357,21 +372,42 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
                 type="submit"
                 disabled={loading}
                 className="auth-pill-btn"
-                style={{ width: '100%', marginBottom: '1.5rem' }}
+                style={{ width: '100%', marginBottom: '1.25rem' }}
               >
-                {loading ? 'Connexion en cours...' : 'Sign in'}
+                {loading ? 'Connexion en cours...' : 'Se connecter'}
               </button>
 
-              <div style={{ textAlign: 'center', fontSize: '0.82rem', color: '#64748b' }}>
-                <span>Plateforme sécurisée pour professionnels de la restauration et hôtellerie.</span>
+              <div style={{ textAlign: 'center', fontSize: '0.84rem', color: '#64748b' }}>
+                Pas encore de compte ?{' '}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsLoginMode(false);
+                    setErrorMsg(null);
+                  }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#166534',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    padding: 0,
+                    textDecoration: 'underline',
+                  }}
+                >
+                  Créer un compte professionnel B2B
+                </button>
               </div>
             </form>
           ) : (
-            /* REGISTER B2B FORM */
+            /* REGISTER B2B FORM WITH STRICT 2-COLUMN HARMONIOUS ALIGNMENT */
             <form onSubmit={handleRegisterSubmit}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem', marginBottom: '0.85rem' }}>
-                <div>
-                  <label className="auth-minimal-label">Nom du Responsable / Chef *</label>
+              {/* ROW 1: Responsable & Etablissement */}
+              <div className="auth-fields-grid">
+                <div className="auth-field-col">
+                  <label className="auth-minimal-label">
+                    <span>Nom du Responsable / Chef *</span>
+                  </label>
                   <input
                     type="text"
                     className="auth-minimal-input"
@@ -382,8 +418,10 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
                   />
                 </div>
 
-                <div>
-                  <label className="auth-minimal-label">Nom de l'Établissement *</label>
+                <div className="auth-field-col">
+                  <label className="auth-minimal-label">
+                    <span>Nom de l'Établissement *</span>
+                  </label>
                   <input
                     type="text"
                     className="auth-minimal-input"
@@ -395,9 +433,12 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem', marginBottom: '0.85rem' }}>
-                <div>
-                  <label className="auth-minimal-label">Type d'Établissement</label>
+              {/* ROW 2: Type d'Etablissement & Numero Mondial */}
+              <div className="auth-fields-grid">
+                <div className="auth-field-col">
+                  <label className="auth-minimal-label">
+                    <span>Type d'Établissement</span>
+                  </label>
                   <select
                     className="auth-minimal-input"
                     value={businessType}
@@ -412,15 +453,15 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
                   </select>
                 </div>
 
-                {/* International Phone */}
-                <div>
-                  <label className="auth-minimal-label">Numéro de Téléphone *</label>
-                  <div style={{ display: 'flex', gap: '0.35rem' }}>
+                <div className="auth-field-col">
+                  <label className="auth-minimal-label">
+                    <span>Numéro de Téléphone *</span>
+                  </label>
+                  <div className="auth-phone-container">
                     <select
-                      className="auth-minimal-input"
+                      className="auth-minimal-input auth-country-select"
                       value={countryCode}
                       onChange={(e) => setCountryCode(e.target.value)}
-                      style={{ width: '92px', flexShrink: 0, padding: '0.72rem 0.4rem', fontWeight: 600, cursor: 'pointer' }}
                     >
                       {WORLD_COUNTRY_CODES.map((c) => (
                         <option key={c.code} value={c.code}>
@@ -436,27 +477,30 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
                         placeholder="+XXX"
                         value={customCode}
                         onChange={(e) => setCustomCode(e.target.value)}
-                        style={{ width: '65px', flexShrink: 0, padding: '0.72rem 0.4rem' }}
+                        style={{ width: '60px', flexShrink: 0, padding: '0 0.4rem' }}
                         required
                       />
                     )}
 
                     <input
                       type="tel"
-                      className="auth-minimal-input"
+                      className="auth-minimal-input auth-phone-input"
                       placeholder="06 61 XX XX XX"
                       value={phoneNumber}
                       onChange={(e) => setPhoneNumber(e.target.value)}
-                      style={{ flex: 1, minWidth: 0 }}
                       required
                     />
                   </div>
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem', marginBottom: '0.85rem' }}>
-                <div>
-                  <label className="auth-minimal-label">Email Professionnel (Optionnel)</label>
+              {/* ROW 3: Email Pro & Mot de passe */}
+              <div className="auth-fields-grid">
+                <div className="auth-field-col">
+                  <label className="auth-minimal-label">
+                    <span>Email Professionnel</span>
+                    <span style={{ fontSize: '0.7rem', color: '#94a3b8', fontWeight: 400 }}>Optionnel</span>
+                  </label>
                   <input
                     type="email"
                     className="auth-minimal-input"
@@ -466,12 +510,15 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
                   />
                 </div>
 
-                <div>
-                  <label className="auth-minimal-label">Mot de Passe *</label>
+                <div className="auth-field-col">
+                  <label className="auth-minimal-label">
+                    <span>Mot de Passe *</span>
+                    <span style={{ fontSize: '0.7rem', color: '#94a3b8', fontWeight: 400 }}>6+ car.</span>
+                  </label>
                   <input
                     type="password"
                     className="auth-minimal-input"
-                    placeholder="6+ caractères"
+                    placeholder="Minimum 6 caractères"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
@@ -479,9 +526,12 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem', marginBottom: '1.1rem' }}>
-                <div>
-                  <label className="auth-minimal-label">Ville de Livraison</label>
+              {/* ROW 4: Ville de Livraison & Adresse avec GPS */}
+              <div className="auth-fields-grid">
+                <div className="auth-field-col">
+                  <label className="auth-minimal-label">
+                    <span>Ville de Livraison</span>
+                  </label>
                   <select
                     className="auth-minimal-input"
                     value={city}
@@ -497,31 +547,21 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
                   </select>
                 </div>
 
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
-                    <label className="auth-minimal-label" style={{ marginBottom: 0 }}>Adresse Complète *</label>
+                <div className="auth-field-col">
+                  <label className="auth-minimal-label">
+                    <span>Adresse Complète *</span>
                     <button
                       type="button"
                       onClick={handleAutoLocate}
                       disabled={locating}
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        color: '#15803d',
-                        fontSize: '0.72rem',
-                        fontWeight: 700,
-                        cursor: locating ? 'wait' : 'pointer',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '0.25rem',
-                        padding: 0,
-                      }}
+                      className="auth-maps-btn"
                       title="Détecter automatiquement avec Google Maps"
                     >
                       <GoogleMapsIcon size={12} />
                       <span>{locating ? 'GPS...' : 'Position Maps'}</span>
                     </button>
-                  </div>
+                  </label>
+
                   <input
                     type="text"
                     className="auth-minimal-input"
@@ -534,7 +574,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
                   {gpsCoords && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', marginTop: '0.25rem', fontSize: '0.72rem', color: '#166534' }}>
                       <GoogleMapsIcon size={11} />
-                      <span>Position GPS enregistrée :</span>
+                      <span>GPS détecté :</span>
                       <a
                         href={gpsCoords.url}
                         target="_blank"
@@ -548,29 +588,51 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
                 </div>
               </div>
 
-              {/* Checkbox (Matching reference photo: "I agree to all the statements included in the terms of service") */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', marginBottom: '1.5rem' }}>
+              {/* Checkbox (Terms) */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', margin: '0.5rem 0 1.35rem 0' }}>
                 <input
                   type="checkbox"
                   id="auth-terms"
                   checked={termsAgreed}
                   onChange={(e) => setTermsAgreed(e.target.checked)}
-                  style={{ width: '16px', height: '16px', accentColor: '#166534', cursor: 'pointer' }}
+                  style={{ width: '16px', height: '16px', accentColor: '#166534', cursor: 'pointer', flexShrink: 0 }}
                 />
-                <label htmlFor="auth-terms" style={{ fontSize: '0.8rem', color: '#64748b', cursor: 'pointer', lineHeight: 1.3 }}>
-                  J'accepte les conditions d'accès B2B de la plateforme <span style={{ color: '#166534', fontWeight: 600 }}>Pont Agricole</span>
+                <label htmlFor="auth-terms" style={{ fontSize: '0.8rem', color: '#64748b', cursor: 'pointer', lineHeight: 1.35 }}>
+                  J'accepte les conditions d'accès B2B de la plateforme <strong style={{ color: '#166534' }}>Pont Agricole</strong>
                 </label>
               </div>
 
-              {/* Create Account Pill Button (Identical to reference image) */}
+              {/* Create Account Pill Button */}
               <button
                 type="submit"
                 disabled={loading}
                 className="auth-pill-btn"
-                style={{ width: '100%' }}
+                style={{ width: '100%', marginBottom: '1.15rem' }}
               >
-                {loading ? 'Création du compte...' : 'Create Account'}
+                {loading ? 'Création du compte...' : 'Créer mon compte professionnel'}
               </button>
+
+              <div style={{ textAlign: 'center', fontSize: '0.84rem', color: '#64748b' }}>
+                Vous avez déjà un compte ?{' '}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsLoginMode(true);
+                    setErrorMsg(null);
+                  }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#166534',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    padding: 0,
+                    textDecoration: 'underline',
+                  }}
+                >
+                  Se connecter
+                </button>
+              </div>
             </form>
           )}
         </div>
@@ -586,19 +648,20 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
           <div style={{ position: 'relative', zIndex: 2, margin: '2rem 0' }}>
             <h2
               style={{
-                fontSize: '2.3rem',
-                fontWeight: 400,
-                lineHeight: 1.22,
-                color: '#1e293b',
-                letterSpacing: '-0.025em',
+                fontFamily: 'Outfit, sans-serif',
+                fontSize: '2.4rem',
+                fontWeight: 600,
+                lineHeight: 1.18,
+                color: '#0f172a',
+                letterSpacing: '-0.03em',
                 maxWidth: '340px',
                 margin: 0,
               }}
             >
               Access your kitchen's best{' '}
-              <span style={{ color: '#16a34a', fontWeight: 600 }}>fresh produce</span>
+              <span style={{ color: '#16a34a', fontWeight: 700 }}>fresh produce</span>
             </h2>
-            <p style={{ marginTop: '0.75rem', fontSize: '0.85rem', color: '#64748b', lineHeight: 1.5, maxWidth: '300px' }}>
+            <p style={{ marginTop: '0.85rem', fontSize: '0.88rem', color: '#64748b', lineHeight: 1.5, maxWidth: '300px' }}>
               Sélection maraîchère premium en direct des terroirs marocains pour chefs et gestionnaires CHR.
             </p>
           </div>
@@ -621,7 +684,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
           />
 
           {/* Subtle Bottom Brand Note */}
-          <div style={{ position: 'relative', zIndex: 2, fontSize: '0.75rem', color: '#94a3b8', letterSpacing: '0.02em' }}>
+          <div style={{ position: 'relative', zIndex: 2, fontSize: '0.78rem', color: '#94a3b8', letterSpacing: '0.04em', fontWeight: 500 }}>
             Casablanca · Rabat · Marrakech · Tanger · Agadir · Fès
           </div>
         </div>
