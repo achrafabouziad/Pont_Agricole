@@ -126,33 +126,6 @@ export const ClientDashboardPage: React.FC<ClientDashboardPageProps> = ({ onNavi
           </div>
         </div>
 
-        {/* Approval Alert if Pending */}
-        {business?.approvalStatus === 'pending' && (
-          <div
-            style={{
-              padding: '1.15rem 1.4rem',
-              backgroundColor: 'var(--amber-50)',
-              border: '1.5px solid var(--amber-400)',
-              borderRadius: 'var(--radius-md)',
-              color: 'var(--amber-600)',
-              marginBottom: '2rem',
-              display: 'flex',
-              alignItems: 'flex-start',
-              gap: '0.85rem',
-            }}
-          >
-            <AlertTriangle size={22} style={{ flexShrink: 0, marginTop: '2px' }} />
-            <div>
-              <strong style={{ display: 'block', fontSize: '0.95rem', marginBottom: '0.2rem' }}>
-                Votre compte professionnel est en cours d’examen
-              </strong>
-              <p style={{ fontSize: '0.88rem', color: '#78350f', lineHeight: 1.5 }}>
-                Notre centrale commerciale valide actuellement votre inscription pour rattacher votre établissement à la grille tarifaire de gros et définir votre créneau de livraison matinale. Vous pouvez explorer le catalogue ; dès validation, vous pourrez envoyer vos commandes définitives.
-              </p>
-            </div>
-          </div>
-        )}
-
         {/* Reorder feedback notice */}
         {reorderNotice && (
           <div

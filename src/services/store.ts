@@ -213,7 +213,7 @@ class StoreService {
             businessType: params.businessType,
             city: params.city,
             deliveryAddress: params.deliveryAddress,
-            approvalStatus: 'pending',
+            approvalStatus: 'approved',
             createdAt: new Date().toISOString(),
           };
           setStored(KEY_USER, this.currentUser);
@@ -243,7 +243,7 @@ class StoreService {
       businessType: params.businessType,
       city: params.city,
       deliveryAddress: params.deliveryAddress,
-      approvalStatus: 'pending', // Starts as pending per specifications!
+      approvalStatus: 'approved',
       createdAt: new Date().toISOString(),
     };
 
@@ -473,15 +473,6 @@ class StoreService {
     // 1. Check user login
     if (!this.currentUser) {
       return { success: false, error: 'Veuillez vous connecter pour envoyer une commande.' };
-    }
-
-    // 2. Strict check: account approval status
-    if (this.currentUser.role !== 'admin' && this.currentBusiness?.approvalStatus !== 'approved') {
-      return {
-        success: false,
-        error:
-          'Votre compte professionnel est en attente de validation ou suspendu. Seuls les comptes approuvés peuvent envoyer des commandes.',
-      };
     }
 
     // 3. Check cart contents

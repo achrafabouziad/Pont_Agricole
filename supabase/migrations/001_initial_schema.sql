@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS public.businesses (
     business_type TEXT NOT NULL CHECK (business_type IN ('restaurant', 'cafe', 'hotel', 'caterer', 'other')),
     city TEXT NOT NULL,
     delivery_address TEXT NOT NULL,
-    approval_status TEXT NOT NULL DEFAULT 'pending' CHECK (approval_status IN ('pending', 'approved', 'rejected', 'suspended')),
+    approval_status TEXT NOT NULL DEFAULT 'approved' CHECK (approval_status IN ('pending', 'approved', 'rejected', 'suspended')),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -272,7 +272,7 @@ BEGIN
       COALESCE(new.raw_user_meta_data->>'business_type', 'restaurant'),
       COALESCE(new.raw_user_meta_data->>'city', 'Casablanca'),
       COALESCE(new.raw_user_meta_data->>'delivery_address', ''),
-      'pending'
+      'approved'
     );
   END IF;
 

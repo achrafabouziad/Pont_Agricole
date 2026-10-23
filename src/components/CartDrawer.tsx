@@ -84,13 +84,6 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
       return;
     }
 
-    if (!isApproved) {
-      setErrorMessage(
-        'Votre compte est en cours de validation par notre équipe. Vous recevrez une notification d’approbation pour valider votre commande.'
-      );
-      return;
-    }
-
     if (!isMinOrderMet) {
       setErrorMessage(`Le montant minimum de commande pour ${selectedCity} est de ${minOrderAmount} DH.`);
       return;
@@ -353,23 +346,6 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                   Se connecter
                 </button>
               </div>
-            ) : isPending ? (
-              <div
-                style={{
-                  padding: '0.65rem 0.85rem',
-                  backgroundColor: 'var(--status-pending-bg)',
-                  color: 'var(--status-pending-text)',
-                  borderRadius: 'var(--radius-sm)',
-                  fontSize: '0.82rem',
-                  marginBottom: '0.85rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.4rem',
-                }}
-              >
-                <ShieldAlert size={16} />
-                <span>Compte en attente d'approbation commerciale.</span>
-              </div>
             ) : null}
 
             {/* Minimum order progress */}
@@ -400,22 +376,20 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
             {/* Checkout Action */}
             <button
               onClick={handleCheckout}
-              disabled={submitting || !isMinOrderMet || (!currentUser ? false : !isApproved)}
+              disabled={submitting || !isMinOrderMet || !currentUser}
               className="btn btn-primary"
               style={{
                 width: '100%',
                 padding: '0.85rem',
                 fontSize: '1rem',
-                opacity: submitting || !isMinOrderMet || (!currentUser ? false : !isApproved) ? 0.6 : 1,
-                cursor: submitting || !isMinOrderMet || (!currentUser ? false : !isApproved) ? 'not-allowed' : 'pointer',
+                opacity: submitting || !isMinOrderMet || !currentUser ? 0.6 : 1,
+                cursor: submitting || !isMinOrderMet || !currentUser ? 'not-allowed' : 'pointer',
               }}
             >
               {submitting ? (
                 <span>Validation en cours...</span>
               ) : !currentUser ? (
                 <span>Se connecter pour commander</span>
-              ) : isPending ? (
-                <span>Validation en attente</span>
               ) : (
                 <>
                   <span>Confirmer la commande en gros</span>

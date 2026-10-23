@@ -79,11 +79,11 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess }) => {
 
       if (res.success) {
         setSuccessNotice(
-          'Votre compte professionnel a été créé avec succès ! Il est actuellement en cours de vérification par notre équipe commerciale pour validation de vos tarifs CHR.'
+          'Votre compte professionnel a été créé avec succès ! Vous pouvez passer votre première commande immédiatement.'
         );
         setTimeout(() => {
           onSuccess();
-        }, 1500);
+        }, 1200);
       } else {
         setErrorMsg(res.error || 'Erreur lors de l’inscription.');
       }
@@ -348,7 +348,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess }) => {
               </div>
 
               <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1.25rem', backgroundColor: 'var(--bg-main)', padding: '0.75rem', borderRadius: 'var(--radius-sm)' }}>
-                ℹ️ <strong>Règle commerciale B2B :</strong> Votre compte sera vérifié avant l’envoi de votre première commande pour vous affecter les tarifs de gros et les plages de livraison matinale.
+                ✨ <strong>Accès direct :</strong> Votre compte est activé immédiatement. Vous avez accès aux tarifs de gros et aux commandes matinales sans attente.
               </div>
 
               <button
