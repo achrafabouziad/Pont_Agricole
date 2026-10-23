@@ -15,6 +15,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, onOpenC
   const [cartCount, setCartCount] = useState<number>(store.getCart().reduce((sum, i) => sum + i.quantity, 0));
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+  const [demoBarCollapsed, setDemoBarCollapsed] = useState(false);
 
   useEffect(() => {
     const unsubscribe = store.subscribe(() => {
@@ -28,28 +29,29 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, onOpenC
   const handleLogout = async () => {
     await store.logout();
     setUserDropdownOpen(false);
+    setMobileMenuOpen(false);
     onNavigate('home');
   };
 
   const handleRoleSwitch = (role: 'admin' | 'approved_client' | 'pending_client' | 'visitor') => {
     store.switchRole(role);
+    setMobileMenuOpen(false);
     if (role === 'admin') onNavigate('admin');
     else if (role === 'visitor') onNavigate('home');
     else onNavigate('catalog');
   };
 
   return (
-    <header style={{ position: 'sticky', top: 0, zIndex: 100, backgroundColor: '#ffffff', boxShadow: 'var(--shadow-sm)' }}>
+    <header className="site-header">
       {/* Quick Demo Switcher bar for testing in browser */}
-      <div className="demo-bar">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <span style={{ opacity: 0.85 }}>Mode Démo Antigravity :</span>
-          <span style={{ fontWeight: 600, color: 'var(--amber-400)' }}>
-            {user ? (user.role === 'admin' ? 'Administrateur' : business?.approvalStatus === 'approved' ? 'Client Approuvé' : 'Client En Attente') : 'Visiteur'}
+      <div className={`demo-bar ${demoBarCollapsed ? 'collapsed' : ''}`}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+          <span className="demo-label">Rôle démo :</span>
+          <span style={{ fontWeight: 700, color: 'var(--amber-400)', fontSize: '0.78rem' }}>
+            {user ? (user.role === 'admin' ? 'Admin' : business?.approvalStatus === 'approved' ? 'Client Pro' : 'En Attente') : 'Visiteur'}
           </span>
         </div>
-        <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
-          <span style={{ opacity: 0.7, marginRight: '0.2rem' }}>Tester un rôle :</span>
+        <div className="demo-actions">
           <button
             className={user?.role === 'admin' ? 'active' : ''}
             onClick={() => handleRoleSwitch('admin')}
@@ -60,13 +62,13 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, onOpenC
             className={user?.role === 'customer' && business?.approvalStatus === 'approved' ? 'active' : ''}
             onClick={() => handleRoleSwitch('approved_client')}
           >
-            Client Approuvé
+            Client Validé
           </button>
           <button
             className={user?.role === 'customer' && business?.approvalStatus === 'pending' ? 'active' : ''}
             onClick={() => handleRoleSwitch('pending_client')}
           >
-            Client En Attente
+            En Attente
           </button>
           <button
             className={!user ? 'active' : ''}
@@ -78,46 +80,41 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, onOpenC
       </div>
 
       {/* Main Navbar */}
-      <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.85rem 1.25rem' }}>
+      <div className="container nav-container">
         {/* Logo and Brand */}
         <div
-          onClick={() => onNavigate('home')}
-          style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', cursor: 'pointer' }}
+          onClick={() => {
+            onNavigate('home');
+            setMobileMenuOpen(false);
+          }}
+          className="brand-logo"
         >
           <img
             src="/logo.png"
             alt="Pont Agricole Logo"
-            style={{ width: '46px', height: '46px', objectFit: 'contain' }}
+            className="brand-img"
           />
-          <div>
-            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--primary-900)', letterSpacing: '-0.02em', lineHeight: 1.1 }}>
+          <div className="brand-text">
+            <div className="brand-title">
               Pont Agricole
             </div>
-            <div style={{ fontSize: '0.68rem', color: 'var(--primary-600)', fontWeight: 600, letterSpacing: '0.04em' }}>
+            <div className="brand-subtitle">
               LE LIEN ENTRE LA TERRE ET L’AVENIR
             </div>
           </div>
         </div>
 
         {/* Desktop Nav Links */}
-        <nav style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }} className="desktop-nav">
+        <nav className="desktop-nav">
           <button
             onClick={() => onNavigate('home')}
-            style={{
-              fontWeight: currentPage === 'home' ? 700 : 500,
-              color: currentPage === 'home' ? 'var(--primary-700)' : 'var(--text-main)',
-              fontSize: '0.95rem',
-            }}
+            className={`nav-link ${currentPage === 'home' ? 'active' : ''}`}
           >
             Accueil
           </button>
           <button
             onClick={() => onNavigate('catalog')}
-            style={{
-              fontWeight: currentPage === 'catalog' ? 700 : 500,
-              color: currentPage === 'catalog' ? 'var(--primary-700)' : 'var(--text-main)',
-              fontSize: '0.95rem',
-            }}
+            className={`nav-link ${currentPage === 'catalog' ? 'active' : ''}`}
           >
             Catalogue Produits
           </button>
@@ -128,7 +125,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, onOpenC
                 document.getElementById('advantages')?.scrollIntoView({ behavior: 'smooth' });
               }, 100);
             }}
-            style={{ fontWeight: 500, color: 'var(--text-main)', fontSize: '0.95rem' }}
+            className="nav-link"
           >
             Offre CHR
           </button>
@@ -139,7 +136,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, onOpenC
                 document.getElementById('contact-info')?.scrollIntoView({ behavior: 'smooth' });
               }, 100);
             }}
-            style={{ fontWeight: 500, color: 'var(--text-main)', fontSize: '0.95rem' }}
+            className="nav-link"
           >
             Contact
           </button>
@@ -147,38 +144,26 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, onOpenC
           {user?.role === 'admin' && (
             <button
               onClick={() => onNavigate('admin')}
-              className="badge badge-amber"
-              style={{ padding: '0.4rem 0.8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+              className="badge badge-amber admin-nav-badge"
             >
               <ShieldCheck size={14} />
-              Admin Dashboard
+              Admin
             </button>
           )}
         </nav>
 
         {/* Action Buttons */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+        <div className="nav-actions">
           {/* Cart Button */}
           <button
             onClick={onOpenCart}
-            className="btn btn-secondary btn-sm"
-            style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+            className="btn btn-secondary btn-sm cart-btn"
             title="Consulter le panier"
           >
             <ShoppingCart size={18} />
-            <span style={{ fontWeight: 700 }}>Panier</span>
+            <span className="cart-text">Panier</span>
             {cartCount > 0 && (
-              <span
-                style={{
-                  backgroundColor: 'var(--amber-500)',
-                  color: '#ffffff',
-                  fontSize: '0.72rem',
-                  fontWeight: 800,
-                  borderRadius: '9999px',
-                  padding: '0.1rem 0.45rem',
-                  marginLeft: '0.2rem',
-                }}
-              >
+              <span className="cart-count-badge">
                 {cartCount}
               </span>
             )}
@@ -189,31 +174,17 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, onOpenC
             <div style={{ position: 'relative' }}>
               <button
                 onClick={() => setUserDropdownOpen(!userDropdownOpen)}
-                className="btn btn-outline btn-sm"
-                style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}
+                className="btn btn-outline btn-sm user-btn"
               >
                 <User size={16} />
-                <span style={{ maxWidth: '120px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <span className="user-btn-name">
                   {user.fullName.split(' ')[0]}
                 </span>
                 <ChevronDown size={14} />
               </button>
 
               {userDropdownOpen && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    right: 0,
-                    top: 'calc(100% + 8px)',
-                    width: '260px',
-                    backgroundColor: '#ffffff',
-                    borderRadius: 'var(--radius-md)',
-                    boxShadow: 'var(--shadow-lg)',
-                    border: '1px solid var(--border-light)',
-                    padding: '0.85rem',
-                    zIndex: 200,
-                  }}
-                >
+                <div className="user-dropdown-menu">
                   <div style={{ borderBottom: '1px solid var(--border-subtle)', paddingBottom: '0.6rem', marginBottom: '0.6rem' }}>
                     <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--primary-900)' }}>
                       {user.fullName}
@@ -228,7 +199,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, onOpenC
                         <span className="badge badge-amber">Administrateur</span>
                       ) : business?.approvalStatus === 'approved' ? (
                         <span className="badge badge-status-delivered" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}>
-                          <CheckCircle size={12} /> Compte Approuvé
+                          <CheckCircle size={12} /> Compte Validé CHR
                         </span>
                       ) : (
                         <span className="badge badge-status-pending" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}>
@@ -244,7 +215,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, onOpenC
                         setUserDropdownOpen(false);
                         onNavigate('client-dashboard');
                       }}
-                      style={{ width: '100%', textAlign: 'left', padding: '0.5rem', borderRadius: '4px', fontSize: '0.88rem' }}
+                      className="dropdown-item"
                     >
                       Mon Espace & Commandes
                     </button>
@@ -256,26 +227,17 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, onOpenC
                         setUserDropdownOpen(false);
                         onNavigate('admin');
                       }}
-                      style={{ width: '100%', textAlign: 'left', padding: '0.5rem', borderRadius: '4px', fontSize: '0.88rem', fontWeight: 600, color: 'var(--primary-700)' }}
+                      className="dropdown-item"
+                      style={{ fontWeight: 700, color: 'var(--primary-700)' }}
                     >
-                      Tableau de bord Administrateur
+                      Tableau de bord Admin
                     </button>
                   )}
 
                   <button
                     onClick={handleLogout}
-                    style={{
-                      width: '100%',
-                      textAlign: 'left',
-                      padding: '0.5rem',
-                      borderRadius: '4px',
-                      fontSize: '0.88rem',
-                      color: '#b91c1c',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.4rem',
-                      marginTop: '0.35rem',
-                    }}
+                    className="dropdown-item"
+                    style={{ color: '#b91c1c', display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.35rem' }}
                   >
                     <LogOut size={14} /> Déconnexion
                   </button>
@@ -283,7 +245,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, onOpenC
               )}
             </div>
           ) : (
-            <div style={{ display: 'flex', gap: '0.4rem' }}>
+            <div className="auth-desktop-buttons">
               <button
                 onClick={() => onNavigate('auth')}
                 className="btn btn-outline btn-sm"
@@ -303,7 +265,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, onOpenC
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             className="mobile-toggle"
-            style={{ display: 'none', padding: '0.4rem' }}
+            aria-label="Menu"
           >
             {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
@@ -312,25 +274,25 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, onOpenC
 
       {/* Mobile Drawer Menu */}
       {mobileMenuOpen && (
-        <div style={{ backgroundColor: '#ffffff', borderTop: '1px solid var(--border-light)', padding: '1rem 1.25rem' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+        <div className="mobile-menu-drawer">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             <button
               onClick={() => {
                 onNavigate('home');
                 setMobileMenuOpen(false);
               }}
-              style={{ textAlign: 'left', fontSize: '1rem', fontWeight: currentPage === 'home' ? 700 : 500 }}
+              className={`mobile-menu-link ${currentPage === 'home' ? 'active' : ''}`}
             >
-              Accueil
+              🌱 Accueil
             </button>
             <button
               onClick={() => {
                 onNavigate('catalog');
                 setMobileMenuOpen(false);
               }}
-              style={{ textAlign: 'left', fontSize: '1rem', fontWeight: currentPage === 'catalog' ? 700 : 500 }}
+              className={`mobile-menu-link ${currentPage === 'catalog' ? 'active' : ''}`}
             >
-              Catalogue Produits
+              📦 Catalogue Produits Frais
             </button>
             {user?.role === 'customer' && (
               <button
@@ -338,9 +300,9 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, onOpenC
                   onNavigate('client-dashboard');
                   setMobileMenuOpen(false);
                 }}
-                style={{ textAlign: 'left', fontSize: '1rem', fontWeight: 600, color: 'var(--primary-700)' }}
+                className={`mobile-menu-link ${currentPage === 'client-dashboard' ? 'active' : ''}`}
               >
-                Mon Espace Pro
+                👤 Mon Espace Pro & Commandes
               </button>
             )}
             {user?.role === 'admin' && (
@@ -349,21 +311,42 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, onOpenC
                   onNavigate('admin');
                   setMobileMenuOpen(false);
                 }}
-                style={{ textAlign: 'left', fontSize: '1rem', fontWeight: 700, color: 'var(--amber-600)' }}
+                className="mobile-menu-link"
+                style={{ fontWeight: 800, color: 'var(--amber-600)' }}
               >
-                Tableau de Bord Admin
+                🛡️ Tableau de Bord Administrateur
               </button>
             )}
-            {!user && (
+            {!user ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>
+                <button
+                  onClick={() => {
+                    onNavigate('auth');
+                    setMobileMenuOpen(false);
+                  }}
+                  className="btn btn-outline"
+                  style={{ width: '100%', justifyContent: 'center' }}
+                >
+                  Connexion Client Pro
+                </button>
+                <button
+                  onClick={() => {
+                    onNavigate('auth');
+                    setMobileMenuOpen(false);
+                  }}
+                  className="btn btn-primary"
+                  style={{ width: '100%', justifyContent: 'center' }}
+                >
+                  Créer Compte Établissement CHR
+                </button>
+              </div>
+            ) : (
               <button
-                onClick={() => {
-                  onNavigate('auth');
-                  setMobileMenuOpen(false);
-                }}
-                className="btn btn-primary"
-                style={{ width: '100%', marginTop: '0.5rem' }}
+                onClick={handleLogout}
+                className="btn btn-secondary"
+                style={{ width: '100%', justifyContent: 'center', color: '#b91c1c', marginTop: '0.5rem' }}
               >
-                Rejoindre Pont Agricole (CHR)
+                <LogOut size={16} /> Déconnexion
               </button>
             )}
           </div>

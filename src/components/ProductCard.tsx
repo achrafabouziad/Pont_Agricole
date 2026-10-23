@@ -39,32 +39,23 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
   };
 
   return (
-    <div
-      className="card"
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        height: '100%',
-        position: 'relative',
-        backgroundColor: '#ffffff',
-      }}
-    >
+    <div className="card product-card">
       {/* Product Image Frame */}
-      <div style={{ position: 'relative', height: '190px', width: '100%', overflow: 'hidden', backgroundColor: 'var(--bg-surface-secondary)' }}>
+      <div className="product-img-wrap">
         <img
           src={product.imageUrl}
           alt={product.name}
-          style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.3s ease' }}
+          className="product-img"
           onError={(e) => {
-            // Fallback placeholder if unsplash fails
-            (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=600&q=80';
+            (e.target as HTMLImageElement).src =
+              'https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=600&q=80';
           }}
         />
 
         {/* Top Badges */}
-        <div style={{ position: 'absolute', top: '10px', left: '10px', display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+        <div className="product-badges">
           {product.badge && (
-            <span className="badge badge-amber" style={{ boxShadow: 'var(--shadow-sm)' }}>
+            <span className="badge badge-amber">
               {product.badge}
             </span>
           )}
@@ -76,23 +67,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
         </div>
 
         {product.origin && (
-          <div
-            style={{
-              position: 'absolute',
-              bottom: '8px',
-              left: '8px',
-              backgroundColor: 'rgba(8, 40, 23, 0.75)',
-              color: '#ffffff',
-              backdropFilter: 'blur(4px)',
-              fontSize: '0.72rem',
-              fontWeight: 600,
-              padding: '0.2rem 0.55rem',
-              borderRadius: '6px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.25rem',
-            }}
-          >
+          <div className="product-origin-tag">
             <MapPin size={11} color="var(--amber-400)" />
             <span>{product.origin}</span>
           </div>
@@ -100,117 +75,81 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
       </div>
 
       {/* Product Content Body */}
-      <div style={{ padding: '1.15rem', display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
-        <h3
-          style={{
-            fontSize: '1.05rem',
-            fontWeight: 700,
-            color: 'var(--primary-900)',
-            marginBottom: '0.35rem',
-            lineHeight: 1.3,
-          }}
-        >
+      <div className="product-body">
+        <h3 className="product-title">
           {product.name}
         </h3>
 
-        <p
-          style={{
-            fontSize: '0.82rem',
-            color: 'var(--text-muted)',
-            lineHeight: 1.45,
-            marginBottom: '1rem',
-            flexGrow: 1,
-            display: '-webkit-box',
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: 'vertical',
-            overflow: 'hidden',
-          }}
-        >
+        <p className="product-desc">
           {product.description}
         </p>
 
         {/* Unit & Min Order Info */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+        <div className="product-unit-info">
           <span>Unité : <strong>{product.unit.toUpperCase()}</strong></span>
           {product.minimumQuantity > 1 && (
-            <span style={{ color: 'var(--primary-700)', fontWeight: 600, backgroundColor: 'var(--primary-50)', padding: '0.15rem 0.45rem', borderRadius: '4px' }}>
-              Min : {product.minimumQuantity} {product.unit}s
+            <span className="product-min-badge">
+              Min: {product.minimumQuantity}
             </span>
           )}
         </div>
 
         {/* Price Tag in MAD */}
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.35rem', marginBottom: '1.1rem' }}>
-          <span style={{ fontSize: '1.45rem', fontWeight: 800, color: 'var(--primary-800)', letterSpacing: '-0.02em' }}>
+        <div className="product-price-wrap">
+          <span className="product-price-num">
             {product.price.toFixed(2)}
           </span>
-          <span style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--primary-600)' }}>
+          <span className="product-currency">
             DH
           </span>
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-light)' }}>
+          <span className="product-unit-label">
             / {getUnitLabel(product.unit)}
           </span>
         </div>
 
         {/* Quantity Controls & Add to Cart */}
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              border: '1.5px solid var(--border-light)',
-              borderRadius: 'var(--radius-md)',
-              overflow: 'hidden',
-              backgroundColor: 'var(--bg-main)',
-            }}
-          >
+        <div className="product-actions">
+          <div className="product-qty-stepper">
             <button
               onClick={handleDecrement}
               disabled={!product.isAvailable || quantity <= product.minimumQuantity}
-              style={{ padding: '0.5rem 0.65rem', color: 'var(--text-main)', opacity: quantity <= product.minimumQuantity ? 0.4 : 1 }}
+              className="qty-btn"
               title="Diminuer"
             >
-              <Minus size={14} />
+              <Minus size={13} />
             </button>
-            <span style={{ padding: '0 0.5rem', fontWeight: 700, fontSize: '0.9rem', minWidth: '28px', textAlign: 'center' }}>
+            <span className="qty-number">
               {quantity}
             </span>
             <button
               onClick={handleIncrement}
               disabled={!product.isAvailable}
-              style={{ padding: '0.5rem 0.65rem', color: 'var(--text-main)' }}
+              className="qty-btn"
               title="Augmenter"
             >
-              <Plus size={14} />
+              <Plus size={13} />
             </button>
           </div>
 
           <button
             onClick={handleAdd}
             disabled={!product.isAvailable}
-            className={`btn ${added ? 'btn-secondary' : 'btn-primary'}`}
-            style={{
-              flex: 1,
-              padding: '0.65rem',
-              fontSize: '0.88rem',
-              opacity: product.isAvailable ? 1 : 0.5,
-              cursor: product.isAvailable ? 'pointer' : 'not-allowed',
-            }}
+            className={`btn product-add-btn ${added ? 'btn-secondary' : 'btn-primary'}`}
           >
             {added ? (
               <>
-                <Check size={16} color="var(--primary-600)" />
-                <span>Ajouté !</span>
+                <Check size={15} color="var(--primary-600)" />
+                <span className="btn-text">Ajouté</span>
               </>
             ) : product.isAvailable ? (
               <>
-                <ShoppingCart size={16} />
-                <span>Ajouter</span>
+                <ShoppingCart size={15} />
+                <span className="btn-text">Ajouter</span>
               </>
             ) : (
               <>
-                <AlertCircle size={16} />
-                <span>Indisponible</span>
+                <AlertCircle size={15} />
+                <span className="btn-text">Rupture</span>
               </>
             )}
           </button>

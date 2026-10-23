@@ -3,6 +3,7 @@ import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
 import { CartDrawer } from './components/CartDrawer';
 import { OrderSuccessModal } from './components/OrderSuccessModal';
+import { MobileBottomNav } from './components/MobileBottomNav';
 import { HomePage } from './pages/HomePage';
 import { CatalogPage } from './pages/CatalogPage';
 import { AuthPage } from './pages/AuthPage';
@@ -30,7 +31,7 @@ export function App() {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', position: 'relative' }}>
       {/* Navigation Header */}
       <Navbar
         currentPage={currentPage}
@@ -93,6 +94,13 @@ export function App() {
 
       {/* Footer */}
       <Footer />
+
+      {/* Native App-Style Mobile Bottom Navigation */}
+      <MobileBottomNav
+        currentPage={currentPage}
+        onNavigate={handleNavigate}
+        onOpenCart={() => setIsCartOpen(true)}
+      />
     </div>
   );
 }
