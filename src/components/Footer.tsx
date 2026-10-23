@@ -7,7 +7,7 @@ interface FooterProps {
 
 export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
   return (
-    <footer style={{ backgroundColor: '#092515', color: '#e5eee8', paddingTop: '4rem', paddingBottom: '2rem', marginTop: '4rem' }}>
+    <footer style={{ backgroundColor: '#06170d', color: '#e5eee8', paddingTop: '4rem', paddingBottom: '2.5rem', marginTop: '4rem', borderTop: '1px solid #112d1b' }}>
       <div className="container">
         {/* Top Feature Highlights */}
         <div
@@ -16,37 +16,37 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
             gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
             gap: '1.5rem',
             paddingBottom: '3rem',
-            borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+            borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
             marginBottom: '3rem',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(255, 255, 255, 0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--amber-400)' }}>
-              <Truck size={24} />
+            <div style={{ width: '42px', height: '42px', borderRadius: 'var(--radius-xs)', background: 'rgba(255, 255, 255, 0.06)', border: '1px solid rgba(255, 255, 255, 0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--amber-400)', flexShrink: 0 }}>
+              <Truck size={20} />
             </div>
             <div>
-              <div style={{ fontWeight: 700, color: '#ffffff' }}>Livraison Matinale Dédiée</div>
-              <div style={{ fontSize: '0.85rem', color: '#9cb5a5' }}>Avant 09h00 directement dans vos cuisines</div>
+              <div style={{ fontWeight: 700, color: '#ffffff', fontSize: '0.95rem' }}>Livraison Matinale Dédiée</div>
+              <div style={{ fontSize: '0.82rem', color: '#9cb5a5' }}>Avant 09h00 directement dans vos cuisines</div>
             </div>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(255, 255, 255, 0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4ade80' }}>
-              <Award size={24} />
+            <div style={{ width: '42px', height: '42px', borderRadius: 'var(--radius-xs)', background: 'rgba(255, 255, 255, 0.06)', border: '1px solid rgba(255, 255, 255, 0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6ee7b7', flexShrink: 0 }}>
+              <Award size={20} />
             </div>
             <div>
-              <div style={{ fontWeight: 700, color: '#ffffff' }}>Fraîcheur & Calibrage CHR</div>
-              <div style={{ fontSize: '0.85rem', color: '#9cb5a5' }}>Sélection rigoureuse des terroirs marocains</div>
+              <div style={{ fontWeight: 700, color: '#ffffff', fontSize: '0.95rem' }}>Fraîcheur & Calibrage CHR</div>
+              <div style={{ fontSize: '0.82rem', color: '#9cb5a5' }}>Sélection rigoureuse des terroirs marocains</div>
             </div>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(255, 255, 255, 0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--amber-400)' }}>
-              <ShieldCheck size={24} />
+            <div style={{ width: '42px', height: '42px', borderRadius: 'var(--radius-xs)', background: 'rgba(255, 255, 255, 0.06)', border: '1px solid rgba(255, 255, 255, 0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--amber-400)', flexShrink: 0 }}>
+              <ShieldCheck size={20} />
             </div>
             <div>
-              <div style={{ fontWeight: 700, color: '#ffffff' }}>Prix de Gros Fermes en MAD</div>
-              <div style={{ fontSize: '0.85rem', color: '#9cb5a5' }}>Facturation conforme & sans intermédiaires</div>
+              <div style={{ fontWeight: 700, color: '#ffffff', fontSize: '0.95rem' }}>Prix de Gros Fermes en MAD</div>
+              <div style={{ fontSize: '0.82rem', color: '#9cb5a5' }}>Facturation conforme & sans intermédiaires</div>
             </div>
           </div>
         </div>

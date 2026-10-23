@@ -170,16 +170,16 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectCategory
       </section>
 
       {/* 4. Avantages CHR (Why Pont Agricole) */}
-      <section id="advantages" style={{ backgroundColor: 'var(--primary-50)', padding: '5rem 0', borderTop: '1px solid var(--border-light)', borderBottom: '1px solid var(--border-light)' }}>
+      <section id="advantages" style={{ backgroundColor: '#ffffff', padding: '5rem 0', borderTop: '1px solid var(--border-light)', borderBottom: '1px solid var(--border-light)' }}>
         <div className="container">
           <div style={{ textAlign: 'center', maxWidth: '680px', margin: '0 auto 3.5rem' }}>
             <span className="badge badge-brand" style={{ marginBottom: '0.75rem' }}>
-              Pourquoi Nous Choisir
+              Standard D'Excellence CHR
             </span>
-            <h2 style={{ fontSize: 'clamp(1.7rem, 3vw, 2.3rem)', color: 'var(--primary-900)', marginBottom: '0.85rem' }}>
+            <h2 style={{ fontSize: 'clamp(1.7rem, 3vw, 2.3rem)', color: 'var(--primary-950)', marginBottom: '0.85rem' }}>
               Conçu pour les Exigences de la Restauration
             </h2>
-            <p style={{ color: 'var(--text-muted)', fontSize: '1rem' }}>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.98rem', lineHeight: 1.6 }}>
               Gagnez du temps sur vos achats, sécurisez votre rentabilité et garantissez à vos clients des assiettes de premier choix.
             </p>
           </div>
@@ -188,45 +188,45 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectCategory
             style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-              gap: '2rem',
+              gap: '1.5rem',
             }}
           >
-            <div className="card" style={{ padding: '2rem', backgroundColor: '#ffffff' }}>
-              <div style={{ width: '52px', height: '52px', borderRadius: '12px', backgroundColor: 'var(--primary-100)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary-700)', marginBottom: '1.25rem' }}>
-                <Clock size={26} />
+            <div className="card" style={{ padding: '2rem 1.75rem', backgroundColor: 'var(--bg-main)', border: '1px solid var(--border-light)' }}>
+              <div style={{ width: '42px', height: '42px', borderRadius: 'var(--radius-xs)', backgroundColor: '#ffffff', border: '1px solid var(--border-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary-700)', marginBottom: '1.25rem' }}>
+                <Clock size={20} />
               </div>
-              <h3 style={{ fontSize: '1.15rem', marginBottom: '0.6rem' }}>Livraisons Ultra-Matinales</h3>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', lineHeight: 1.55 }}>
+              <h3 style={{ fontSize: '1.1rem', marginBottom: '0.5rem', color: 'var(--primary-900)' }}>Livraisons Ultra-Matinales</h3>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', lineHeight: 1.6 }}>
                 Vos commandes sont livrées avant 09h00 du matin directement dans vos chambres froides, prêtes pour vos mises en place de midi.
               </p>
             </div>
 
-            <div className="card" style={{ padding: '2rem', backgroundColor: '#ffffff' }}>
-              <div style={{ width: '52px', height: '52px', borderRadius: '12px', backgroundColor: 'var(--amber-100)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--amber-600)', marginBottom: '1.25rem' }}>
-                <TrendingUp size={26} />
+            <div className="card" style={{ padding: '2rem 1.75rem', backgroundColor: 'var(--bg-main)', border: '1px solid var(--border-light)' }}>
+              <div style={{ width: '42px', height: '42px', borderRadius: 'var(--radius-xs)', backgroundColor: '#ffffff', border: '1px solid var(--border-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--amber-600)', marginBottom: '1.25rem' }}>
+                <TrendingUp size={20} />
               </div>
-              <h3 style={{ fontSize: '1.15rem', marginBottom: '0.6rem' }}>Tarifs de Gros Stables en MAD</h3>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', lineHeight: 1.55 }}>
+              <h3 style={{ fontSize: '1.1rem', marginBottom: '0.5rem', color: 'var(--primary-900)' }}>Tarifs de Gros Stables en MAD</h3>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', lineHeight: 1.6 }}>
                 Prix négociés en amont avec les producteurs pour vous prémunir de la volatilité des cours du marché de gros.
               </p>
             </div>
 
-            <div className="card" style={{ padding: '2rem', backgroundColor: '#ffffff' }}>
-              <div style={{ width: '52px', height: '52px', borderRadius: '12px', backgroundColor: 'var(--primary-100)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary-700)', marginBottom: '1.25rem' }}>
-                <Award size={26} />
+            <div className="card" style={{ padding: '2rem 1.75rem', backgroundColor: 'var(--bg-main)', border: '1px solid var(--border-light)' }}>
+              <div style={{ width: '42px', height: '42px', borderRadius: 'var(--radius-xs)', backgroundColor: '#ffffff', border: '1px solid var(--border-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary-700)', marginBottom: '1.25rem' }}>
+                <Award size={20} />
               </div>
-              <h3 style={{ fontSize: '1.15rem', marginBottom: '0.6rem' }}>Calibrage et Tri Rigoureux</h3>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', lineHeight: 1.55 }}>
+              <h3 style={{ fontSize: '1.1rem', marginBottom: '0.5rem', color: 'var(--primary-900)' }}>Calibrage et Tri Rigoureux</h3>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', lineHeight: 1.6 }}>
                 Zéro perte en cuisine. Chaque lot est minutieusement vérifié pour respecter vos calibres de découpe, friture ou dressage.
               </p>
             </div>
 
-            <div className="card" style={{ padding: '2rem', backgroundColor: '#ffffff' }}>
-              <div style={{ width: '52px', height: '52px', borderRadius: '12px', backgroundColor: 'var(--amber-100)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--amber-600)', marginBottom: '1.25rem' }}>
-                <ShieldCheck size={26} />
+            <div className="card" style={{ padding: '2rem 1.75rem', backgroundColor: 'var(--bg-main)', border: '1px solid var(--border-light)' }}>
+              <div style={{ width: '42px', height: '42px', borderRadius: 'var(--radius-xs)', backgroundColor: '#ffffff', border: '1px solid var(--border-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--amber-600)', marginBottom: '1.25rem' }}>
+                <ShieldCheck size={20} />
               </div>
-              <h3 style={{ fontSize: '1.15rem', marginBottom: '0.6rem' }}>Facturation Conforme & Rapprochée</h3>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', lineHeight: 1.55 }}>
+              <h3 style={{ fontSize: '1.1rem', marginBottom: '0.5rem', color: 'var(--primary-900)' }}>Facturation Conforme & Rapprochée</h3>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', lineHeight: 1.6 }}>
                 Bons de livraison clairs, facturation mensuelle ou hebdomadaire avec relevés d'achats précis pour votre comptabilité.
               </p>
             </div>
@@ -235,13 +235,13 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectCategory
       </section>
 
       {/* 5. Destiné aux CHR (Cafés, Restaurants, Hôtels) */}
-      <section style={{ padding: '5rem 0' }}>
+      <section style={{ padding: '5rem 0', backgroundColor: 'var(--bg-main)' }}>
         <div className="container">
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-              gap: '2.5rem',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+              gap: '3rem',
               alignItems: 'center',
             }}
           >
@@ -249,57 +249,59 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectCategory
               <span className="badge badge-brand" style={{ marginBottom: '0.75rem' }}>
                 Solutions Sur Mesure
               </span>
-              <h2 style={{ fontSize: 'clamp(1.7rem, 3vw, 2.3rem)', color: 'var(--primary-900)', marginBottom: '1rem' }}>
+              <h2 style={{ fontSize: 'clamp(1.7rem, 3vw, 2.3rem)', color: 'var(--primary-950)', marginBottom: '1rem' }}>
                 Cafés, Restaurants, Hôtels & Traiteurs
               </h2>
-              <p style={{ color: 'var(--text-muted)', fontSize: '1rem', lineHeight: 1.6, marginBottom: '1.75rem' }}>
-                Que vous soyez une brasserie casablancaise, un riad à Marrakech ou un grand complexe hôtelier à Agadir ou Tanger, Pont Agricole adapte ses volumes et ses fréquences de livraison à votre rythme.
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.98rem', lineHeight: 1.65, marginBottom: '2rem' }}>
+                Que vous soyez une brasserie casablancaise, un riad à Marrakech ou un complexe hôtelier à Agadir ou Tanger, Pont Agricole adapte ses volumes et ses fréquences de livraison à votre rythme.
               </p>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
-                  <div style={{ padding: '0.4rem', borderRadius: '8px', backgroundColor: 'var(--primary-100)', color: 'var(--primary-700)' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', marginBottom: '2.25rem' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.85rem' }}>
+                  <div style={{ width: '38px', height: '38px', borderRadius: 'var(--radius-xs)', backgroundColor: '#ffffff', border: '1px solid var(--border-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary-700)', flexShrink: 0 }}>
                     <Utensils size={18} />
                   </div>
                   <div>
-                    <strong style={{ display: 'block', color: 'var(--primary-900)', fontSize: '0.95rem' }}>Restaurants Gastronomiques & Brasseries</strong>
-                    <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Herbes fraîches cueillies le matin même, primeurs et légumes calibrés au millimètre.</span>
+                    <strong style={{ display: 'block', color: 'var(--primary-900)', fontSize: '0.95rem', marginBottom: '0.15rem' }}>Restaurants Gastronomiques & Brasseries</strong>
+                    <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>Herbes fraîches cueillies le matin même, primeurs et légumes calibrés au millimètre.</span>
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
-                  <div style={{ padding: '0.4rem', borderRadius: '8px', backgroundColor: 'var(--primary-100)', color: 'var(--primary-700)' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.85rem' }}>
+                  <div style={{ width: '38px', height: '38px', borderRadius: 'var(--radius-xs)', backgroundColor: '#ffffff', border: '1px solid var(--border-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary-700)', flexShrink: 0 }}>
                     <Hotel size={18} />
                   </div>
                   <div>
-                    <strong style={{ display: 'block', color: 'var(--primary-900)', fontSize: '0.95rem' }}>Hôtels & Resorts</strong>
-                    <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Volumes importants pour buffets et petits-déjeuners (oranges à jus, bananes, pastèques en saison).</span>
+                    <strong style={{ display: 'block', color: 'var(--primary-900)', fontSize: '0.95rem', marginBottom: '0.15rem' }}>Hôtels & Resorts</strong>
+                    <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>Volumes importants pour buffets et petits-déjeuners (oranges à jus, bananes, pastèques en saison).</span>
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
-                  <div style={{ padding: '0.4rem', borderRadius: '8px', backgroundColor: 'var(--primary-100)', color: 'var(--primary-700)' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.85rem' }}>
+                  <div style={{ width: '38px', height: '38px', borderRadius: 'var(--radius-xs)', backgroundColor: '#ffffff', border: '1px solid var(--border-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary-700)', flexShrink: 0 }}>
                     <Coffee size={18} />
                   </div>
                   <div>
-                    <strong style={{ display: 'block', color: 'var(--primary-900)', fontSize: '0.95rem' }}>Cafés & Salons de Thé</strong>
-                    <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Menthe fraîche marocaine sélectionnée, citrons juteux et fruits pour jus pressés minute.</span>
+                    <strong style={{ display: 'block', color: 'var(--primary-900)', fontSize: '0.95rem', marginBottom: '0.15rem' }}>Cafés & Salons de Thé</strong>
+                    <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>Menthe fraîche marocaine sélectionnée, citrons juteux et fruits pour jus pressés minute.</span>
                   </div>
                 </div>
               </div>
 
               <button onClick={() => onNavigate('auth')} className="btn btn-primary">
                 <span>Ouvrir un compte professionnel</span>
-                <ArrowRight size={18} />
+                <ArrowRight size={17} />
               </button>
             </div>
 
             <div>
-              <img
-                src="https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=900&q=80"
-                alt="Cuisine de restaurant professionnel"
-                style={{ width: '100%', height: '420px', borderRadius: 'var(--radius-xl)', objectFit: 'cover', boxShadow: 'var(--shadow-lg)' }}
-              />
+              <div style={{ border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)', overflow: 'hidden', boxShadow: 'var(--shadow-md)', backgroundColor: '#ffffff' }}>
+                <img
+                  src="https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=900&q=80"
+                  alt="Cuisine de restaurant professionnel"
+                  style={{ width: '100%', height: '420px', objectFit: 'cover', display: 'block' }}
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -310,13 +312,13 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectCategory
         <div className="container">
           <div style={{ textAlign: 'center', maxWidth: '640px', margin: '0 auto 3.5rem' }}>
             <span className="badge badge-brand" style={{ marginBottom: '0.75rem' }}>
-              Fonctionnement
+              Protocole Logistique
             </span>
-            <h2 style={{ fontSize: 'clamp(1.7rem, 3vw, 2.3rem)', color: 'var(--primary-900)', marginBottom: '0.85rem' }}>
+            <h2 style={{ fontSize: 'clamp(1.7rem, 3vw, 2.3rem)', color: 'var(--primary-950)', marginBottom: '0.85rem' }}>
               Comment commander chez Pont Agricole ?
             </h2>
-            <p style={{ color: 'var(--text-muted)', fontSize: '1rem' }}>
-              Trois étapes simples pour fluidifier vos approvisionnements quotidiens.
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.98rem', lineHeight: 1.6 }}>
+              Trois étapes rigoureuses pour fluidifier vos approvisionnements quotidiens.
             </p>
           </div>
 
@@ -324,78 +326,84 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectCategory
             style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-              gap: '2rem',
+              gap: '1.75rem',
             }}
           >
-            <div style={{ textAlign: 'center', padding: '1.5rem' }}>
+            <div className="card" style={{ padding: '2rem 1.75rem', backgroundColor: 'var(--bg-main)', border: '1px solid var(--border-light)' }}>
               <div
                 style={{
-                  width: '64px',
-                  height: '64px',
-                  borderRadius: '50%',
-                  backgroundColor: 'var(--primary-100)',
+                  width: '38px',
+                  height: '38px',
+                  borderRadius: 'var(--radius-xs)',
+                  backgroundColor: '#ffffff',
+                  border: '1px solid var(--border-light)',
                   color: 'var(--primary-800)',
-                  fontSize: '1.5rem',
+                  fontSize: '0.88rem',
                   fontWeight: 800,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  margin: '0 auto 1.25rem',
+                  marginBottom: '1.25rem',
+                  letterSpacing: '0.04em',
                 }}
               >
-                1
+                01
               </div>
-              <h3 style={{ fontSize: '1.15rem', marginBottom: '0.5rem' }}>Inscription Pro</h3>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem' }}>
-                Créez votre compte en renseignant le nom de votre établissement et votre adresse de livraison.
+              <h3 style={{ fontSize: '1.1rem', marginBottom: '0.5rem', color: 'var(--primary-900)' }}>Inscription Professionnelle</h3>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', lineHeight: 1.6 }}>
+                Renseignez la raison sociale de votre établissement, votre numéro de téléphone et votre adresse de livraison exacte.
               </p>
             </div>
 
-            <div style={{ textAlign: 'center', padding: '1.5rem' }}>
+            <div className="card" style={{ padding: '2rem 1.75rem', backgroundColor: 'var(--bg-main)', border: '1px solid var(--border-light)' }}>
               <div
                 style={{
-                  width: '64px',
-                  height: '64px',
-                  borderRadius: '50%',
-                  backgroundColor: 'var(--amber-100)',
-                  color: 'var(--amber-600)',
-                  fontSize: '1.5rem',
+                  width: '38px',
+                  height: '38px',
+                  borderRadius: 'var(--radius-xs)',
+                  backgroundColor: '#ffffff',
+                  border: '1px solid var(--border-light)',
+                  color: 'var(--amber-700)',
+                  fontSize: '0.88rem',
                   fontWeight: 800,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  margin: '0 auto 1.25rem',
+                  marginBottom: '1.25rem',
+                  letterSpacing: '0.04em',
                 }}
               >
-                2
+                02
               </div>
-              <h3 style={{ fontSize: '1.15rem', marginBottom: '0.5rem' }}>Commande Avant 21h00</h3>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem' }}>
-                Composez votre panier en quelques clics : caisses, cartons, bottes ou kilogrammes.
+              <h3 style={{ fontSize: '1.1rem', marginBottom: '0.5rem', color: 'var(--primary-900)' }}>Commande avant 21h00</h3>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', lineHeight: 1.6 }}>
+                Composez votre panier en quelques clics : cagettes calibrées, cartons, caisses, bottes ou kilogrammes selon vos recettes.
               </p>
             </div>
 
-            <div style={{ textAlign: 'center', padding: '1.5rem' }}>
+            <div className="card" style={{ padding: '2rem 1.75rem', backgroundColor: 'var(--bg-main)', border: '1px solid var(--border-light)' }}>
               <div
                 style={{
-                  width: '64px',
-                  height: '64px',
-                  borderRadius: '50%',
-                  backgroundColor: 'var(--primary-100)',
+                  width: '38px',
+                  height: '38px',
+                  borderRadius: 'var(--radius-xs)',
+                  backgroundColor: '#ffffff',
+                  border: '1px solid var(--border-light)',
                   color: 'var(--primary-800)',
-                  fontSize: '1.5rem',
+                  fontSize: '0.88rem',
                   fontWeight: 800,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  margin: '0 auto 1.25rem',
+                  marginBottom: '1.25rem',
+                  letterSpacing: '0.04em',
                 }}
               >
-                3
+                03
               </div>
-              <h3 style={{ fontSize: '1.15rem', marginBottom: '0.5rem' }}>Livraison Dès 07h00</h3>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem' }}>
-                Nos chauffeurs-livreurs déposent vos cagettes directement dans vos cuisines avant l'arrivée de votre brigade.
+              <h3 style={{ fontSize: '1.1rem', marginBottom: '0.5rem', color: 'var(--primary-900)' }}>Livraison Dès 07h00</h3>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', lineHeight: 1.6 }}>
+                Nos chauffeurs-livreurs déposent vos cagettes directement dans vos cuisines avant l'arrivée de votre brigade de chefs.
               </p>
             </div>
           </div>
@@ -404,3 +412,4 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectCategory
     </div>
   );
 };
+

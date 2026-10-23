@@ -68,31 +68,31 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({ initialCategoryId, onO
       <div className="container">
         {/* Header & Title */}
         <div className="catalog-header">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
             <span className="badge badge-brand">Tarifs Professionnels B2B</span>
             <span
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '0.35rem',
-                backgroundColor: 'var(--emerald-50)',
+                backgroundColor: 'var(--primary-50)',
                 color: 'var(--primary-800)',
-                border: '1px solid var(--emerald-200)',
-                borderRadius: '20px',
-                padding: '0.2rem 0.65rem',
-                fontSize: '0.74rem',
+                border: '1px solid var(--primary-100)',
+                borderRadius: 'var(--radius-xs)',
+                padding: '0.2rem 0.6rem',
+                fontSize: '0.72rem',
                 fontWeight: 700,
               }}
             >
-              <span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#22c55e', display: 'inline-block' }} />
+              <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--primary-600)', display: 'inline-block' }} />
               Cours du jour actualisés
             </span>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Prix en Dirham Marocain (MAD)</span>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Facturation en Dirham Marocain (MAD)</span>
           </div>
-          <h1 style={{ fontSize: 'clamp(1.4rem, 3.2vw, 2.3rem)', color: 'var(--primary-900)' }}>
+          <h1 style={{ fontSize: 'clamp(1.6rem, 3.2vw, 2.3rem)', color: 'var(--primary-950)', marginBottom: '0.4rem' }}>
             Catalogue Produits Frais
           </h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', maxWidth: '680px' }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.92rem', maxWidth: '680px' }}>
             Approvisionnement direct pour Cafés, Restaurants et Hôtels au Maroc.
           </p>
         </div>
