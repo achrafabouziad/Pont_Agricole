@@ -1250,6 +1250,26 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
                         <td>
                           <div style={{ fontWeight: 600, color: 'var(--primary-900)' }}>{biz.city}</div>
                           <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{biz.deliveryAddress}</div>
+                          {(biz.googleMapsUrl || biz.deliveryAddress.includes('google.com/maps')) && (
+                            <a
+                              href={biz.googleMapsUrl || (biz.deliveryAddress.match(/https:\/\/www\.google\.com\/maps[^\s)]+/)?.[0] || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${biz.deliveryAddress}, ${biz.city}`)}`)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.25rem',
+                                fontSize: '0.75rem',
+                                color: '#166534',
+                                fontWeight: 700,
+                                marginTop: '0.3rem',
+                                textDecoration: 'underline',
+                              }}
+                              title="Ouvrir la position dans Google Maps"
+                            >
+                              📍 Itinéraire Google Maps ↗
+                            </a>
+                          )}
                         </td>
                         <td>
                           {biz.approvalStatus === 'approved' ? (

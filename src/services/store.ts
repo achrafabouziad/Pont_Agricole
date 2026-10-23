@@ -114,11 +114,16 @@ class StoreService {
     return this.currentBusiness;
   }
 
-  public async login(email: string, pass: string): Promise<{ success: boolean; error?: string }> {
-    const cleanEmail = email.includes('@') ? email.trim().toLowerCase() : `${email.trim().toLowerCase()}@gmail.com`;
-    const isAdminAccount = cleanEmail === 'achrafabouziad@gmail.com';
+  public async login(identifier: string, pass: string): Promise<{ success: boolean; error?: string }> {
+    const rawInput = identifier.trim();
+    const cleanLower = rawInput.toLowerCase();
 
-    // 1. COMPTE ADMINISTRATEUR STRICT (Seul achrafabouziad@gmail.com avec mot de passe Achrafgt6313 est Admin)
+    // 1. COMPTE ADMINISTRATEUR STRICT (achrafabouziad@gmail.com, achrafabouziad, achraf)
+    const isAdminAccount =
+      cleanLower === 'achrafabouziad@gmail.com' ||
+      cleanLower === 'achrafabouziad' ||
+      cleanLower === 'achraf';
+
     if (isAdminAccount) {
       if (pass !== 'Achrafgt6313') {
         return {
@@ -131,7 +136,7 @@ class StoreService {
       if (isSupabaseConfigured && supabase) {
         try {
           const { data } = await supabase.auth.signInWithPassword({
-            email: cleanEmail,
+            email: 'achrafabouziad@gmail.com',
             password: pass,
           });
           if (data?.user) {
@@ -168,42 +173,47 @@ class StoreService {
       return { success: true };
     }
 
-    // 2. TOUS LES AUTRES UTILISATEURS (Clients CHR inscrits : cafés, restaurants, hôtels)
-    // Authentification stricte via Supabase avec mot de passe personnel
+    // 2. TOUS LES AUTRES UTILISATEURS (Connexion universelle : Email, N° Téléphone mondial, ou Identifiant / Nom)
+    const digits = rawInput.replace(/[^0-9]/g, '');
+    const slug = cleanLower.replace(/[^a-z0-9]/g, '');
+    const allBusinesses = getStored<Business[]>(KEY_BUSINESSES, []);
+
+    // Chercher dans les établissements enregistrés pour résoudre l'email ou le compte
+    const matchedBiz = allBusinesses.find((b) => {
+      const bDigits = (b.phone || '').replace(/[^0-9]/g, '');
+      const bContact = (b.contactName || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      const bName = (b.businessName || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      const bUser = (b.username || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      const bEmail = (b.email || '').toLowerCase();
+
+      if (cleanLower.includes('@') && bEmail === cleanLower) return true;
+      if (digits.length >= 7 && (bDigits.endsWith(digits) || digits.endsWith(bDigits))) return true;
+      if (slug.length >= 3 && (bContact.includes(slug) || slug.includes(bContact) || bUser === slug || bName.includes(slug))) return true;
+      return false;
+    });
+
+    let targetEmail = cleanLower.includes('@') ? cleanLower : matchedBiz?.email;
+    if (!targetEmail) {
+      if (digits.length >= 7) targetEmail = `${digits}@pontagricole.client`;
+      else targetEmail = `${slug}@pontagricole.client`;
+    }
+
+    // Authentification Supabase
     if (isSupabaseConfigured && supabase) {
       try {
         const { data, error } = await supabase.auth.signInWithPassword({
-          email: cleanEmail,
+          email: targetEmail,
           password: pass,
         });
 
-        if (error) {
-          const msg = error.message.toLowerCase();
-          if (msg.includes('invalid login credentials') || msg.includes('invalid grant')) {
-            return {
-              success: false,
-              error: 'Mot de passe incorrect ou compte introuvable. Veuillez vérifier vos identifiants ou créer un compte.',
-            };
-          }
-          if (msg.includes('email not confirmed')) {
-            return {
-              success: false,
-              error: 'Compte en attente de confirmation. Veuillez vérifier votre boîte email ou contacter le support.',
-            };
-          }
-          return { success: false, error: error.message };
-        }
-
-        if (data.user) {
-          // Récupérer le profil et l'établissement
+        if (!error && data?.user) {
           const { data: prof } = await supabase.from('profiles').select('*').eq('id', data.user.id).single();
           const { data: biz } = await supabase.from('businesses').select('*').eq('owner_id', data.user.id).single();
 
-          // Tous les autres utilisateurs ont strictement le rôle 'customer' (Client Pro)
           this.currentUser = {
             id: data.user.id,
-            fullName: prof?.full_name || data.user.user_metadata?.full_name || 'Client Professionnel',
-            phone: prof?.phone || data.user.user_metadata?.phone || '',
+            fullName: prof?.full_name || data.user.user_metadata?.full_name || matchedBiz?.contactName || 'Client Professionnel',
+            phone: prof?.phone || data.user.user_metadata?.phone || matchedBiz?.phone || '',
             role: 'customer',
             createdAt: data.user.created_at,
           };
@@ -218,7 +228,12 @@ class StoreService {
               deliveryAddress: biz.delivery_address,
               approvalStatus: 'approved',
               createdAt: biz.created_at,
+              contactName: this.currentUser.fullName,
+              phone: this.currentUser.phone,
+              email: targetEmail,
             };
+          } else if (matchedBiz) {
+            this.currentBusiness = matchedBiz;
           } else {
             this.currentBusiness = {
               id: `biz-${data.user.id}`,
@@ -229,6 +244,9 @@ class StoreService {
               deliveryAddress: data.user.user_metadata?.delivery_address || '',
               approvalStatus: 'approved',
               createdAt: new Date().toISOString(),
+              contactName: this.currentUser.fullName,
+              phone: this.currentUser.phone,
+              email: targetEmail,
             };
           }
 
@@ -237,23 +255,21 @@ class StoreService {
           this.notify();
           return { success: true };
         }
-      } catch (err: any) {
-        return { success: false, error: err.message || 'Erreur lors de la connexion.' };
+      } catch {
+        // Fallback local ci-dessous
       }
     }
 
-    // Fallback local pour clients inscrits localement
-    const allBusinesses = getStored<Business[]>(KEY_BUSINESSES, []);
-    const foundBiz = allBusinesses.find((b) => b.ownerId === cleanEmail || b.businessName.toLowerCase() === cleanEmail);
-    if (foundBiz) {
+    // Fallback local pour utilisateurs enregistrés localement
+    if (matchedBiz) {
       this.currentUser = {
-        id: foundBiz.ownerId,
-        fullName: foundBiz.businessName,
-        phone: '+212 6 00 00 00 00',
+        id: matchedBiz.ownerId,
+        fullName: matchedBiz.contactName || matchedBiz.businessName,
+        phone: matchedBiz.phone || '+212 6 00 00 00 00',
         role: 'customer',
-        createdAt: new Date().toISOString(),
+        createdAt: matchedBiz.createdAt || new Date().toISOString(),
       };
-      this.currentBusiness = foundBiz;
+      this.currentBusiness = matchedBiz;
       setStored(KEY_USER, this.currentUser);
       setStored(KEY_BUSINESS, this.currentBusiness);
       this.notify();
@@ -262,24 +278,29 @@ class StoreService {
 
     return {
       success: false,
-      error: 'Compte introuvable. Veuillez vous inscrire via l’onglet Inscription B2B.',
+      error: 'Identifiant ou mot de passe incorrect. Vous pouvez vous connecter avec votre N° de téléphone, votre nom d’utilisateur (ID) ou votre email.',
     };
   }
 
   public async register(params: {
     fullName: string;
     phone: string;
-    email: string;
+    email?: string;
     password: string;
     businessName: string;
     businessType: BusinessType;
     city: string;
     deliveryAddress: string;
+    googleMapsUrl?: string;
   }): Promise<{ success: boolean; error?: string }> {
+    const cleanDigits = params.phone.replace(/[^0-9]/g, '');
+    const nameSlug = params.fullName.toLowerCase().trim().replace(/[^a-z0-9]/g, '');
+    const finalEmail = params.email?.trim() || `${cleanDigits || nameSlug || Date.now()}@pontagricole.client`;
+
     if (isSupabaseConfigured && supabase) {
       try {
         const { data, error } = await supabase.auth.signUp({
-          email: params.email,
+          email: finalEmail,
           password: params.password,
           options: {
             data: {
@@ -289,6 +310,8 @@ class StoreService {
               business_type: params.businessType,
               city: params.city,
               delivery_address: params.deliveryAddress,
+              google_maps_url: params.googleMapsUrl,
+              username: nameSlug,
             },
           },
         });
@@ -312,12 +335,14 @@ class StoreService {
             createdAt: new Date().toISOString(),
             contactName: params.fullName,
             phone: params.phone,
-            email: params.email,
+            email: finalEmail,
+            googleMapsUrl: params.googleMapsUrl,
+            username: nameSlug,
           };
 
           // Sauvegarder dans la liste pour consultation admin
           const allBiz = getStored<Business[]>(KEY_BUSINESSES, []);
-          const existingIdx = allBiz.findIndex(b => b.ownerId === data.user.id);
+          const existingIdx = allBiz.findIndex((b) => b.ownerId === data.user.id);
           if (existingIdx >= 0) allBiz[existingIdx] = this.currentBusiness;
           else allBiz.unshift(this.currentBusiness);
           setStored(KEY_BUSINESSES, allBiz);
@@ -353,7 +378,9 @@ class StoreService {
       createdAt: new Date().toISOString(),
       contactName: params.fullName,
       phone: params.phone,
-      email: params.email,
+      email: finalEmail,
+      googleMapsUrl: params.googleMapsUrl,
+      username: nameSlug,
     };
 
     // Save in all businesses list for admin

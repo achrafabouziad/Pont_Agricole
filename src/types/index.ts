@@ -34,6 +34,8 @@ export interface Business {
   contactName?: string;
   phone?: string;
   email?: string;
+  googleMapsUrl?: string;
+  username?: string;
 }
 
 export interface Category {
