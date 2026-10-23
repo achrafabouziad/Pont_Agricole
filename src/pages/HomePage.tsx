@@ -37,25 +37,26 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectCategory
       />
 
       {/* 2. Categories Showcase */}
-      <section style={{ padding: '4.5rem 0 2rem' }}>
+      <section className="home-section" style={{ padding: '4.5rem 0 2rem' }}>
         <div className="container">
-          <div style={{ textAlign: 'center', maxWidth: '640px', margin: '0 auto 3rem' }}>
+          <div className="home-section-header" style={{ textAlign: 'center', maxWidth: '640px', margin: '0 auto 3rem' }}>
             <span className="badge badge-brand" style={{ marginBottom: '0.75rem' }}>
               Nos Filières Maraîchères
             </span>
-            <h2 style={{ fontSize: 'clamp(1.7rem, 3vw, 2.3rem)', color: 'var(--primary-900)', marginBottom: '0.85rem' }}>
+            <h2 style={{ fontSize: 'clamp(1.5rem, 3vw, 2.3rem)', color: 'var(--primary-900)', marginBottom: '0.65rem' }}>
               Une gamme complète pour votre établissement
             </h2>
-            <p style={{ color: 'var(--text-muted)', fontSize: '1rem' }}>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem' }}>
               Des produits calibrés, cueillis à point et livrés en direct de nos producteurs partenaires à travers le Maroc.
             </p>
           </div>
 
           <div
+            className="home-categories-grid"
             style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-              gap: '1.5rem',
+              gap: '1.25rem',
             }}
           >
             {categories.map((cat) => (
@@ -65,7 +66,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectCategory
                   onSelectCategory(cat.id);
                   onNavigate('catalog');
                 }}
-                className="card"
+                className="card category-card-home"
                 style={{
                   cursor: 'pointer',
                   position: 'relative',
@@ -100,13 +101,14 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectCategory
                 />
 
                 <div style={{ position: 'relative', zIndex: 2 }}>
-                  <h3 style={{ color: '#ffffff', fontSize: '1.35rem', marginBottom: '0.35rem' }}>
+                  <h3 className="home-cat-title" style={{ color: '#ffffff', fontSize: '1.35rem', marginBottom: '0.35rem' }}>
                     {cat.name}
                   </h3>
-                  <p style={{ color: '#d8e5dd', fontSize: '0.82rem', marginBottom: '0.85rem', lineHeight: 1.4 }}>
+                  <p className="home-cat-desc" style={{ color: '#d8e5dd', fontSize: '0.82rem', marginBottom: '0.85rem', lineHeight: 1.4 }}>
                     {cat.description}
                   </p>
                   <span
+                    className="home-cat-link"
                     style={{
                       display: 'inline-flex',
                       alignItems: 'center',

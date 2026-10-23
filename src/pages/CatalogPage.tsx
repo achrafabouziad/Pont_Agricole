@@ -64,99 +64,92 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({ initialCategoryId, onO
   });
 
   return (
-    <div style={{ padding: '2.5rem 0 5rem' }}>
+    <div className="catalog-page-wrapper">
       <div className="container">
         {/* Header & Title */}
-        <div style={{ marginBottom: '2.5rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', marginBottom: '0.4rem', flexWrap: 'wrap' }}>
+        <div className="catalog-header">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem', flexWrap: 'wrap' }}>
             <span className="badge badge-brand">Tarifs Professionnels B2B</span>
             <span
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '0.4rem',
+                gap: '0.35rem',
                 backgroundColor: 'var(--emerald-50)',
                 color: 'var(--primary-800)',
                 border: '1px solid var(--emerald-200)',
                 borderRadius: '20px',
-                padding: '0.25rem 0.75rem',
-                fontSize: '0.78rem',
+                padding: '0.2rem 0.65rem',
+                fontSize: '0.74rem',
                 fontWeight: 700,
               }}
             >
-              <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#22c55e', display: 'inline-block' }} />
-              Cours du jour actualisés quotidiennement
+              <span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#22c55e', display: 'inline-block' }} />
+              Cours du jour actualisés
             </span>
-            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Prix en Dirham Marocain (MAD)</span>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Prix en Dirham Marocain (MAD)</span>
           </div>
-          <h1 style={{ fontSize: 'clamp(1.8rem, 3.2vw, 2.5rem)', color: 'var(--primary-900)' }}>
+          <h1 style={{ fontSize: 'clamp(1.4rem, 3.2vw, 2.3rem)', color: 'var(--primary-900)' }}>
             Catalogue Produits Frais
           </h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: '1rem', maxWidth: '680px' }}>
-            Approvisionnement direct pour Cafés, Restaurants et Hôtels. Prix dégressifs et calibrages adaptés aux brigades professionnelles.
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', maxWidth: '680px' }}>
+            Approvisionnement direct pour Cafés, Restaurants et Hôtels au Maroc.
           </p>
         </div>
 
         {/* Filters and Search Bar Container */}
-        <div
-          style={{
-            backgroundColor: '#ffffff',
-            borderRadius: 'var(--radius-lg)',
-            border: '1px solid var(--border-light)',
-            padding: '1.25rem',
-            marginBottom: '2.5rem',
-            boxShadow: 'var(--shadow-sm)',
-          }}
-        >
+        <div className="card catalog-filter-card">
           {/* Top Row: Search and Quick Toggles */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center', marginBottom: '1.25rem' }}>
+          <div className="catalog-filter-top">
             {/* Search Input */}
-            <div style={{ position: 'relative', flex: '1 1 280px' }}>
+            <div className="catalog-search-wrap">
               <Search
-                size={18}
+                size={17}
                 style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-light)' }}
               />
               <input
                 type="text"
                 className="form-input"
-                placeholder="Rechercher tomates, menthe, citrons, pommes de terre..."
+                placeholder="Rechercher tomates, menthe, citrons..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                style={{ paddingLeft: '2.4rem' }}
+                style={{ paddingLeft: '2.3rem' }}
               />
             </div>
 
-            {/* Unit Filter */}
-            <div style={{ minWidth: '150px' }}>
-              <select
-                className="form-select"
-                value={selectedUnit}
-                onChange={(e) => setSelectedUnit(e.target.value)}
-                style={{ padding: '0.72rem 1rem' }}
-              >
-                <option value="all">Toutes unités</option>
-                <option value="caisse">Caisse</option>
-                <option value="carton">Carton</option>
-                <option value="kg">Au Kilogramme</option>
-                <option value="botte">Botte (Herbes)</option>
-                <option value="piece">Pièce / Plateau</option>
-              </select>
-            </div>
+            {/* Quick row for unit & in-stock */}
+            <div className="catalog-filter-subrow">
+              <div style={{ flex: 1, minWidth: '120px' }}>
+                <select
+                  className="form-select"
+                  value={selectedUnit}
+                  onChange={(e) => setSelectedUnit(e.target.value)}
+                  style={{ padding: '0.55rem 0.75rem', fontSize: '0.85rem' }}
+                >
+                  <option value="all">Toutes unités</option>
+                  <option value="caisse">Caisse</option>
+                  <option value="carton">Carton</option>
+                  <option value="kg">Au Kilogramme</option>
+                  <option value="botte">Botte (Herbes)</option>
+                  <option value="piece">Pièce / Plateau</option>
+                </select>
+              </div>
 
-            {/* In stock only toggle */}
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.9rem', cursor: 'pointer', userSelect: 'none' }}>
-              <input
-                type="checkbox"
-                checked={onlyAvailable}
-                onChange={(e) => setOnlyAvailable(e.target.checked)}
-                style={{ width: '16px', height: '16px', accentColor: 'var(--primary-600)' }}
-              />
-              <span>En stock uniquement</span>
-            </label>
+              {/* In stock only toggle */}
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.82rem', cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
+                <input
+                  type="checkbox"
+                  checked={onlyAvailable}
+                  onChange={(e) => setOnlyAvailable(e.target.checked)}
+                  style={{ width: '15px', height: '15px', accentColor: 'var(--primary-600)' }}
+                />
+                <span>En stock</span>
+              </label>
+            </div>
           </div>
 
           {/* Category Tabs */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', borderTop: '1px solid var(--border-subtle)', paddingTop: '1rem' }}>
+          <div className="mobile-scroll-pills" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.45rem', borderTop: '1px solid var(--border-subtle)', paddingTop: '0.85rem' }}>
             <button
               onClick={() => setSelectedCategory('all')}
               className={`btn btn-sm ${selectedCategory === 'all' ? 'btn-primary' : 'btn-secondary'}`}

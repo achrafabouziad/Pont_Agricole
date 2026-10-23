@@ -203,17 +203,17 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
   };
 
   return (
-    <div style={{ padding: '3.5rem 0 6rem', minHeight: '80vh', display: 'flex', alignItems: 'center' }}>
-      <div className="container" style={{ maxWidth: '640px' }}>
+    <div className="auth-container-mobile" style={{ minHeight: '80vh', display: 'flex', alignItems: 'center' }}>
+      <div className="container" style={{ maxWidth: '580px', padding: '0 0.85rem' }}>
         {/* Card */}
-        <div className="card" style={{ padding: '2.5rem', backgroundColor: '#ffffff', boxShadow: 'var(--shadow-md)' }}>
+        <div className="card auth-card-mobile" style={{ backgroundColor: '#ffffff', boxShadow: 'var(--shadow-md)' }}>
           {/* Header */}
-          <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-            <img src="/logo.png" alt="Pont Agricole" style={{ width: '56px', height: '56px', objectFit: 'contain', margin: '0 auto 0.75rem' }} />
-            <h1 style={{ fontSize: '1.65rem', color: 'var(--primary-900)', marginBottom: '0.4rem' }}>
+          <div style={{ textAlign: 'center', marginBottom: '1.25rem' }}>
+            <img src="/logo.png" alt="Pont Agricole" style={{ width: '42px', height: '42px', objectFit: 'contain', margin: '0 auto 0.4rem' }} />
+            <h1 style={{ fontSize: '1.25rem', color: 'var(--primary-900)', marginBottom: '0.25rem' }}>
               {isLoginMode ? 'Espace Professionnel CHR' : 'Créer un Compte Professionnel'}
             </h1>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', lineHeight: 1.4 }}>
               {isLoginMode
                 ? 'Accédez à vos commandes, vos tarifs de gros et vos livraisons matinales.'
                 : 'Réservé aux cafés, restaurants, hôtels et traiteurs au Maroc.'}
@@ -221,24 +221,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
           </div>
 
           {/* Tab Switcher */}
-          <div style={{ display: 'flex', borderRadius: 'var(--radius-md)', backgroundColor: 'var(--bg-main)', padding: '0.35rem', marginBottom: '1.75rem' }}>
-            <button
-              onClick={() => {
-                setIsLoginMode(true);
-                setErrorMsg(null);
-              }}
-              style={{
-                flex: 1,
-                padding: '0.65rem',
-                borderRadius: 'var(--radius-sm)',
-                fontWeight: isLoginMode ? 700 : 500,
-                backgroundColor: isLoginMode ? '#ffffff' : 'transparent',
-                color: isLoginMode ? 'var(--primary-800)' : 'var(--text-muted)',
-                boxShadow: isLoginMode ? 'var(--shadow-sm)' : 'none',
-              }}
-            >
-              Connexion
-            </button>
+          <div style={{ display: 'flex', borderRadius: 'var(--radius-md)', backgroundColor: 'var(--bg-main)', padding: '0.25rem', marginBottom: '1.1rem' }}>
             <button
               onClick={() => {
                 setIsLoginMode(false);
@@ -246,15 +229,34 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
               }}
               style={{
                 flex: 1,
-                padding: '0.65rem',
+                padding: '0.5rem',
                 borderRadius: 'var(--radius-sm)',
                 fontWeight: !isLoginMode ? 700 : 500,
+                fontSize: '0.85rem',
                 backgroundColor: !isLoginMode ? '#ffffff' : 'transparent',
                 color: !isLoginMode ? 'var(--primary-800)' : 'var(--text-muted)',
                 boxShadow: !isLoginMode ? 'var(--shadow-sm)' : 'none',
               }}
             >
               Inscription B2B
+            </button>
+            <button
+              onClick={() => {
+                setIsLoginMode(true);
+                setErrorMsg(null);
+              }}
+              style={{
+                flex: 1,
+                padding: '0.5rem',
+                borderRadius: 'var(--radius-sm)',
+                fontWeight: isLoginMode ? 700 : 500,
+                fontSize: '0.85rem',
+                backgroundColor: isLoginMode ? '#ffffff' : 'transparent',
+                color: isLoginMode ? 'var(--primary-800)' : 'var(--text-muted)',
+                boxShadow: isLoginMode ? 'var(--shadow-sm)' : 'none',
+              }}
+            >
+              Connexion
             </button>
           </div>
 
@@ -349,7 +351,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
           ) : (
             /* REGISTER B2B FORM */
             <form onSubmit={handleRegisterSubmit}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.65rem' }}>
                 <div className="form-group">
                   <label className="form-label">Nom du Responsable / Chef *</label>
                   <input
@@ -375,7 +377,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.65rem' }}>
                 <div className="form-group">
                   <label className="form-label">Type d’Établissement</label>
                   <select
@@ -394,12 +396,12 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
                 {/* NUMERO DE TELEPHONE MONDIAL */}
                 <div className="form-group">
                   <label className="form-label">Numéro de Téléphone (Mondial) *</label>
-                  <div style={{ display: 'flex', gap: '0.4rem' }}>
+                  <div style={{ display: 'flex', gap: '0.35rem' }}>
                     <select
                       className="form-select"
                       value={countryCode}
                       onChange={(e) => setCountryCode(e.target.value)}
-                      style={{ width: '135px', flexShrink: 0, fontSize: '0.85rem', fontWeight: 600 }}
+                      style={{ width: '98px', flexShrink: 0, fontSize: '0.82rem', fontWeight: 600, padding: '0.6rem 0.35rem' }}
                     >
                       {WORLD_COUNTRY_CODES.map((c) => (
                         <option key={c.code} value={c.code}>
@@ -415,7 +417,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
                         placeholder="+XXX"
                         value={customCode}
                         onChange={(e) => setCustomCode(e.target.value)}
-                        style={{ width: '80px', flexShrink: 0 }}
+                        style={{ width: '70px', flexShrink: 0, padding: '0.6rem 0.4rem' }}
                         required
                       />
                     )}
@@ -423,20 +425,20 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
                     <input
                       type="tel"
                       className="form-input"
-                      placeholder="6 61 XX XX XX ou local"
+                      placeholder="06 61 XX XX XX ou direct"
                       value={phoneNumber}
                       onChange={(e) => setPhoneNumber(e.target.value)}
-                      style={{ flex: 1 }}
+                      style={{ flex: 1, minWidth: 0 }}
                       required
                     />
                   </div>
-                  <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', marginTop: '0.25rem', display: 'block' }}>
-                    🌍 Vous pouvez utiliser n’importe quel numéro dans le monde.
+                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.2rem', display: 'block' }}>
+                    🌍 Numéro marocain ou international accepté.
                   </span>
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.65rem' }}>
                 <div className="form-group">
                   <label className="form-label">Adresse E-mail (Facultative)</label>
                   <input
@@ -446,8 +448,8 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                   />
-                  <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
-                    Vous pourrez aussi vous connecter avec votre N° de téléphone ou votre nom.
+                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                    Connexion possible par téléphone ou nom.
                   </span>
                 </div>
 
@@ -465,7 +467,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
               </div>
 
               {/* LOCALISATION AVEC GOOGLE MAPS AUTOMATIQUE */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.65rem' }}>
                 <div className="form-group">
                   <label className="form-label">Ville de Livraison</label>
                   <select
@@ -483,7 +485,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
                 </div>
 
                 <div className="form-group">
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.3rem', flexWrap: 'wrap', gap: '0.35rem' }}>
                     <label className="form-label" style={{ marginBottom: 0 }}>Adresse Complète *</label>
                     <button
                       type="button"
@@ -491,21 +493,21 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
                       disabled={locating}
                       className="btn btn-secondary btn-sm"
                       style={{
-                        padding: '0.2rem 0.6rem',
-                        fontSize: '0.74rem',
+                        padding: '0.2rem 0.5rem',
+                        fontSize: '0.72rem',
                         display: 'inline-flex',
                         alignItems: 'center',
-                        gap: '0.35rem',
-                        backgroundColor: '#ffffff',
-                        borderColor: '#ea4335',
-                        color: '#c5221f',
+                        gap: '0.3rem',
+                        backgroundColor: '#fff5f5',
+                        borderColor: '#fca5a5',
+                        color: '#dc2626',
                         fontWeight: 600,
                         cursor: locating ? 'wait' : 'pointer',
                       }}
                       title="Détecter automatiquement ma position avec Google Maps"
                     >
-                      <GoogleMapsIcon size={14} />
-                      {locating ? 'GPS en cours...' : 'Localisation Google Maps'}
+                      <GoogleMapsIcon size={13} />
+                      <span>{locating ? 'GPS...' : 'Position Google Maps'}</span>
                     </button>
                   </div>
 
@@ -519,16 +521,16 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
                   />
 
                   {gpsCoords && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: '0.35rem', fontSize: '0.75rem', color: '#166534' }}>
-                      <GoogleMapsIcon size={13} />
-                      <span>Position GPS Google Maps détectée :</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: '0.3rem', fontSize: '0.74rem', color: '#166534' }}>
+                      <GoogleMapsIcon size={12} />
+                      <span>GPS détecté :</span>
                       <a
                         href={gpsCoords.url}
                         target="_blank"
                         rel="noopener noreferrer"
                         style={{ fontWeight: 700, color: '#15803d', textDecoration: 'underline', display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}
                       >
-                        Voir sur Maps <ExternalLink size={11} />
+                        Voir sur Maps <ExternalLink size={10} />
                       </a>
                     </div>
                   )}

@@ -1077,9 +1077,175 @@ table.data-table td {
   /* Modals */
   .modal-content {
     max-width: 95vw !important;
-    padding: 1.25rem !important;
+    padding: 1.15rem !important;
     border-radius: var(--radius-lg) !important;
   }
+
+  /* Mobile Auth Form Styling */
+  .auth-card-mobile {
+    padding: 1.15rem 0.95rem !important;
+    border-radius: var(--radius-md) !important;
+  }
+
+  .auth-container-mobile {
+    padding: 0.85rem 0 2.5rem !important;
+  }
+
+  /* Catalog Page Responsive Layout */
+  .catalog-page-wrapper {
+    padding: 1.25rem 0 4rem !important;
+  }
+
+  .catalog-header {
+    margin-bottom: 1.15rem !important;
+  }
+
+  .catalog-filter-card {
+    padding: 0.85rem !important;
+    margin-bottom: 1.25rem !important;
+    border-radius: var(--radius-md) !important;
+  }
+
+  .catalog-filter-top {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.65rem !important;
+    margin-bottom: 0.85rem !important;
+    width: 100% !important;
+  }
+
+  .catalog-search-wrap {
+    width: 100% !important;
+    position: relative !important;
+  }
+
+  .catalog-filter-subrow {
+    width: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 0.65rem !important;
+  }
+
+  /* Home Page Responsive Sections */
+  .home-section {
+    padding: 2rem 0 !important;
+  }
+
+  .home-section-header {
+    margin: 0 auto 1.5rem !important;
+  }
+
+  .home-categories-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 0.65rem !important;
+  }
+
+  .category-card-home {
+    height: 155px !important;
+    padding: 0.85rem !important;
+    border-radius: var(--radius-md) !important;
+  }
+
+  .home-cat-title {
+    font-size: 0.95rem !important;
+    margin-bottom: 0.15rem !important;
+  }
+
+  .home-cat-desc {
+    display: none !important;
+  }
+
+  .home-cat-link {
+    font-size: 0.72rem !important;
+  }
+
+  /* Admin Daily Pricing Grid on Mobile */
+  .daily-pricing-grid {
+    grid-template-columns: 1fr !important;
+    gap: 0.65rem !important;
+  }
+
+  /* Responsive Client Cards in Admin */
+  .clients-table-desktop {
+    display: none !important;
+  }
+
+  .clients-cards-mobile {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.75rem !important;
+  }
+
+  .client-card-mobile {
+    display: flex !important;
+    flex-direction: column;
+    gap: 0.65rem;
+    padding: 0.95rem;
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    background-color: #ffffff;
+    box-shadow: var(--shadow-sm);
+  }
+
+  /* Mobile Horizontal Swipable Pills */
+  .mobile-scroll-pills {
+    display: flex !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+    gap: 0.45rem !important;
+    padding-bottom: 0.25rem !important;
+    flex-wrap: nowrap !important;
+  }
+  .mobile-scroll-pills::-webkit-scrollbar {
+    display: none !important;
+  }
+  .mobile-scroll-pills > * {
+    flex-shrink: 0 !important;
+    white-space: nowrap !important;
+  }
+}
+
+/* Default Desktop display for clients */
+.clients-cards-mobile {
+  display: none;
+}
+
+.clients-table-desktop {
+  display: block;
+}
+
+/* Catalog Filter Default Desktop Styles */
+.catalog-page-wrapper {
+  padding: 2.5rem 0 5rem;
+}
+.catalog-header {
+  margin-bottom: 2.5rem;
+}
+.catalog-filter-card {
+  background-color: #ffffff;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-light);
+  padding: 1.25rem;
+  margin-bottom: 2.5rem;
+  box-shadow: var(--shadow-sm);
+}
+.catalog-filter-top {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+  margin-bottom: 1.25rem;
+}
+.catalog-search-wrap {
+  position: relative;
+  flex: 1 1 280px;
+}
+.catalog-filter-subrow {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
 }
 
 @media (max-width: 480px) {
@@ -1088,10 +1254,21 @@ table.data-table td {
   }
 
   .product-title {
-    font-size: 0.8rem !important;
+    font-size: 0.78rem !important;
   }
 
   .product-price-num {
     font-size: 1.05rem !important;
   }
+
+  .btn {
+    padding: 0.6rem 1rem;
+    font-size: 0.85rem;
+  }
+
+  .form-input, .form-select {
+    padding: 0.55rem 0.7rem;
+    font-size: 0.85rem;
+  }
 }
+

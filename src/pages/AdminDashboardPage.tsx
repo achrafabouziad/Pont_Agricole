@@ -417,12 +417,13 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
 
         {/* Navigation Tabs */}
         <div
+          className="mobile-scroll-pills"
           style={{
             display: 'flex',
-            gap: '0.5rem',
+            gap: '0.45rem',
             overflowX: 'auto',
             paddingBottom: '0.5rem',
-            marginBottom: '2rem',
+            marginBottom: '1.5rem',
             borderBottom: '1px solid var(--border-light)',
           }}
         >
@@ -652,7 +653,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
                 gap: '1rem',
                 marginBottom: '2rem',
               }}
@@ -786,7 +787,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
                             -
                           </button>
 
-                          <div style={{ position: 'relative', width: '100px' }}>
+                          <div style={{ position: 'relative', width: '84px' }}>
                             <input
                               type="number"
                               step="0.5"
@@ -1167,7 +1168,8 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
               Validation des Comptes Professionnels CHR ({businesses.length})
             </h3>
 
-            <div className="table-responsive">
+            {/* Desktop Table View */}
+            <div className="clients-table-desktop table-responsive">
               <table className="data-table">
                 <thead>
                   <tr>
@@ -1316,6 +1318,112 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
                   })}
                 </tbody>
               </table>
+            </div>
+
+            {/* Mobile Cards View (Optimisé pour Téléphone) */}
+            <div className="clients-cards-mobile">
+              {businesses.map((biz) => {
+                const cleanPhone = (biz.phone || '').replace(/[^0-9]/g, '');
+                const waPhone = cleanPhone.startsWith('0') ? `212${cleanPhone.slice(1)}` : cleanPhone.startsWith('212') ? cleanPhone : `212${cleanPhone}`;
+                return (
+                  <div key={biz.id} className="client-card-mobile">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
+                      <div>
+                        <strong style={{ fontSize: '0.98rem', color: 'var(--primary-900)' }}>{biz.businessName}</strong>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.2rem', flexWrap: 'wrap' }}>
+                          <span className="badge badge-brand" style={{ fontSize: '0.7rem', textTransform: 'capitalize' }}>
+                            {biz.businessType}
+                          </span>
+                          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                            {biz.city}
+                          </span>
+                        </div>
+                      </div>
+                      {biz.approvalStatus === 'approved' ? (
+                        <span className="badge badge-status-delivered" style={{ fontSize: '0.7rem' }}>Approuvé</span>
+                      ) : biz.approvalStatus === 'pending' ? (
+                        <span className="badge badge-status-pending" style={{ fontSize: '0.7rem' }}>En Attente</span>
+                      ) : (
+                        <span className="badge badge-status-cancelled" style={{ fontSize: '0.7rem' }}>{biz.approvalStatus}</span>
+                      )}
+                    </div>
+
+                    <div style={{ backgroundColor: 'var(--bg-main)', borderRadius: 'var(--radius-sm)', padding: '0.65rem 0.75rem', fontSize: '0.82rem' }}>
+                      <div style={{ fontWeight: 600, color: 'var(--primary-900)' }}>
+                        👤 {biz.contactName || 'Responsable CHR'}
+                      </div>
+                      {biz.phone && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.35rem' }}>
+                          <a href={`tel:${biz.phone}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', color: 'var(--primary-800)', fontWeight: 700, textDecoration: 'none' }}>
+                            <Phone size={12} /> {biz.phone}
+                          </a>
+                          {cleanPhone && (
+                            <a
+                              href={`https://wa.me/${waPhone}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.25rem',
+                                fontSize: '0.74rem',
+                                backgroundColor: '#25D366',
+                                color: '#ffffff',
+                                padding: '0.18rem 0.55rem',
+                                borderRadius: '12px',
+                                textDecoration: 'none',
+                                fontWeight: 700,
+                              }}
+                            >
+                              <MessageCircle size={12} /> WhatsApp
+                            </a>
+                          )}
+                        </div>
+                      )}
+                      <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.35rem' }}>
+                        📍 {biz.deliveryAddress}
+                      </div>
+                      {(biz.googleMapsUrl || biz.deliveryAddress.includes('google.com/maps')) && (
+                        <a
+                          href={biz.googleMapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${biz.deliveryAddress}, ${biz.city}`)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.2rem',
+                            fontSize: '0.74rem',
+                            color: '#166534',
+                            fontWeight: 700,
+                            marginTop: '0.3rem',
+                            textDecoration: 'underline',
+                          }}
+                        >
+                          📍 Itinéraire Google Maps ↗
+                        </a>
+                      )}
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '0.35rem', justifyContent: 'flex-end', paddingTop: '0.2rem' }}>
+                      {biz.approvalStatus !== 'approved' && (
+                        <button onClick={() => handleUpdateBusinessStatus(biz.id, 'approved')} className="btn btn-primary btn-sm" style={{ backgroundColor: '#166534', fontSize: '0.74rem', padding: '0.3rem 0.65rem' }}>
+                          Approuver
+                        </button>
+                      )}
+                      {biz.approvalStatus !== 'suspended' && (
+                        <button onClick={() => handleUpdateBusinessStatus(biz.id, 'suspended')} className="btn btn-secondary btn-sm" style={{ color: '#b45309', fontSize: '0.74rem', padding: '0.3rem 0.65rem' }}>
+                          Suspendre
+                        </button>
+                      )}
+                      {biz.approvalStatus !== 'rejected' && (
+                        <button onClick={() => handleUpdateBusinessStatus(biz.id, 'rejected')} className="btn btn-secondary btn-sm" style={{ color: '#991b1b', fontSize: '0.74rem', padding: '0.3rem 0.65rem' }}>
+                          Refuser
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
