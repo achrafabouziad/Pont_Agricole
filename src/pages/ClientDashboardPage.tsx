@@ -16,7 +16,9 @@ import {
   Truck,
   Eye,
   Phone,
+  FileText,
 } from 'lucide-react';
+import { InvoiceModal } from '../components/InvoiceModal';
 
 interface ClientDashboardPageProps {
   onNavigate: (page: string) => void;
@@ -28,6 +30,7 @@ export const ClientDashboardPage: React.FC<ClientDashboardPageProps> = ({ onNavi
   const [business, setBusiness] = useState<Business | null>(store.getCurrentBusiness());
   const [orders, setOrders] = useState<Order[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [invoiceOrder, setInvoiceOrder] = useState<Order | null>(null);
   const [reorderNotice, setReorderNotice] = useState<string | null>(null);
 
   useEffect(() => {
@@ -242,8 +245,26 @@ export const ClientDashboardPage: React.FC<ClientDashboardPageProps> = ({ onNavi
                     </div>
                   </div>
 
-                  {/* Actions: View Details / Reorder */}
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.65rem', paddingTop: '0.35rem' }}>
+                  {/* Actions: View Details / Reorder / Invoice */}
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.65rem', paddingTop: '0.35rem', flexWrap: 'wrap' }}>
+                    <button
+                      onClick={() => setInvoiceOrder(order)}
+                      className="btn btn-secondary btn-sm"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.35rem',
+                        backgroundColor: '#f0fdf4',
+                        borderColor: '#bbf7d0',
+                        color: '#166534',
+                        fontWeight: 700,
+                      }}
+                      title="Télécharger ou imprimer la facture de cette commande"
+                    >
+                      <FileText size={14} />
+                      <span>Facture / BL</span>
+                    </button>
+
                     <button
                       onClick={() => handleReorder(order)}
                       className="btn btn-secondary btn-sm"
@@ -259,6 +280,14 @@ export const ClientDashboardPage: React.FC<ClientDashboardPageProps> = ({ onNavi
           )}
         </div>
       </div>
+
+      {/* Invoice Modal for Client */}
+      {invoiceOrder && (
+        <InvoiceModal
+          order={invoiceOrder}
+          onClose={() => setInvoiceOrder(null)}
+        />
+      )}
     </div>
   );
 };

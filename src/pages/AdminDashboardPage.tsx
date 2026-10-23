@@ -43,7 +43,10 @@ import {
   User,
   ArrowRight,
   Mail,
+  FileText,
+  Printer,
 } from 'lucide-react';
+import { InvoiceModal } from '../components/InvoiceModal';
 
 const QUICK_PHOTO_PRESETS = [
   { label: 'Tomates', url: 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?auto=format&fit=crop&w=800&q=80' },
@@ -71,6 +74,9 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [zones, setZones] = useState<DeliveryZone[]>([]);
   const [settings, setSettings] = useState<CompanySettings | null>(null);
+
+  // Selected order for commercial invoice view & print
+  const [selectedInvoiceOrder, setSelectedInvoiceOrder] = useState<Order | null>(null);
 
   // Clients Tab search & filter state
   const [clientSearchQuery, setClientSearchQuery] = useState<string>('');
@@ -1122,19 +1128,42 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
                           <span className={`badge badge-status-${ord.status}`}>{ord.status}</span>
                         </td>
                         <td>
-                          <select
-                            className="form-select"
-                            value={ord.status}
-                            onChange={(e) => handleUpdateOrderStatus(ord.id, e.target.value as OrderStatus)}
-                            style={{ fontSize: '0.82rem', padding: '0.35rem 0.6rem' }}
-                          >
-                            <option value="pending">En attente</option>
-                            <option value="confirmed">Confirmer</option>
-                            <option value="preparing">En préparation</option>
-                            <option value="delivering">En livraison</option>
-                            <option value="delivered">Livrée</option>
-                            <option value="cancelled">Annuler</option>
-                          </select>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                            <select
+                              className="form-select"
+                              value={ord.status}
+                              onChange={(e) => handleUpdateOrderStatus(ord.id, e.target.value as OrderStatus)}
+                              style={{ fontSize: '0.82rem', padding: '0.35rem 0.5rem' }}
+                            >
+                              <option value="pending">En attente</option>
+                              <option value="confirmed">Confirmer</option>
+                              <option value="preparing">En préparation</option>
+                              <option value="delivering">En livraison</option>
+                              <option value="delivered">Livrée</option>
+                              <option value="cancelled">Annuler</option>
+                            </select>
+
+                            <button
+                              onClick={() => setSelectedInvoiceOrder(ord)}
+                              className="btn btn-secondary btn-sm"
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.25rem',
+                                fontSize: '0.78rem',
+                                padding: '0.35rem 0.55rem',
+                                backgroundColor: '#f0fdf4',
+                                borderColor: '#bbf7d0',
+                                color: '#166534',
+                                fontWeight: 700,
+                                whiteSpace: 'nowrap',
+                              }}
+                              title="Générer et imprimer la facture de cette commande"
+                            >
+                              <FileText size={13} />
+                              <span>Facture</span>
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -1361,12 +1390,12 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
                         <span className={`badge badge-status-${ord.status}`}>{ord.status}</span>
                       </td>
                       <td>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
                           <select
                             className="form-select"
                             value={ord.status}
                             onChange={(e) => handleUpdateOrderStatus(ord.id, e.target.value as OrderStatus)}
-                            style={{ fontSize: '0.82rem', padding: '0.35rem' }}
+                            style={{ fontSize: '0.82rem', padding: '0.35rem 0.5rem' }}
                           >
                             <option value="pending">En attente</option>
                             <option value="confirmed">Confirmer</option>
@@ -1375,6 +1404,27 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
                             <option value="delivered">Livrée</option>
                             <option value="cancelled">Annuler</option>
                           </select>
+
+                          <button
+                            onClick={() => setSelectedInvoiceOrder(ord)}
+                            className="btn btn-secondary btn-sm"
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '0.35rem',
+                              fontSize: '0.78rem',
+                              padding: '0.35rem 0.65rem',
+                              backgroundColor: '#f0fdf4',
+                              borderColor: '#bbf7d0',
+                              color: '#166534',
+                              fontWeight: 700,
+                            }}
+                            title="Générer et imprimer la facture de cette commande"
+                          >
+                            <FileText size={13} />
+                            <span>Facture / BL</span>
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -2515,6 +2565,15 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
             </form>
           </div>
         </div>
+      )}
+
+      {/* B2B Commercial Invoice / Delivery Slip Modal */}
+      {selectedInvoiceOrder && (
+        <InvoiceModal
+          order={selectedInvoiceOrder}
+          onClose={() => setSelectedInvoiceOrder(null)}
+          settings={settings}
+        />
       )}
     </div>
   );
