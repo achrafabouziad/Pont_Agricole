@@ -37,7 +37,25 @@ import {
   Lock,
   Phone,
   MessageCircle,
+  Upload,
+  Image as ImageIcon,
+  Camera,
 } from 'lucide-react';
+
+const QUICK_PHOTO_PRESETS = [
+  { label: '🍅 Tomates', url: 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?auto=format&fit=crop&w=800&q=80' },
+  { label: '🥔 Pommes de Terre', url: 'https://images.unsplash.com/photo-1518977676601-b53f82aba655?auto=format&fit=crop&w=800&q=80' },
+  { label: '🧅 Oignons', url: 'https://images.unsplash.com/photo-1587049352846-4a222e784d38?auto=format&fit=crop&w=800&q=80' },
+  { label: '🥕 Carottes', url: 'https://images.unsplash.com/photo-1598170845058-32b9d6a5c317?auto=format&fit=crop&w=800&q=80' },
+  { label: '🥒 Courgettes', url: 'https://images.unsplash.com/photo-1590779033100-9f60a05a013d?auto=format&fit=crop&w=800&q=80' },
+  { label: '🍌 Bananes', url: 'https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?auto=format&fit=crop&w=800&q=80' },
+  { label: '🍊 Oranges', url: 'https://images.unsplash.com/photo-1547514701-42782101795e?auto=format&fit=crop&w=800&q=80' },
+  { label: '🍎 Pommes', url: 'https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?auto=format&fit=crop&w=800&q=80' },
+  { label: '🍋 Citrons', url: 'https://images.unsplash.com/photo-1534706936160-d5ee67737249?auto=format&fit=crop&w=800&q=80' },
+  { label: '🌿 Menthe & Herbes', url: 'https://images.unsplash.com/photo-1628556270448-4d4e4148e1b1?auto=format&fit=crop&w=800&q=80' },
+  { label: '🍓 Fraises', url: 'https://images.unsplash.com/photo-1464965911861-746a04b4bca6?auto=format&fit=crop&w=800&q=80' },
+  { label: '🥑 Avocats', url: 'https://images.unsplash.com/photo-1523049673857-eb18f1d7b578?auto=format&fit=crop&w=800&q=80' },
+];
 
 interface AdminDashboardPageProps {
   onNavigate?: (page: string) => void;
@@ -219,8 +237,31 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
     await loadData();
   };
 
-  // Product CRUD
+  // Image File Upload Handler (Base64 for immediate photo change)
+  const handleImageFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert("L'image sélectionnée dépasse 5 Mo. Veuillez choisir une photo plus légère.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        setProductForm((prev) => ({ ...prev, imageUrl: reader.result as string }));
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Product CRUD (Strictly Admin only)
   const handleOpenAddProduct = () => {
+    if (store.getCurrentUser()?.role !== 'admin') {
+      alert("Accès réservé exclusivement à l'administrateur.");
+      return;
+    }
     setEditingProduct(null);
     setProductForm({
       name: '',
@@ -238,6 +279,10 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
   };
 
   const handleOpenEditProduct = (prod: Product) => {
+    if (store.getCurrentUser()?.role !== 'admin') {
+      alert("Accès réservé exclusivement à l'administrateur.");
+      return;
+    }
     setEditingProduct(prod);
     setProductForm({ ...prod });
     setIsProductModalOpen(true);
@@ -245,15 +290,19 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
 
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!productForm.name || !productForm.price) return;
+    if (store.getCurrentUser()?.role !== 'admin') {
+      alert("Accès réservé exclusivement à l'administrateur.");
+      return;
+    }
+    if (!productForm.name?.trim() || !productForm.price) return;
 
     const prodToSave: Product = {
       id: editingProduct ? editingProduct.id : `prod-${Date.now()}`,
       categoryId: productForm.categoryId || 'cat-legumes',
-      name: productForm.name,
+      name: productForm.name.trim(),
       description: productForm.description || '',
       imageUrl: productForm.imageUrl || 'https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=800&q=80',
-      unit: productForm.unit as ProductUnit,
+      unit: (productForm.unit as ProductUnit) || 'caisse',
       price: Number(productForm.price),
       minimumQuantity: Number(productForm.minimumQuantity) || 1,
       isAvailable: Boolean(productForm.isAvailable),
@@ -261,15 +310,27 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
       badge: productForm.badge || undefined,
     };
 
-    await store.saveProduct(prodToSave);
-    setIsProductModalOpen(false);
-    await loadData();
+    try {
+      await store.saveProduct(prodToSave);
+      setIsProductModalOpen(false);
+      await loadData();
+    } catch (err: any) {
+      alert(err.message || 'Erreur lors de la sauvegarde du produit.');
+    }
   };
 
   const handleDeleteProduct = async (id: string) => {
+    if (store.getCurrentUser()?.role !== 'admin') {
+      alert("Accès réservé exclusivement à l'administrateur.");
+      return;
+    }
     if (window.confirm('Êtes-vous sûr de vouloir supprimer ce produit du catalogue ?')) {
-      await store.deleteProduct(id);
-      await loadData();
+      try {
+        await store.deleteProduct(id);
+        await loadData();
+      } catch (err: any) {
+        alert(err.message || 'Erreur lors de la suppression.');
+      }
     }
   };
 
@@ -643,10 +704,27 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
                           }}
                         />
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.4rem', flexWrap: 'wrap' }}>
                             <strong style={{ fontSize: '0.95rem', color: 'var(--primary-900)' }}>
                               {product.name}
                             </strong>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditProduct(product)}
+                              className="btn btn-secondary btn-sm"
+                              style={{
+                                padding: '0.2rem 0.5rem',
+                                fontSize: '0.72rem',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.25rem',
+                                color: 'var(--primary-800)',
+                                borderColor: 'var(--border-color)',
+                              }}
+                              title="Modifier le nom ou la photo de ce produit"
+                            >
+                              <Edit2 size={12} /> Nom & Photo
+                            </button>
                           </div>
                           <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.15rem' }}>
                             <span>📍 {product.origin || 'Maroc'}</span>
@@ -1370,25 +1448,164 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
       {/* MODAL: ADD / EDIT PRODUCT */}
       {isProductModalOpen && (
         <div className="modal-overlay" onClick={() => setIsProductModalOpen(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h2 style={{ fontSize: '1.35rem', marginBottom: '1rem', color: 'var(--primary-900)' }}>
-              {editingProduct ? 'Modifier le Produit' : 'Ajouter un Produit Frais'}
-            </h2>
+          <div
+            className="modal-content"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: '640px', maxHeight: '90vh', overflowY: 'auto' }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', borderBottom: '1px solid var(--border-light)', paddingBottom: '0.75rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                <div style={{ padding: '0.5rem', backgroundColor: 'var(--primary-100)', color: 'var(--primary-800)', borderRadius: '8px' }}>
+                  <ImageIcon size={20} />
+                </div>
+                <div>
+                  <h2 style={{ fontSize: '1.25rem', margin: 0, color: 'var(--primary-900)' }}>
+                    {editingProduct ? 'Modifier Nom, Photo & Détails du Produit' : 'Ajouter un Nouveau Produit Frais'}
+                  </h2>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>
+                    Contrôle réservé exclusivement à la Direction Pont Agricole.
+                  </p>
+                </div>
+              </div>
+            </div>
 
             <form onSubmit={handleSaveProduct}>
-              <div className="form-group">
-                <label className="form-label">Nom du Produit</label>
+              {/* NOM DU PRODUIT */}
+              <div className="form-group" style={{ marginBottom: '1.25rem' }}>
+                <label className="form-label" style={{ fontWeight: 700, fontSize: '0.92rem' }}>
+                  Nom du Produit (Affiché sur le catalogue CHR) *
+                </label>
                 <input
                   type="text"
                   className="form-input"
-                  placeholder="Ex: Tomates Cerises Grappe"
+                  placeholder="Ex: Tomates Rondes Extra (Caisse), Bananes Marocaines, etc."
                   value={productForm.name}
                   onChange={(e) => setProductForm({ ...productForm, name: e.target.value })}
+                  style={{ fontSize: '1rem', fontWeight: 600, padding: '0.75rem' }}
                   required
                 />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+              {/* PHOTO DU PRODUIT AVEC PREVIEW ET UPLOAD */}
+              <div
+                className="form-group"
+                style={{
+                  padding: '1rem',
+                  backgroundColor: 'var(--bg-main)',
+                  borderRadius: 'var(--radius-md)',
+                  border: '1px solid var(--border-color)',
+                  marginBottom: '1.25rem',
+                }}
+              >
+                <label className="form-label" style={{ fontWeight: 700, fontSize: '0.92rem', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <Camera size={16} style={{ color: 'var(--primary-700)' }} />
+                  Photo du Produit
+                </label>
+
+                {/* Preview Box & Upload Button */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.85rem' }}>
+                  <div
+                    style={{
+                      width: '90px',
+                      height: '90px',
+                      borderRadius: '10px',
+                      overflow: 'hidden',
+                      backgroundColor: '#e2e8f0',
+                      border: '2px solid var(--border-color)',
+                      flexShrink: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    {productForm.imageUrl ? (
+                      <img
+                        src={productForm.imageUrl}
+                        alt="Aperçu"
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        onError={(e) => {
+                          (e.target as HTMLElement).style.display = 'none';
+                        }}
+                      />
+                    ) : (
+                      <ImageIcon size={32} style={{ color: 'var(--text-muted)' }} />
+                    )}
+                  </div>
+
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    <label
+                      className="btn btn-primary btn-sm"
+                      style={{
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.45rem',
+                        padding: '0.6rem 1rem',
+                        fontSize: '0.85rem',
+                        width: 'fit-content',
+                      }}
+                    >
+                      <Upload size={15} /> 📸 Importer depuis téléphone / PC
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageFileUpload}
+                        style={{ display: 'none' }}
+                      />
+                    </label>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                      Prenez une photo en direct ou choisissez depuis votre galerie (PNG, JPG, max 5 Mo).
+                    </span>
+                  </div>
+                </div>
+
+                {/* Direct Image URL input */}
+                <div style={{ marginTop: '0.5rem' }}>
+                  <label style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: '0.25rem' }}>
+                    Ou saisir un lien d’image internet (URL) :
+                  </label>
+                  <input
+                    type="url"
+                    className="form-input"
+                    placeholder="https://images.unsplash.com/..."
+                    value={productForm.imageUrl}
+                    onChange={(e) => setProductForm({ ...productForm, imageUrl: e.target.value })}
+                    style={{ fontSize: '0.82rem' }}
+                  />
+                </div>
+
+                {/* Quick Presets for Fresh Produce */}
+                <div style={{ marginTop: '0.85rem' }}>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.4rem', textTransform: 'uppercase' }}>
+                    ⚡ Suggestions de photos haute qualité :
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
+                    {QUICK_PHOTO_PRESETS.map((preset) => (
+                      <button
+                        key={preset.label}
+                        type="button"
+                        onClick={() => setProductForm({ ...productForm, imageUrl: preset.url })}
+                        style={{
+                          fontSize: '0.74rem',
+                          padding: '0.2rem 0.55rem',
+                          borderRadius: '14px',
+                          border: productForm.imageUrl === preset.url ? '1.5px solid var(--primary-600)' : '1px solid var(--border-color)',
+                          backgroundColor: productForm.imageUrl === preset.url ? 'var(--primary-100)' : '#ffffff',
+                          color: productForm.imageUrl === preset.url ? 'var(--primary-900)' : 'var(--text-main)',
+                          cursor: 'pointer',
+                          fontWeight: productForm.imageUrl === preset.url ? 700 : 500,
+                        }}
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* CATEGORIE & UNITE */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
                 <div className="form-group">
                   <label className="form-label">Catégorie</label>
                   <select
@@ -1419,9 +1636,10 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+              {/* PRIX & QUANTITE MIN */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
                 <div className="form-group">
-                  <label className="form-label">Prix B2B (DH / MAD)</label>
+                  <label className="form-label">Prix de Vente B2B (DH)</label>
                   <input
                     type="number"
                     step="0.5"
@@ -1445,33 +1663,37 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
                 </div>
               </div>
 
-              <div className="form-group">
-                <label className="form-label">Origine / Terroir</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  placeholder="Ex: Région Souss-Massa, Plaines du Saïss"
-                  value={productForm.origin}
-                  onChange={(e) => setProductForm({ ...productForm, origin: e.target.value })}
-                />
+              {/* ORIGINE & BADGE */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
+                <div className="form-group">
+                  <label className="form-label">Origine / Terroir</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="Ex: Région Souss-Massa, Plaines du Saïss"
+                    value={productForm.origin}
+                    onChange={(e) => setProductForm({ ...productForm, origin: e.target.value })}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Badge Promo / Spécial</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="Ex: Primeur, Spécial CHR, Top Vente"
+                    value={productForm.badge || ''}
+                    onChange={(e) => setProductForm({ ...productForm, badge: e.target.value })}
+                  />
+                </div>
               </div>
 
-              <div className="form-group">
-                <label className="form-label">URL de l'image</label>
-                <input
-                  type="url"
-                  className="form-input"
-                  placeholder="https://..."
-                  value={productForm.imageUrl}
-                  onChange={(e) => setProductForm({ ...productForm, imageUrl: e.target.value })}
-                />
-              </div>
-
-              <div className="form-group">
+              <div className="form-group" style={{ marginBottom: '1rem' }}>
                 <label className="form-label">Description pour les Chefs</label>
                 <textarea
                   className="form-textarea"
                   rows={2}
+                  placeholder="Calibre, texture, utilisation recommandée..."
                   value={productForm.description}
                   onChange={(e) => setProductForm({ ...productForm, description: e.target.value })}
                 />
@@ -1485,11 +1707,11 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
                     onChange={(e) => setProductForm({ ...productForm, isAvailable: e.target.checked })}
                     style={{ width: '18px', height: '18px', accentColor: 'var(--primary-600)' }}
                   />
-                  <span>Produit disponible en stock</span>
+                  <span style={{ fontWeight: 600 }}>Produit disponible en stock pour commande</span>
                 </label>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', borderTop: '1px solid var(--border-light)', paddingTop: '1rem' }}>
                 <button
                   type="button"
                   onClick={() => setIsProductModalOpen(false)}
@@ -1497,8 +1719,8 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
                 >
                   Annuler
                 </button>
-                <button type="submit" className="btn btn-primary">
-                  {editingProduct ? 'Enregistrer Modifications' : 'Créer le Produit'}
+                <button type="submit" className="btn btn-primary" style={{ padding: '0.65rem 1.4rem' }}>
+                  {editingProduct ? 'Enregistrer Nom & Photo' : 'Créer le Produit'}
                 </button>
               </div>
             </form>

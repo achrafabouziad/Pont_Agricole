@@ -441,6 +441,10 @@ class StoreService {
   }
 
   public async saveProduct(product: Product): Promise<void> {
+    if (this.currentUser?.role !== 'admin') {
+      throw new Error("Action réservée exclusivement à l'administrateur.");
+    }
+
     if (isSupabaseConfigured && supabase) {
       await supabase.from('products').upsert({
         id: product.id,
@@ -470,6 +474,10 @@ class StoreService {
   }
 
   public async updateProductPrice(productId: string, newPrice: number, isAvailable?: boolean): Promise<void> {
+    if (this.currentUser?.role !== 'admin') {
+      throw new Error("Action réservée exclusivement à l'administrateur.");
+    }
+
     const products = getStored<Product[]>(KEY_PRODUCTS, INITIAL_PRODUCTS);
     const prod = products.find((p) => p.id === productId);
     if (!prod) return;
@@ -495,6 +503,10 @@ class StoreService {
   public async updateDailyPrices(
     updates: { id: string; price: number; isAvailable: boolean }[]
   ): Promise<void> {
+    if (this.currentUser?.role !== 'admin') {
+      throw new Error("Action réservée exclusivement à l'administrateur.");
+    }
+
     const products = getStored<Product[]>(KEY_PRODUCTS, INITIAL_PRODUCTS);
     const now = new Date().toISOString();
 
@@ -519,6 +531,10 @@ class StoreService {
   }
 
   public async deleteProduct(productId: string): Promise<void> {
+    if (this.currentUser?.role !== 'admin') {
+      throw new Error("Action réservée exclusivement à l'administrateur.");
+    }
+
     if (isSupabaseConfigured && supabase) {
       await supabase.from('products').delete().eq('id', productId);
     }
