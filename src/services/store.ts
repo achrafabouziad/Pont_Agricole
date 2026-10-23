@@ -384,6 +384,55 @@ class StoreService {
     this.notify();
   }
 
+  public async updateProductPrice(productId: string, newPrice: number, isAvailable?: boolean): Promise<void> {
+    const products = getStored<Product[]>(KEY_PRODUCTS, INITIAL_PRODUCTS);
+    const prod = products.find((p) => p.id === productId);
+    if (!prod) return;
+
+    prod.price = Math.max(0, Number(newPrice));
+    if (typeof isAvailable === 'boolean') {
+      prod.isAvailable = isAvailable;
+    }
+
+    if (isSupabaseConfigured && supabase) {
+      await supabase.from('products').update({
+        price: prod.price,
+        is_available: prod.isAvailable,
+        updated_at: new Date().toISOString(),
+      }).eq('id', productId);
+    }
+
+    setStored(KEY_PRODUCTS, products);
+    localStorage.setItem('pont_last_price_update', new Date().toISOString());
+    this.notify();
+  }
+
+  public async updateDailyPrices(
+    updates: { id: string; price: number; isAvailable: boolean }[]
+  ): Promise<void> {
+    const products = getStored<Product[]>(KEY_PRODUCTS, INITIAL_PRODUCTS);
+    const now = new Date().toISOString();
+
+    for (const u of updates) {
+      const p = products.find((prod) => prod.id === u.id);
+      if (p) {
+        p.price = Math.max(0, Number(u.price));
+        p.isAvailable = u.isAvailable;
+      }
+      if (isSupabaseConfigured && supabase) {
+        await supabase.from('products').update({
+          price: Math.max(0, Number(u.price)),
+          is_available: u.isAvailable,
+          updated_at: now,
+        }).eq('id', u.id);
+      }
+    }
+
+    setStored(KEY_PRODUCTS, products);
+    localStorage.setItem('pont_last_price_update', now);
+    this.notify();
+  }
+
   public async deleteProduct(productId: string): Promise<void> {
     if (isSupabaseConfigured && supabase) {
       await supabase.from('products').delete().eq('id', productId);

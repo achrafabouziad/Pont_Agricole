@@ -28,15 +28,30 @@ import {
   AlertCircle,
   DollarSign,
   Search,
+  Zap,
+  RefreshCw,
+  Check,
+  ArrowUpRight,
+  ArrowDownRight,
+  SlidersHorizontal,
 } from 'lucide-react';
 
 export const AdminDashboardPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'orders' | 'clients' | 'products' | 'zones' | 'settings'>('overview');
+  const [activeTab, setActiveTab] = useState<'daily-prices' | 'overview' | 'orders' | 'clients' | 'products' | 'zones' | 'settings'>('daily-prices');
   const [orders, setOrders] = useState<Order[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [zones, setZones] = useState<DeliveryZone[]>([]);
   const [settings, setSettings] = useState<CompanySettings | null>(null);
+
+  // Daily Mercuriale / Price edits state
+  const [priceEdits, setPriceEdits] = useState<Record<string, { price: number; isAvailable: boolean }>>({});
+  const [initialPrices, setInitialPrices] = useState<Record<string, number>>({});
+  const [dailyCategoryFilter, setDailyCategoryFilter] = useState<string>('all');
+  const [dailySearchQuery, setDailySearchQuery] = useState<string>('');
+  const [dailySaveNotice, setDailySaveNotice] = useState<string | null>(null);
+  const [savingDaily, setSavingDaily] = useState<boolean>(false);
+  const [singleSavedId, setSingleSavedId] = useState<string | null>(null);
 
   // Modals & Form State for Product Add/Edit
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -71,6 +86,104 @@ export const AdminDashboardPage: React.FC = () => {
     setBusinesses(bizs);
     setZones(zns);
     setSettings(stgs);
+
+    // Initialize daily price state
+    setPriceEdits((prev) => {
+      const next = { ...prev };
+      prods.forEach((p) => {
+        if (!next[p.id]) {
+          next[p.id] = { price: p.price, isAvailable: p.isAvailable };
+        }
+      });
+      return next;
+    });
+
+    setInitialPrices((prev) => {
+      const initials = { ...prev };
+      prods.forEach((p) => {
+        if (initials[p.id] === undefined) {
+          initials[p.id] = p.price;
+        }
+      });
+      return initials;
+    });
+  };
+
+  const handleDailyPriceInput = (productId: string, val: number) => {
+    setPriceEdits((prev) => ({
+      ...prev,
+      [productId]: {
+        ...prev[productId],
+        price: Math.max(0, val),
+      },
+    }));
+  };
+
+  const handleDailyQuickStep = (productId: string, delta: number) => {
+    setPriceEdits((prev) => {
+      const cur = prev[productId]?.price || 0;
+      const next = Math.max(0, Math.round((cur + delta) * 100) / 100);
+      return {
+        ...prev,
+        [productId]: {
+          ...prev[productId],
+          price: next,
+        },
+      };
+    });
+  };
+
+  const handleDailyStockToggle = (productId: string) => {
+    setPriceEdits((prev) => ({
+      ...prev,
+      [productId]: {
+        ...prev[productId],
+        isAvailable: !prev[productId]?.isAvailable,
+      },
+    }));
+  };
+
+  const handleBatchAdjustCategory = (delta: number) => {
+    setPriceEdits((prev) => {
+      const updated = { ...prev };
+      const filtered = products.filter((p) => dailyCategoryFilter === 'all' || p.categoryId === dailyCategoryFilter);
+      filtered.forEach((p) => {
+        if (updated[p.id]) {
+          const next = Math.max(0, Math.round((updated[p.id].price + delta) * 100) / 100);
+          updated[p.id] = { ...updated[p.id], price: next };
+        }
+      });
+      return updated;
+    });
+  };
+
+  const handleSaveSinglePrice = async (productId: string) => {
+    const edit = priceEdits[productId];
+    if (!edit) return;
+    await store.updateProductPrice(productId, edit.price, edit.isAvailable);
+    setInitialPrices((prev) => ({ ...prev, [productId]: edit.price }));
+    setSingleSavedId(productId);
+    setTimeout(() => setSingleSavedId(null), 2000);
+  };
+
+  const handleSaveAllDailyPrices = async () => {
+    setSavingDaily(true);
+    const updates = Object.entries(priceEdits).map(([id, data]) => ({
+      id,
+      price: data.price,
+      isAvailable: data.isAvailable,
+    }));
+    await store.updateDailyPrices(updates);
+
+    const newInitials: Record<string, number> = {};
+    updates.forEach((u) => {
+      newInitials[u.id] = u.price;
+    });
+    setInitialPrices(newInitials);
+
+    setSavingDaily(false);
+    setDailySaveNotice(`✅ ${updates.length} prix de vente du jour enregistrés avec succès ! Le catalogue est actualisé.`);
+    setTimeout(() => setDailySaveNotice(null), 4000);
   };
 
   useEffect(() => {
@@ -211,6 +324,13 @@ export const AdminDashboardPage: React.FC = () => {
           }}
         >
           <button
+            onClick={() => setActiveTab('daily-prices')}
+            className={`btn btn-sm ${activeTab === 'daily-prices' ? 'btn-primary' : 'btn-secondary'}`}
+            style={activeTab === 'daily-prices' ? { backgroundColor: 'var(--amber-500)', borderColor: 'var(--amber-600)', color: '#082817', fontWeight: 800 } : { borderColor: 'var(--amber-400)', color: 'var(--amber-800)', fontWeight: 700 }}
+          >
+            ⚡ Cours du Jour (Prix Quotidiens)
+          </button>
+          <button
             onClick={() => setActiveTab('overview')}
             className={`btn btn-sm ${activeTab === 'overview' ? 'btn-primary' : 'btn-secondary'}`}
           >
@@ -242,9 +362,464 @@ export const AdminDashboardPage: React.FC = () => {
           </button>
         </div>
 
+        {/* TAB 0: DAILY PRICES / MERCURIALE DU JOUR */}
+        {activeTab === 'daily-prices' && (
+          <div>
+            {/* Success Notice */}
+            {dailySaveNotice && (
+              <div
+                style={{
+                  padding: '1rem 1.4rem',
+                  backgroundColor: 'var(--emerald-50)',
+                  border: '1.5px solid var(--primary-500)',
+                  borderRadius: 'var(--radius-md)',
+                  color: 'var(--primary-800)',
+                  marginBottom: '1.5rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.75rem',
+                  fontWeight: 600,
+                  fontSize: '0.95rem',
+                }}
+              >
+                <CheckCircle size={22} color="var(--primary-600)" />
+                <span>{dailySaveNotice}</span>
+              </div>
+            )}
+
+            {/* Header Card */}
+            <div
+              className="card"
+              style={{
+                backgroundColor: '#ffffff',
+                padding: '1.75rem',
+                marginBottom: '1.75rem',
+                borderLeft: '5px solid var(--amber-500)',
+                boxShadow: 'var(--shadow-sm)',
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  gap: '1.25rem',
+                }}
+              >
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem' }}>
+                    <span
+                      style={{
+                        padding: '0.2rem 0.6rem',
+                        backgroundColor: 'var(--amber-100)',
+                        color: 'var(--amber-800)',
+                        borderRadius: '4px',
+                        fontSize: '0.75rem',
+                        fontWeight: 700,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.05em',
+                      }}
+                    >
+                      Mercuriale Quotidienne B2B
+                    </span>
+                    <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                      Arrivages Marché de Gros Maroc
+                    </span>
+                  </div>
+                  <h2 style={{ fontSize: '1.5rem', color: 'var(--primary-900)', marginBottom: '0.35rem' }}>
+                    Ajustement Rapide des Prix du Jour
+                  </h2>
+                  <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', maxWidth: '680px', lineHeight: 1.5 }}>
+                    Modifiez vos prix de vente directement dans les cases ci-dessous chaque matin. Les nouveaux tarifs s’appliquent instantanément au catalogue de vos clients CHR.
+                  </p>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                  <button
+                    onClick={handleSaveAllDailyPrices}
+                    disabled={savingDaily}
+                    className="btn btn-primary"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      padding: '0.75rem 1.4rem',
+                      fontSize: '0.95rem',
+                      fontWeight: 700,
+                      boxShadow: '0 4px 12px rgba(29, 110, 66, 0.25)',
+                    }}
+                  >
+                    <Save size={18} />
+                    <span>{savingDaily ? 'Enregistrement...' : 'Enregistrer Tous les Prix du Jour'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Quick Actions & Filters Bar */}
+              <div
+                style={{
+                  marginTop: '1.5rem',
+                  paddingTop: '1.25rem',
+                  borderTop: '1px solid var(--border-light)',
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  gap: '1rem',
+                }}
+              >
+                {/* Category Pills */}
+                <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                  {[
+                    { id: 'all', label: `Tous (${products.length})` },
+                    { id: 'cat-legumes', label: `🥦 Légumes (${products.filter((p) => p.categoryId === 'cat-legumes').length})` },
+                    { id: 'cat-fruits', label: `🍎 Fruits (${products.filter((p) => p.categoryId === 'cat-fruits').length})` },
+                    { id: 'cat-herbes', label: `🌿 Herbes (${products.filter((p) => p.categoryId === 'cat-herbes').length})` },
+                    { id: 'cat-saison', label: `🍓 Primeurs (${products.filter((p) => p.categoryId === 'cat-saison').length})` },
+                  ].map((cat) => (
+                    <button
+                      key={cat.id}
+                      onClick={() => setDailyCategoryFilter(cat.id)}
+                      style={{
+                        padding: '0.4rem 0.8rem',
+                        borderRadius: '20px',
+                        border: '1px solid',
+                        borderColor: dailyCategoryFilter === cat.id ? 'var(--primary-700)' : 'var(--border-light)',
+                        backgroundColor: dailyCategoryFilter === cat.id ? 'var(--primary-700)' : '#ffffff',
+                        color: dailyCategoryFilter === cat.id ? '#ffffff' : 'var(--text-main)',
+                        fontSize: '0.82rem',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        transition: 'var(--transition)',
+                      }}
+                    >
+                      {cat.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Batch Adjusters */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+                    Ajustement rapide :
+                  </span>
+                  <button
+                    onClick={() => handleBatchAdjustCategory(1)}
+                    className="btn btn-secondary btn-sm"
+                    style={{ fontSize: '0.78rem', padding: '0.35rem 0.65rem' }}
+                    title="Ajouter 1 DH à tous les produits affichés"
+                  >
+                    +1.00 DH
+                  </button>
+                  <button
+                    onClick={() => handleBatchAdjustCategory(2)}
+                    className="btn btn-secondary btn-sm"
+                    style={{ fontSize: '0.78rem', padding: '0.35rem 0.65rem' }}
+                    title="Ajouter 2 DH à tous les produits affichés"
+                  >
+                    +2.00 DH
+                  </button>
+                  <button
+                    onClick={() => handleBatchAdjustCategory(-1)}
+                    className="btn btn-secondary btn-sm"
+                    style={{ fontSize: '0.78rem', padding: '0.35rem 0.65rem' }}
+                    title="Diminuer 1 DH à tous les produits affichés"
+                  >
+                    -1.00 DH
+                  </button>
+                </div>
+              </div>
+
+              {/* Search Bar */}
+              <div style={{ marginTop: '1rem', position: 'relative' }}>
+                <Search size={16} style={{ position: 'absolute', left: '0.9rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                <input
+                  type="text"
+                  placeholder="Filtrer un produit par nom (ex: tomate, oignon, persil, banane...)"
+                  value={dailySearchQuery}
+                  onChange={(e) => setDailySearchQuery(e.target.value)}
+                  className="form-input"
+                  style={{ paddingLeft: '2.4rem', fontSize: '0.88rem' }}
+                />
+              </div>
+            </div>
+
+            {/* Produce Cards Grid for Daily Pricing */}
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))',
+                gap: '1rem',
+                marginBottom: '2rem',
+              }}
+            >
+              {products
+                .filter((p) => {
+                  if (dailyCategoryFilter !== 'all' && p.categoryId !== dailyCategoryFilter) return false;
+                  if (dailySearchQuery.trim()) {
+                    const q = dailySearchQuery.toLowerCase();
+                    return p.name.toLowerCase().includes(q) || (p.origin && p.origin.toLowerCase().includes(q));
+                  }
+                  return true;
+                })
+                .map((product) => {
+                  const currentEdit = priceEdits[product.id] || { price: product.price, isAvailable: product.isAvailable };
+                  const initialPrice = initialPrices[product.id] ?? product.price;
+                  const priceDiff = Math.round((currentEdit.price - initialPrice) * 100) / 100;
+                  const isModified = priceDiff !== 0;
+                  const isJustSaved = singleSavedId === product.id;
+
+                  return (
+                    <div
+                      key={product.id}
+                      className="card"
+                      style={{
+                        backgroundColor: '#ffffff',
+                        padding: '1.15rem',
+                        border: isModified ? '1.5px solid var(--amber-400)' : '1px solid var(--border-light)',
+                        borderRadius: 'var(--radius-md)',
+                        boxShadow: isModified ? '0 4px 12px rgba(245, 158, 11, 0.12)' : 'var(--shadow-sm)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'space-between',
+                        gap: '0.85rem',
+                        transition: 'all 0.2s ease',
+                      }}
+                    >
+                      {/* Top Row: Photo + Name + Origin */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+                        <img
+                          src={product.imageUrl}
+                          alt={product.name}
+                          style={{
+                            width: '54px',
+                            height: '54px',
+                            borderRadius: '8px',
+                            objectFit: 'cover',
+                            flexShrink: 0,
+                          }}
+                        />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                            <strong style={{ fontSize: '0.95rem', color: 'var(--primary-900)' }}>
+                              {product.name}
+                            </strong>
+                          </div>
+                          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.15rem' }}>
+                            <span>📍 {product.origin || 'Maroc'}</span>
+                            <span>•</span>
+                            <span style={{ fontWeight: 600, color: 'var(--primary-700)', textTransform: 'capitalize' }}>
+                              Unité : {product.unit}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Middle Row: Inline Daily Price Stepper */}
+                      <div
+                        style={{
+                          backgroundColor: 'var(--bg-main)',
+                          padding: '0.75rem',
+                          borderRadius: 'var(--radius-sm)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: '0.75rem',
+                        }}
+                      >
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>
+                            Prix de Vente du Jour
+                          </span>
+                          {isModified && (
+                            <span
+                              style={{
+                                fontSize: '0.72rem',
+                                color: priceDiff > 0 ? '#15803d' : '#b45309',
+                                fontWeight: 700,
+                              }}
+                            >
+                              {priceDiff > 0 ? `+${priceDiff.toFixed(2)} DH` : `${priceDiff.toFixed(2)} DH`} (Hier: {initialPrice.toFixed(2)} DH)
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Stepper Inputs */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                          <button
+                            type="button"
+                            onClick={() => handleDailyQuickStep(product.id, -1)}
+                            className="btn btn-secondary btn-sm"
+                            style={{
+                              width: '32px',
+                              height: '34px',
+                              padding: 0,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontWeight: 800,
+                              fontSize: '1rem',
+                            }}
+                            title="Diminuer de 1 DH"
+                          >
+                            -
+                          </button>
+
+                          <div style={{ position: 'relative', width: '100px' }}>
+                            <input
+                              type="number"
+                              step="0.5"
+                              min="0"
+                              value={currentEdit.price}
+                              onChange={(e) => handleDailyPriceInput(product.id, parseFloat(e.target.value) || 0)}
+                              className="form-input"
+                              style={{
+                                padding: '0.4rem 2rem 0.4rem 0.6rem',
+                                fontWeight: 800,
+                                fontSize: '1.05rem',
+                                color: 'var(--primary-900)',
+                                textAlign: 'right',
+                                borderColor: isModified ? 'var(--amber-500)' : 'var(--border-light)',
+                                backgroundColor: isModified ? '#fffbeb' : '#ffffff',
+                              }}
+                            />
+                            <span
+                              style={{
+                                position: 'absolute',
+                                right: '0.5rem',
+                                top: '50%',
+                                transform: 'translateY(-50%)',
+                                fontSize: '0.75rem',
+                                fontWeight: 700,
+                                color: 'var(--text-muted)',
+                                pointerEvents: 'none',
+                              }}
+                            >
+                              DH
+                            </span>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => handleDailyQuickStep(product.id, 1)}
+                            className="btn btn-secondary btn-sm"
+                            style={{
+                              width: '32px',
+                              height: '34px',
+                              padding: 0,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontWeight: 800,
+                              fontSize: '1rem',
+                            }}
+                            title="Augmenter de 1 DH"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Bottom Row: Stock Switch + Instant Save button */}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
+                        <button
+                          type="button"
+                          onClick={() => handleDailyStockToggle(product.id)}
+                          style={{
+                            padding: '0.35rem 0.75rem',
+                            borderRadius: '20px',
+                            border: '1px solid',
+                            borderColor: currentEdit.isAvailable ? '#86efac' : '#fca5a5',
+                            backgroundColor: currentEdit.isAvailable ? '#f0fdf4' : '#fef2f2',
+                            color: currentEdit.isAvailable ? '#166534' : '#991b1b',
+                            fontSize: '0.78rem',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.35rem',
+                          }}
+                        >
+                          <span
+                            style={{
+                              width: '8px',
+                              height: '8px',
+                              borderRadius: '50%',
+                              backgroundColor: currentEdit.isAvailable ? '#22c55e' : '#ef4444',
+                            }}
+                          />
+                          <span>{currentEdit.isAvailable ? 'En Stock' : 'Rupture'}</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleSaveSinglePrice(product.id)}
+                          className="btn btn-secondary btn-sm"
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.35rem',
+                            fontSize: '0.78rem',
+                            backgroundColor: isJustSaved ? 'var(--primary-700)' : undefined,
+                            color: isJustSaved ? '#ffffff' : undefined,
+                          }}
+                          title="Enregistrer ce produit individuellement"
+                        >
+                          {isJustSaved ? <Check size={14} /> : <Save size={14} />}
+                          <span>{isJustSaved ? 'Enregistré' : 'Enregistrer'}</span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          </div>
+        )}
+
         {/* TAB 1: OVERVIEW */}
         {activeTab === 'overview' && (
           <div>
+            {/* Quick Mercuriale Banner in Overview */}
+            <div
+              style={{
+                backgroundColor: 'var(--amber-50)',
+                border: '1.5px solid var(--amber-400)',
+                borderRadius: 'var(--radius-md)',
+                padding: '1rem 1.4rem',
+                marginBottom: '1.75rem',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: '1rem',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+                <Zap size={24} color="var(--amber-600)" />
+                <div>
+                  <strong style={{ color: '#92400e', fontSize: '1rem', display: 'block' }}>
+                    Mercuriale & Cours du Jour Maroc :
+                  </strong>
+                  <span style={{ fontSize: '0.86rem', color: '#78350f' }}>
+                    Ajustez chaque matin vos prix de vente selon les arrivages des marchés de gros (Casablanca, Souss, Saïss).
+                  </span>
+                </div>
+              </div>
+              <button
+                onClick={() => setActiveTab('daily-prices')}
+                className="btn btn-sm"
+                style={{
+                  backgroundColor: 'var(--amber-500)',
+                  color: '#082817',
+                  fontWeight: 800,
+                  border: 'none',
+                  padding: '0.5rem 1rem',
+                }}
+              >
+                ⚡ Modifier les prix du jour
+              </button>
+            </div>
             {/* KPI Cards */}
             <div
               style={{

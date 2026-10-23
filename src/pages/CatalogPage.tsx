@@ -68,8 +68,25 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({ initialCategoryId, onO
       <div className="container">
         {/* Header & Title */}
         <div style={{ marginBottom: '2.5rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.4rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', marginBottom: '0.4rem', flexWrap: 'wrap' }}>
             <span className="badge badge-brand">Tarifs Professionnels B2B</span>
+            <span
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                backgroundColor: 'var(--emerald-50)',
+                color: 'var(--primary-800)',
+                border: '1px solid var(--emerald-200)',
+                borderRadius: '20px',
+                padding: '0.25rem 0.75rem',
+                fontSize: '0.78rem',
+                fontWeight: 700,
+              }}
+            >
+              <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#22c55e', display: 'inline-block' }} />
+              Cours du jour actualisés quotidiennement
+            </span>
             <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Prix en Dirham Marocain (MAD)</span>
           </div>
           <h1 style={{ fontSize: 'clamp(1.8rem, 3.2vw, 2.5rem)', color: 'var(--primary-900)' }}>
