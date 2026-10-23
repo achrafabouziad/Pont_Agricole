@@ -102,9 +102,26 @@ class StoreService {
       setStored(KEY_ORDERS, DEMO_INITIAL_ORDERS);
     }
 
-    // Default to approved client for frictionless first preview
-    this.currentUser = getStored<UserProfile | null>(KEY_USER, DEMO_CLIENT_PROFILE);
-    this.currentBusiness = getStored<Business | null>(KEY_BUSINESS, DEMO_CLIENT_BUSINESS);
+    // Authentification obligatoire : Visiteur non connecté par défaut
+    this.currentUser = getStored<UserProfile | null>(KEY_USER, null);
+    if (
+      this.currentUser?.fullName?.includes('Bennani') ||
+      this.currentUser?.id === 'usr-client-001' ||
+      this.currentUser?.id === 'usr-client-002'
+    ) {
+      this.currentUser = null;
+      localStorage.removeItem(KEY_USER);
+    }
+
+    this.currentBusiness = getStored<Business | null>(KEY_BUSINESS, null);
+    if (
+      this.currentBusiness?.id === 'biz-client-001' ||
+      this.currentBusiness?.id === 'biz-client-002' ||
+      this.currentBusiness?.businessName?.includes('La Villa')
+    ) {
+      this.currentBusiness = null;
+      localStorage.removeItem(KEY_BUSINESS);
+    }
     this.cart = getStored<CartItem[]>(KEY_CART, []);
   }
 
@@ -576,22 +593,9 @@ class StoreService {
 
   // Quick switch for client testing (Admin is strictly locked to achrafabouziad credentials)
   public switchRole(role: 'admin' | 'approved_client' | 'pending_client' | 'visitor'): void {
-    if (role === 'admin') {
-      // Admin est strictement verrouillé aux identifiants réels achrafabouziad@gmail.com + Achrafgt6313
-      return;
-    } else if (role === 'approved_client') {
-      this.currentUser = DEMO_CLIENT_PROFILE;
-      this.currentBusiness = DEMO_CLIENT_BUSINESS;
-    } else if (role === 'pending_client') {
-      this.currentUser = DEMO_PENDING_CLIENT_PROFILE;
-      this.currentBusiness = DEMO_PENDING_BUSINESS;
-    } else {
-      this.currentUser = null;
-      this.currentBusiness = null;
+    if (role === 'visitor') {
+      this.logout();
     }
-    setStored(KEY_USER, this.currentUser);
-    setStored(KEY_BUSINESS, this.currentBusiness);
-    this.notify();
   }
 
   // --- CATALOG METHODS ---

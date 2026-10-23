@@ -5,6 +5,7 @@ import { ShieldCheck, UserCheck, AlertTriangle, ArrowRight, Building2, Phone, Ma
 
 interface AuthPageProps {
   onSuccess: () => void;
+  initialMode?: 'register' | 'login';
 }
 
 // Google Maps Pin Logo Component
@@ -46,8 +47,8 @@ const WORLD_COUNTRY_CODES = [
   { code: 'other', flag: '🌐', name: 'Autre indicatif...' },
 ];
 
-export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess }) => {
-  const [isLoginMode, setIsLoginMode] = useState<boolean>(true);
+export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 'register' }) => {
+  const [isLoginMode, setIsLoginMode] = useState<boolean>(initialMode === 'login');
   const [loading, setLoading] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successNotice, setSuccessNotice] = useState<string | null>(null);

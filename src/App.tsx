@@ -13,10 +13,18 @@ import { store } from './services/store';
 import { Order } from './types';
 
 export function App() {
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(store.getCurrentUser());
   const [currentPage, setCurrentPage] = useState<string>('home');
   const [selectedCatalogCategory, setSelectedCatalogCategory] = useState<string>('all');
   const [isCartOpen, setIsCartOpen] = useState<boolean>(false);
   const [lastPlacedOrder, setLastPlacedOrder] = useState<Order | null>(null);
+
+  useEffect(() => {
+    const unsub = store.subscribe(() => {
+      setCurrentUser(store.getCurrentUser());
+    });
+    return unsub;
+  }, []);
 
   useEffect(() => {
     // Read route from URL hash or query params (?admin or #admin)
@@ -49,6 +57,57 @@ export function App() {
   const handleOrderSuccess = (order: Order) => {
     setLastPlacedOrder(order);
   };
+
+  // VERROUILLAGE B2B STRICT : Le visiteur ne peut pas voir l'accueil sans être inscrit / connecté
+  if (!currentUser) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', backgroundColor: 'var(--bg-main)' }}>
+        {/* En-tête exclusif B2B */}
+        <header className="site-header" style={{ backgroundColor: '#ffffff', borderBottom: '1px solid var(--border-light)', boxShadow: 'var(--shadow-sm)' }}>
+          <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem 1.5rem' }}>
+            <div className="brand-logo" style={{ cursor: 'default' }}>
+              <img src="/logo.png" alt="Pont Agricole Logo" className="brand-img" style={{ width: '48px', height: '48px', objectFit: 'contain' }} />
+              <div className="brand-text">
+                <div className="brand-title" style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--primary-900)' }}>
+                  Pont Agricole
+                </div>
+                <div className="brand-subtitle" style={{ fontSize: '0.7rem', letterSpacing: '0.08em', color: 'var(--primary-700)' }}>
+                  LE LIEN ENTRE LA TERRE ET L’AVENIR
+                </div>
+              </div>
+            </div>
+            <div className="badge badge-brand" style={{ fontSize: '0.78rem', fontWeight: 700, padding: '0.35rem 0.75rem' }}>
+              🔒 Plateforme B2B Réservée aux CHR
+            </div>
+          </div>
+        </header>
+
+        {/* Message d'accueil / Verrouillage B2B */}
+        <div style={{ backgroundColor: '#f0fdf4', borderBottom: '1px solid #bbf7d0', padding: '0.9rem 1rem', textAlign: 'center' }}>
+          <p style={{ margin: 0, fontSize: '0.92rem', color: '#166534', fontWeight: 600 }}>
+            🌱 Bienvenue sur Pont Agricole ! Pour consulter le catalogue, les cours du jour et commander, veuillez créer votre compte professionnel ou vous connecter.
+          </p>
+        </div>
+
+        {/* Formulaire d'inscription / connexion obligatoire */}
+        <main style={{ flex: 1 }}>
+          <AuthPage
+            initialMode="register"
+            onSuccess={() => {
+              const u = store.getCurrentUser();
+              if (u?.role === 'admin') {
+                handleNavigate('admin');
+              } else {
+                handleNavigate('home');
+              }
+            }}
+          />
+        </main>
+
+        <Footer onNavigate={() => {}} />
+      </div>
+    );
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', position: 'relative' }}>

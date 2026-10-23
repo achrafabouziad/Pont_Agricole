@@ -15,7 +15,6 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, onOpenC
   const [cartCount, setCartCount] = useState<number>(store.getCart().reduce((sum, i) => sum + i.quantity, 0));
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
-  const [demoBarCollapsed, setDemoBarCollapsed] = useState(false);
 
   useEffect(() => {
     const unsubscribe = store.subscribe(() => {
@@ -30,50 +29,11 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, onOpenC
     await store.logout();
     setUserDropdownOpen(false);
     setMobileMenuOpen(false);
-    onNavigate('home');
+    onNavigate('auth');
   };
-
-  const handleRoleSwitch = (role: 'approved_client' | 'pending_client' | 'visitor') => {
-    store.switchRole(role);
-    setMobileMenuOpen(false);
-    if (role === 'visitor') onNavigate('home');
-    else onNavigate('catalog');
-  };
-
-  const isDemoEnabled = typeof window !== 'undefined' && (
-    window.location.search.includes('demo=true') || 
-    window.location.hostname === 'localhost' || 
-    window.location.hostname === '127.0.0.1'
-  );
 
   return (
     <header className="site-header">
-      {/* Demo Switcher bar visible only in dev or with ?demo=true */}
-      {isDemoEnabled && (
-        <div className={`demo-bar ${demoBarCollapsed ? 'collapsed' : ''}`}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-            <span className="demo-label">Rôle démo :</span>
-            <span style={{ fontWeight: 700, color: 'var(--amber-400)', fontSize: '0.78rem' }}>
-              {user ? (user.role === 'admin' ? 'Admin (Directeur)' : 'Client Pro') : 'Visiteur'}
-            </span>
-          </div>
-          <div className="demo-actions">
-            <button
-              className={user?.role === 'customer' ? 'active' : ''}
-              onClick={() => handleRoleSwitch('approved_client')}
-            >
-              Client Pro
-            </button>
-            <button
-              className={!user ? 'active' : ''}
-              onClick={() => handleRoleSwitch('visitor')}
-            >
-              Visiteur
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Main Navbar */}
       <div className="container nav-container">
         {/* Logo and Brand */}
