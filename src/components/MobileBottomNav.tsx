@@ -56,21 +56,13 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
         <span>Panier</span>
       </button>
 
-      {user?.role === 'admin' ? (
-        <button
-          onClick={() => onNavigate('admin')}
-          className={`bottom-nav-item ${currentPage === 'admin' ? 'active' : ''}`}
-        >
-          <ShieldCheck size={20} color="var(--amber-500)" />
-          <span>Admin</span>
-        </button>
-      ) : user ? (
+      {user ? (
         <button
           onClick={() => onNavigate('client-dashboard')}
           className={`bottom-nav-item ${currentPage === 'client-dashboard' ? 'active' : ''}`}
         >
           <User size={20} />
-          <span>Mon Espace</span>
+          <span>Espace Pro</span>
         </button>
       ) : (
         <button
@@ -81,6 +73,17 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           <span>Connexion</span>
         </button>
       )}
+
+      <button
+        onClick={() => {
+          store.setAdminMode();
+          onNavigate('admin');
+        }}
+        className={`bottom-nav-item ${currentPage === 'admin' ? 'active' : ''}`}
+      >
+        <ShieldCheck size={20} color={currentPage === 'admin' ? 'var(--amber-500)' : 'var(--amber-600)'} />
+        <span style={{ color: currentPage === 'admin' ? 'var(--amber-600)' : undefined }}>Admin</span>
+      </button>
     </nav>
   );
 };

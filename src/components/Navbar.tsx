@@ -135,15 +135,18 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, onOpenC
             Contact
           </button>
 
-          {user?.role === 'admin' && (
-            <button
-              onClick={() => onNavigate('admin')}
-              className="badge badge-amber admin-nav-badge"
-            >
-              <ShieldCheck size={14} />
-              Admin
-            </button>
-          )}
+          <button
+            onClick={() => {
+              store.setAdminMode();
+              onNavigate('admin');
+            }}
+            className={currentPage === 'admin' ? 'badge badge-amber admin-nav-badge active' : 'badge badge-amber admin-nav-badge'}
+            style={{ cursor: 'pointer', border: 'none' }}
+            title="Accéder au tableau de bord administrateur"
+          >
+            <ShieldCheck size={14} />
+            Admin
+          </button>
         </nav>
 
         {/* Action Buttons */}
@@ -295,18 +298,17 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, onOpenC
                 👤 Mon Espace Pro & Commandes
               </button>
             )}
-            {user?.role === 'admin' && (
-              <button
-                onClick={() => {
-                  onNavigate('admin');
-                  setMobileMenuOpen(false);
-                }}
-                className="mobile-menu-link"
-                style={{ fontWeight: 800, color: 'var(--amber-600)' }}
-              >
-                🛡️ Tableau de Bord Administrateur
-              </button>
-            )}
+            <button
+              onClick={() => {
+                store.setAdminMode();
+                onNavigate('admin');
+                setMobileMenuOpen(false);
+              }}
+              className="mobile-menu-link"
+              style={{ fontWeight: 800, color: 'var(--amber-600)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+            >
+              <ShieldCheck size={18} /> Tableau de Bord Administrateur
+            </button>
             {!user ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>
                 <button

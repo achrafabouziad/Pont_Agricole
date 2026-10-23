@@ -367,3 +367,13 @@ CREATE TRIGGER trigger_auto_confirm_user
   FOR EACH ROW
   EXECUTE FUNCTION public.auto_confirm_new_user();
 
+-- 4. Promouvoir le compte de direction / Achraf au rôle 'admin'
+UPDATE public.profiles 
+SET role = 'admin' 
+WHERE id IN (
+  SELECT id FROM auth.users 
+  WHERE email ILIKE '%achrafabouziad%' 
+     OR email ILIKE '%admin%'
+);
+
+

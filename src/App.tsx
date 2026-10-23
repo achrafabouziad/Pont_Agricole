@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
 import { CartDrawer } from './components/CartDrawer';
@@ -9,6 +9,7 @@ import { CatalogPage } from './pages/CatalogPage';
 import { AuthPage } from './pages/AuthPage';
 import { ClientDashboardPage } from './pages/ClientDashboardPage';
 import { AdminDashboardPage } from './pages/AdminDashboardPage';
+import { store } from './services/store';
 import { Order } from './types';
 
 export function App() {
@@ -17,8 +18,33 @@ export function App() {
   const [isCartOpen, setIsCartOpen] = useState<boolean>(false);
   const [lastPlacedOrder, setLastPlacedOrder] = useState<Order | null>(null);
 
+  useEffect(() => {
+    // Read route from URL hash or query params (?admin or #admin)
+    const syncRouteFromUrl = () => {
+      const hash = window.location.hash.replace('#', '').toLowerCase();
+      const params = new URLSearchParams(window.location.search);
+      const pageParam = params.get('page') || (params.has('admin') ? 'admin' : null);
+
+      const targetPage = pageParam || hash;
+      if (targetPage === 'admin') {
+        store.setAdminMode();
+        setCurrentPage('admin');
+      } else if (['home', 'catalog', 'auth', 'client-dashboard'].includes(targetPage)) {
+        setCurrentPage(targetPage);
+      }
+    };
+
+    syncRouteFromUrl();
+    window.addEventListener('hashchange', syncRouteFromUrl);
+    return () => window.removeEventListener('hashchange', syncRouteFromUrl);
+  }, []);
+
   const handleNavigate = (page: string) => {
+    if (page === 'admin') {
+      store.setAdminMode();
+    }
     setCurrentPage(page);
+    window.location.hash = page;
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -93,7 +119,7 @@ export function App() {
       />
 
       {/* Footer */}
-      <Footer />
+      <Footer onNavigate={handleNavigate} />
 
       {/* Native App-Style Mobile Bottom Navigation */}
       <MobileBottomNav

@@ -1,7 +1,11 @@
 import React from 'react';
 import { Phone, Mail, MapPin, Clock, MessageSquare, ShieldCheck, Truck, Award } from 'lucide-react';
 
-export const Footer: React.FC = () => {
+interface FooterProps {
+  onNavigate?: (page: string) => void;
+}
+
+export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
   return (
     <footer style={{ backgroundColor: '#092515', color: '#e5eee8', paddingTop: '4rem', paddingBottom: '2rem', marginTop: '4rem' }}>
       <div className="container">
@@ -148,10 +152,31 @@ export const Footer: React.FC = () => {
           <div>
             © {new Date().getFullYear()} Pont Agricole SARL-AU. Tous droits réservés. Plateforme B2B Maroc.
           </div>
-          <div style={{ display: 'flex', gap: '1.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', flexWrap: 'wrap' }}>
             <span>Conditions Générales de Vente B2B</span>
             <span>Politique de Confidentialité</span>
             <span>Facturation en Dirham Marocain (MAD)</span>
+            {onNavigate && (
+              <button
+                onClick={() => onNavigate('admin')}
+                style={{
+                  background: 'rgba(245, 158, 11, 0.15)',
+                  border: '1px solid rgba(245, 158, 11, 0.35)',
+                  color: 'var(--amber-400)',
+                  fontSize: '0.8rem',
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  padding: '0.3rem 0.65rem',
+                  borderRadius: '6px',
+                  fontWeight: 600,
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                <ShieldCheck size={14} /> Espace Administration
+              </button>
+            )}
           </div>
         </div>
       </div>

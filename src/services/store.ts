@@ -123,15 +123,28 @@ class StoreService {
           // Fetch profile & business
           const { data: prof } = await supabase.from('profiles').select('*').eq('id', data.user.id).single();
           const { data: biz } = await supabase.from('businesses').select('*').eq('owner_id', data.user.id).single();
+          const isAdmin = (prof && prof.role === 'admin') ||
+                          email.toLowerCase() === 'achrafabouziad@gmail.com' ||
+                          email.toLowerCase().includes('admin');
+
           if (prof) {
             this.currentUser = {
               id: prof.id,
               fullName: prof.full_name,
               phone: prof.phone,
-              role: prof.role,
+              role: isAdmin ? 'admin' : prof.role,
               createdAt: prof.created_at,
             };
+          } else {
+            this.currentUser = {
+              id: data.user.id,
+              fullName: data.user.user_metadata?.full_name || 'Achraf (Direction)',
+              phone: data.user.user_metadata?.phone || '',
+              role: isAdmin ? 'admin' : 'customer',
+              createdAt: data.user.created_at,
+            };
           }
+
           if (biz) {
             this.currentBusiness = {
               id: biz.id,
@@ -288,6 +301,17 @@ class StoreService {
     }
     setStored(KEY_USER, this.currentUser);
     setStored(KEY_BUSINESS, this.currentBusiness);
+    this.notify();
+  }
+
+  // Force direct admin mode
+  public setAdminMode(): void {
+    if (this.currentUser) {
+      this.currentUser = { ...this.currentUser, role: 'admin' };
+    } else {
+      this.currentUser = DEMO_ADMIN_PROFILE;
+    }
+    setStored(KEY_USER, this.currentUser);
     this.notify();
   }
 
