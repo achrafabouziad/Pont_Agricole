@@ -3,7 +3,6 @@ import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
 import { CartDrawer } from './components/CartDrawer';
 import { OrderSuccessModal } from './components/OrderSuccessModal';
-import { MobileBottomNav } from './components/MobileBottomNav';
 import { HomePage } from './pages/HomePage';
 import { CatalogPage } from './pages/CatalogPage';
 import { AuthPage } from './pages/AuthPage';
@@ -151,13 +150,6 @@ export function App() {
 
       {/* Footer */}
       <Footer onNavigate={handleNavigate} />
-
-      {/* Native App-Style Mobile Bottom Navigation */}
-      <MobileBottomNav
-        currentPage={currentPage}
-        onNavigate={handleNavigate}
-        onOpenCart={() => setIsCartOpen(true)}
-      />
     </div>
   );
 }
