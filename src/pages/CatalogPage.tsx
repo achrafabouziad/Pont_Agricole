@@ -149,7 +149,7 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({ initialCategoryId, onO
           </div>
 
           {/* Category Tabs */}
-          <div className="mobile-scroll-pills" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.45rem', borderTop: '1px solid var(--border-subtle)', paddingTop: '0.85rem' }}>
+          <div className="mobile-scroll-pills catalog-pills-bar" style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '0.85rem' }}>
             <button
               onClick={() => setSelectedCategory('all')}
               className={`btn btn-sm ${selectedCategory === 'all' ? 'btn-primary' : 'btn-secondary'}`}
@@ -204,14 +204,7 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({ initialCategoryId, onO
               Affichage de <strong>{filteredProducts.length}</strong> produit{filteredProducts.length > 1 ? 's' : ''} frais disponible{filteredProducts.length > 1 ? 's' : ''} à la livraison
             </div>
 
-            <div
-              className="catalog-grid"
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
-                gap: '1.5rem',
-              }}
-            >
+            <div className="catalog-grid">
               {filteredProducts.map((product) => (
                 <ProductCard
                   key={product.id}

@@ -150,14 +150,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectCategory
             </button>
           </div>
 
-          <div
-            className="catalog-grid"
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
-              gap: '1.5rem',
-            }}
-          >
+          <div className="catalog-grid">
             {popularProducts.map((product) => (
               <ProductCard
                 key={product.id}

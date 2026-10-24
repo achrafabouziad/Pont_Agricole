@@ -55,12 +55,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
         {/* Top Badges */}
         <div className="product-badges">
           {product.badge && (
-            <span className="badge badge-amber">
+            <span className="badge badge-amber product-top-badge">
               {product.badge}
             </span>
           )}
           {!product.isAvailable && (
-            <span className="badge badge-status-cancelled">
+            <span className="badge badge-status-cancelled product-top-badge">
               Rupture
             </span>
           )}
@@ -68,7 +68,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
 
         {product.origin && (
           <div className="product-origin-tag">
-            <MapPin size={11} color="var(--amber-400)" />
+            <MapPin size={10} color="var(--amber-400)" />
             <span>{product.origin}</span>
           </div>
         )}
@@ -76,7 +76,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
 
       {/* Product Content Body */}
       <div className="product-body">
-        <h3 className="product-title">
+        <h3 className="product-title" title={product.name}>
           {product.name}
         </h3>
 
@@ -86,73 +86,85 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
 
         {/* Unit & Min Order Info */}
         <div className="product-unit-info">
-          <span>Unité : <strong>{product.unit.toUpperCase()}</strong></span>
-          {product.minimumQuantity > 1 && (
+          <span className="product-unit-chip">
+            Au {product.unit}
+          </span>
+          {product.minimumQuantity > 1 ? (
             <span className="product-min-badge">
               Min: {product.minimumQuantity}
+            </span>
+          ) : (
+            <span className="product-stock-dot">
+              <span className="dot-green" /> Disponible
             </span>
           )}
         </div>
 
-        {/* Price Tag in MAD */}
-        <div className="product-price-wrap">
-          <span className="product-price-num">
-            {product.price.toFixed(2)}
-          </span>
-          <span className="product-currency">
-            DH
-          </span>
-          <span className="product-unit-label">
-            / {getUnitLabel(product.unit)}
-          </span>
-        </div>
-
-        {/* Quantity Controls & Add to Cart */}
-        <div className="product-actions">
-          <div className="product-qty-stepper">
-            <button
-              onClick={handleDecrement}
-              disabled={!product.isAvailable || quantity <= product.minimumQuantity}
-              className="qty-btn"
-              title="Diminuer"
-            >
-              <Minus size={13} />
-            </button>
-            <span className="qty-number">
-              {quantity}
+        {/* Bottom Section Pinned to Bottom */}
+        <div className="product-card-footer">
+          {/* Price Tag in MAD */}
+          <div className="product-price-wrap">
+            <span className="product-price-num">
+              {product.price.toFixed(2)}
             </span>
-            <button
-              onClick={handleIncrement}
-              disabled={!product.isAvailable}
-              className="qty-btn"
-              title="Augmenter"
-            >
-              <Plus size={13} />
-            </button>
+            <span className="product-currency">
+              DH
+            </span>
+            <span className="product-unit-label">
+              /{product.unit}
+            </span>
           </div>
 
-          <button
-            onClick={handleAdd}
-            disabled={!product.isAvailable}
-            className={`btn product-add-btn ${added ? 'btn-secondary' : 'btn-primary'}`}
-          >
-            {added ? (
-              <>
-                <Check size={15} color="var(--primary-600)" />
-                <span className="btn-text">Ajouté</span>
-              </>
-            ) : product.isAvailable ? (
-              <>
-                <ShoppingCart size={15} />
-                <span className="btn-text">Ajouter</span>
-              </>
-            ) : (
-              <>
-                <AlertCircle size={15} />
-                <span className="btn-text">Rupture</span>
-              </>
-            )}
-          </button>
+          {/* Quantity Controls & Add to Cart in Single Cohesive Row */}
+          <div className="product-actions">
+            <div className="product-qty-stepper">
+              <button
+                onClick={handleDecrement}
+                disabled={!product.isAvailable || quantity <= product.minimumQuantity}
+                className="qty-btn"
+                title="Diminuer"
+                type="button"
+              >
+                <Minus size={12} />
+              </button>
+              <span className="qty-number">
+                {quantity}
+              </span>
+              <button
+                onClick={handleIncrement}
+                disabled={!product.isAvailable}
+                className="qty-btn"
+                title="Augmenter"
+                type="button"
+              >
+                <Plus size={12} />
+              </button>
+            </div>
+
+            <button
+              onClick={handleAdd}
+              disabled={!product.isAvailable}
+              className={`btn product-add-btn ${added ? 'btn-secondary' : 'btn-primary'}`}
+              type="button"
+            >
+              {added ? (
+                <>
+                  <Check size={14} color="var(--primary-600)" />
+                  <span className="btn-text">Ajouté</span>
+                </>
+              ) : product.isAvailable ? (
+                <>
+                  <ShoppingCart size={14} />
+                  <span className="btn-text">Ajouter</span>
+                </>
+              ) : (
+                <>
+                  <AlertCircle size={14} />
+                  <span className="btn-text">Rupture</span>
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </div>
     </div>

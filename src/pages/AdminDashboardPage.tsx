@@ -623,7 +623,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
                 }}
               >
                 {/* Category Pills */}
-                <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                <div className="mobile-scroll-pills catalog-pills-bar" style={{ display: 'flex', gap: '0.4rem' }}>
                   {[
                     { id: 'all', label: `Tous les produits (${products.length})` },
                     { id: 'cat-legumes', label: `Légumes (${products.filter((p) => p.categoryId === 'cat-legumes').length})` },
@@ -700,6 +700,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
 
             {/* Produce Cards Grid for Daily Pricing */}
             <div
+              className="daily-pricing-grid"
               style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
@@ -2143,7 +2144,8 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
               </button>
             </div>
 
-            <div className="table-responsive">
+            {/* Desktop Table View */}
+            <div className="products-table-desktop table-responsive">
               <table className="data-table">
                 <thead>
                   <tr>
@@ -2206,6 +2208,87 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
                   ))}
                 </tbody>
               </table>
+            </div>
+
+            {/* Mobile Structured Cards View */}
+            <div className="products-cards-mobile">
+              {products.map((p) => (
+                <div
+                  key={p.id}
+                  style={{
+                    backgroundColor: '#ffffff',
+                    border: '1px solid var(--border-light)',
+                    borderRadius: 'var(--radius-md)',
+                    padding: '0.85rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.65rem',
+                    boxShadow: 'var(--shadow-xs)',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <img
+                      src={p.imageUrl}
+                      alt={p.name}
+                      style={{ width: '48px', height: '48px', borderRadius: '8px', objectFit: 'cover', flexShrink: 0 }}
+                    />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--primary-900)' }}>
+                        {p.name}
+                      </div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.1rem' }}>
+                        <span>{p.origin || 'Maroc'}</span>
+                        <span>•</span>
+                        <span style={{ textTransform: 'capitalize' }}>{p.categoryId.replace('cat-', '')}</span>
+                      </div>
+                    </div>
+                    {p.isAvailable ? (
+                      <span className="badge badge-status-delivered" style={{ fontSize: '0.68rem', padding: '0.15rem 0.45rem' }}>En Stock</span>
+                    ) : (
+                      <span className="badge badge-status-cancelled" style={{ fontSize: '0.68rem', padding: '0.15rem 0.45rem' }}>Rupture</span>
+                    )}
+                  </div>
+
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      backgroundColor: 'var(--bg-main)',
+                      padding: '0.45rem 0.75rem',
+                      borderRadius: 'var(--radius-xs)',
+                      fontSize: '0.82rem',
+                    }}
+                  >
+                    <div>
+                      <span style={{ color: 'var(--text-muted)' }}>Prix Pro : </span>
+                      <strong style={{ color: 'var(--primary-900)', fontSize: '0.95rem' }}>{p.price.toFixed(2)} DH</strong>
+                      <span style={{ color: 'var(--text-light)', fontSize: '0.75rem' }}>/{p.unit}</span>
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                      Min: <strong>{p.minimumQuantity} {p.unit}</strong>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', paddingTop: '0.2rem' }}>
+                    <button
+                      onClick={() => handleOpenEditProduct(p)}
+                      className="btn btn-secondary btn-sm"
+                      style={{ flex: 1, justifyContent: 'center', fontSize: '0.78rem', padding: '0.45rem' }}
+                    >
+                      <Edit2 size={13} /> Modifier
+                    </button>
+                    <button
+                      onClick={() => handleDeleteProduct(p.id)}
+                      className="btn btn-secondary btn-sm"
+                      style={{ color: '#dc2626', borderColor: '#fecaca', backgroundColor: '#fef2f2', padding: '0.45rem 0.75rem' }}
+                      title="Supprimer"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}
