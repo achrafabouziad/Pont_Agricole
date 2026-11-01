@@ -104,20 +104,44 @@ class StoreService {
 
     // Authentification obligatoire : Visiteur non connecté par défaut
     this.currentUser = getStored<UserProfile | null>(KEY_USER, null);
-    if (
-      this.currentUser?.fullName?.includes('Bennani') ||
+
+    // Nettoyage impératif de toute ancienne session démo résiduelle (admin démo, Bennani, El Fassi)
+    const isMockUser =
+      this.currentUser?.id === 'admin-001' ||
+      this.currentUser?.id === 'user-resto-001' ||
+      this.currentUser?.id === 'user-hotel-002' ||
       this.currentUser?.id === 'usr-client-001' ||
-      this.currentUser?.id === 'usr-client-002'
-    ) {
+      this.currentUser?.id === 'usr-client-002' ||
+      this.currentUser?.fullName?.includes('Karim Tazi') ||
+      this.currentUser?.fullName?.includes('Bennani') ||
+      this.currentUser?.fullName?.includes('Amine El Fassi');
+
+    if (isMockUser) {
       this.currentUser = null;
       localStorage.removeItem(KEY_USER);
+    }
+
+    // Sécurité stricte : Aucun utilisateur n'a le rôle admin sauf Achraf Abouziad
+    if (this.currentUser?.role === 'admin') {
+      const isAchraf =
+        this.currentUser.id === 'usr-achraf-master-admin' ||
+        this.currentUser.fullName?.toLowerCase().includes('achraf') ||
+        (this.currentUser.phone && normalizePhone(this.currentUser.phone).endsWith('661987654'));
+
+      if (!isAchraf) {
+        this.currentUser.role = 'customer';
+        setStored(KEY_USER, this.currentUser);
+      }
     }
 
     this.currentBusiness = getStored<Business | null>(KEY_BUSINESS, null);
     if (
       this.currentBusiness?.id === 'biz-client-001' ||
       this.currentBusiness?.id === 'biz-client-002' ||
-      this.currentBusiness?.businessName?.includes('La Villa')
+      this.currentBusiness?.id === 'biz-resto-001' ||
+      this.currentBusiness?.id === 'biz-hotel-002' ||
+      this.currentBusiness?.businessName?.includes('La Villa') ||
+      this.currentBusiness?.businessName?.includes('Bistrot du Port')
     ) {
       this.currentBusiness = null;
       localStorage.removeItem(KEY_BUSINESS);

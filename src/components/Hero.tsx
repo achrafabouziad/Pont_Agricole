@@ -14,54 +14,59 @@ export const Hero: React.FC<HeroProps> = ({ onExploreCatalog, onCreateAccount })
           {/* Left Column: Headlines & Call to Action */}
           <div>
             <div className="hero-badge">
-              <ShieldCheck size={15} color="var(--primary-600)" />
-              <span>Centrale d'Approvisionnement B2B • Réseau National Maroc</span>
+              <ShieldCheck size={14} color="var(--primary-600)" />
+              <span>Centrale B2B CHR • Casablanca • Rabat • Marrakech • Tanger</span>
             </div>
 
             <h1 className="hero-title">
-              Votre partenaire en{' '}
+              Fruits, Légumes & Herbes Fraîches{' '}
               <span style={{ color: 'var(--primary-700)', position: 'relative', display: 'inline-block' }}>
-                produits frais
-              </span>{' '}
-              pour les professionnels
+                pour les Professionnels
+              </span>
             </h1>
 
             <p className="hero-desc">
-              Fruits récoltés à maturité, légumes calibrés pour vos cuisines et herbes aromatiques fraîches cueillies à l’aube. Commandez jusqu’à 21h00, recevez dès 07h00 du matin directement dans vos chambres froides.
+              Légumes maraîchers calibrés pour la restauration, fruits gorgés de soleil et herbes cueillies à l’aube. Commandez jusqu’à 21h00, livraison le lendemain matin avant 09h00 directement dans vos cuisines.
             </p>
 
             {/* CTAs */}
             <div className="hero-actions">
-              <button onClick={onCreateAccount} className="btn btn-primary btn-lg">
-                <span>Créer un compte professionnel</span>
-                <ArrowRight size={17} />
+              <button onClick={onExploreCatalog} className="btn btn-primary btn-lg hero-cta-btn">
+                <span>Consulter le Catalogue & Prix du Jour</span>
+                <ArrowRight size={16} />
               </button>
-              <button onClick={onExploreCatalog} className="btn btn-secondary btn-lg">
-                <span>Consulter le catalogue</span>
+              <button
+                type="button"
+                onClick={() => {
+                  document.getElementById('advantages')?.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="btn btn-secondary btn-lg hero-secondary-btn"
+              >
+                <span>Avantages CHR</span>
               </button>
             </div>
 
             {/* Trust Points */}
             <div className="hero-trust-grid">
               <div className="hero-trust-item">
-                <CheckCircle2 size={18} className="hero-trust-icon" />
+                <CheckCircle2 size={16} className="hero-trust-icon" />
                 <div>
                   <div className="hero-trust-label">Facturation en MAD</div>
-                  <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>Tarifs fermes de gros</div>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Tarifs fermes de gros</div>
                 </div>
               </div>
               <div className="hero-trust-item">
-                <Truck size={18} className="hero-trust-icon" />
+                <Truck size={16} className="hero-trust-icon" />
                 <div>
                   <div className="hero-trust-label">Livraison avant 09h00</div>
-                  <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>Tournées matinales CHR</div>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Tournées matinales CHR</div>
                 </div>
               </div>
               <div className="hero-trust-item">
-                <ShieldCheck size={18} className="hero-trust-icon" />
+                <ShieldCheck size={16} className="hero-trust-icon" />
                 <div>
                   <div className="hero-trust-label">Calibrage Certifié</div>
-                  <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>Zéro perte en cuisine</div>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Zéro perte en cuisine</div>
                 </div>
               </div>
             </div>

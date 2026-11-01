@@ -86,11 +86,11 @@ export const OrderSuccessModal: React.FC<OrderSuccessModalProps> = ({
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
-          <button onClick={onClose} className="btn btn-secondary">
+        <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+          <button onClick={onClose} className="btn btn-secondary" style={{ flex: '1 1 140px', justifyContent: 'center' }}>
             Continuer mes achats
           </button>
-          <button onClick={onGoToDashboard} className="btn btn-primary">
+          <button onClick={onGoToDashboard} className="btn btn-primary" style={{ flex: '1 1 180px', justifyContent: 'center' }}>
             <span>Suivre dans mon espace</span>
             <ArrowRight size={16} />
           </button>

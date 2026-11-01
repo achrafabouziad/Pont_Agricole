@@ -3,6 +3,7 @@ import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
 import { CartDrawer } from './components/CartDrawer';
 import { OrderSuccessModal } from './components/OrderSuccessModal';
+import { MobileBottomNav } from './components/MobileBottomNav';
 import { HomePage } from './pages/HomePage';
 import { CatalogPage } from './pages/CatalogPage';
 import { AuthPage } from './pages/AuthPage';
@@ -27,15 +28,36 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    // Read route from URL hash or query params (?admin or #admin)
+    // Synchroniser la route depuis l'URL en protégeant strictement l'accès admin
     const syncRouteFromUrl = () => {
       const hash = window.location.hash.replace('#', '').toLowerCase();
       const params = new URLSearchParams(window.location.search);
       const pageParam = params.get('page') || (params.has('admin') ? 'admin' : null);
 
       const targetPage = pageParam || hash;
-      if (['home', 'catalog', 'auth', 'client-dashboard', 'admin'].includes(targetPage)) {
+      const user = store.getCurrentUser();
+
+      // Si le lien contient #admin ou ?admin
+      if (targetPage === 'admin') {
+        if (user?.role === 'admin') {
+          // L'administrateur autorise l'accès admin
+          setCurrentPage('admin');
+        } else {
+          // Si ce n'est pas l'admin ou si le lien a été copié avec #admin :
+          // Nettoyer immédiatement l'URL et rediriger vers la vitrine d'accueil
+          if (window.location.hash) {
+            window.history.replaceState(null, '', window.location.pathname);
+          }
+          setCurrentPage('home');
+        }
+        return;
+      }
+
+      if (['home', 'catalog', 'auth', 'client-dashboard'].includes(targetPage)) {
         setCurrentPage(targetPage);
+      } else {
+        // En ouvrant le lien du site par défaut : TOUJOURS la page d'accueil
+        setCurrentPage('home');
       }
     };
 
@@ -46,7 +68,16 @@ export function App() {
 
   const handleNavigate = (page: string) => {
     setCurrentPage(page);
-    window.location.hash = page;
+    // Nettoyer l'URL pour ne pas polluer l'adresse avec #admin ou #home
+    // Cela garantit que lorsque l'administrateur copie le lien pour un client,
+    // le lien est propre (ex: https://pontagricole.ma/) et n'atterrit jamais sur l'admin
+    if (page === 'home' || page === 'admin') {
+      if (window.location.hash) {
+        window.history.replaceState(null, '', window.location.pathname);
+      }
+    } else {
+      window.location.hash = page;
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -126,7 +157,15 @@ export function App() {
         )}
 
         {currentPage === 'admin' && (
-          <AdminDashboardPage onNavigate={handleNavigate} />
+          currentUser?.role === 'admin' ? (
+            <AdminDashboardPage onNavigate={handleNavigate} />
+          ) : (
+            <HomePage
+              onNavigate={handleNavigate}
+              onSelectCategory={handleSelectCategory}
+              onOpenCart={() => setIsCartOpen(true)}
+            />
+          )
         )}
       </main>
 
@@ -150,6 +189,13 @@ export function App() {
 
       {/* Footer */}
       <Footer onNavigate={handleNavigate} />
+
+      {/* Native App-Style Mobile Bottom Navigation */}
+      <MobileBottomNav
+        currentPage={currentPage}
+        onNavigate={handleNavigate}
+        onOpenCart={() => setIsCartOpen(true)}
+      />
     </div>
   );
 }

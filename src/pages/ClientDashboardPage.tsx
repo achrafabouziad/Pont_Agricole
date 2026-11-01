@@ -82,45 +82,31 @@ export const ClientDashboardPage: React.FC<ClientDashboardPageProps> = ({ onNavi
   };
 
   return (
-    <div style={{ padding: '3rem 0 5rem' }}>
+    <div className="client-dashboard-wrapper">
       <div className="container">
         {/* Account Header */}
-        <div
-          style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            gap: '1.5rem',
-            marginBottom: '2.5rem',
-            padding: '1.75rem',
-            backgroundColor: '#ffffff',
-            borderRadius: 'var(--radius-lg)',
-            border: '1px solid var(--border-light)',
-            boxShadow: 'var(--shadow-sm)',
-          }}
-        >
+        <div className="card client-account-header">
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', marginBottom: '0.35rem' }}>
-              <h1 style={{ fontSize: '1.65rem', color: 'var(--primary-900)' }}>
+            <div className="client-account-title-row">
+              <h1 className="client-business-name">
                 {business?.businessName || 'Mon Établissement'}
               </h1>
               <span className="badge badge-status-delivered">Compte Professionnel Actif</span>
             </div>
-            <div style={{ fontSize: '0.88rem', color: 'var(--text-muted)', display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center' }}>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+            <div className="client-account-meta-row">
+              <span className="client-meta-item">
                 <User size={14} color="var(--primary-600)" /> {user?.fullName}
               </span>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+              <span className="client-meta-item">
                 <Phone size={14} color="var(--primary-600)" /> {user?.phone}
               </span>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+              <span className="client-meta-item">
                 <MapPin size={14} color="var(--primary-600)" /> {business?.deliveryAddress}, {business?.city}
               </span>
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: '0.75rem' }}>
+          <div className="client-header-actions">
             <button onClick={() => onNavigate('catalog')} className="btn btn-secondary btn-sm">
               <ShoppingBag size={16} />
               <span>Commander</span>
@@ -154,18 +140,18 @@ export const ClientDashboardPage: React.FC<ClientDashboardPageProps> = ({ onNavi
 
         {/* Orders History Section */}
         <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-            <h2 style={{ fontSize: '1.35rem', color: 'var(--primary-900)' }}>
+          <div className="client-history-header">
+            <h2 className="client-history-title">
               Historique des Commandes ({orders.length})
             </h2>
-            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+            <span className="client-history-sub">
               Suivi en temps réel des livraisons
             </span>
           </div>
 
           {orders.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '4rem 1rem', backgroundColor: '#ffffff', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-light)' }}>
-              <Package size={48} color="var(--primary-400)" style={{ margin: '0 auto 1rem' }} />
+            <div style={{ textAlign: 'center', padding: '3.5rem 1rem', backgroundColor: '#ffffff', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-light)' }}>
+              <Package size={44} color="var(--primary-400)" style={{ margin: '0 auto 1rem' }} />
               <h3 style={{ fontSize: '1.15rem', color: 'var(--primary-900)', marginBottom: '0.5rem' }}>
                 Aucune commande enregistrée
               </h3>
@@ -177,68 +163,61 @@ export const ClientDashboardPage: React.FC<ClientDashboardPageProps> = ({ onNavi
               </button>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            <div className="client-orders-list">
               {orders.map((order) => (
                 <div
                   key={order.id}
-                  className="card"
-                  style={{
-                    padding: '1.4rem',
-                    backgroundColor: '#ffffff',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '1rem',
-                  }}
+                  className="card client-order-card"
                 >
                   {/* Top Bar of Order Card */}
-                  <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '0.85rem' }}>
+                  <div className="client-order-header">
                     <div>
-                      <div style={{ fontWeight: 800, fontSize: '1.05rem', color: 'var(--primary-800)' }}>
+                      <div className="client-order-num">
                         {order.orderNumber}
                       </div>
-                      <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                      <div className="client-order-date">
                         Passée le {new Date(order.createdAt).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })}
                       </div>
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <div className="client-order-status-price">
                       {getStatusBadge(order.status)}
-                      <div style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--primary-900)' }}>
+                      <div className="client-order-total">
                         {order.total.toFixed(2)} DH
                       </div>
                     </div>
                   </div>
 
                   {/* Order info details */}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem', fontSize: '0.85rem', color: 'var(--text-main)' }}>
+                  <div className="client-order-meta-grid">
                     <div>
-                      <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.75rem', textTransform: 'uppercase' }}>Date de livraison prévue</span>
-                      <strong style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', marginTop: '0.2rem' }}>
+                      <span className="client-meta-label">Date de livraison prévue</span>
+                      <strong className="client-meta-val">
                         <Calendar size={14} color="var(--primary-600)" /> {order.requestedDeliveryDate}
                       </strong>
                     </div>
 
                     <div>
-                      <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.75rem', textTransform: 'uppercase' }}>Destination</span>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', marginTop: '0.2rem' }}>
+                      <span className="client-meta-label">Destination</span>
+                      <span className="client-meta-val">
                         <MapPin size={14} color="var(--primary-600)" /> {order.deliveryCity}
                       </span>
                     </div>
 
                     <div>
-                      <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.75rem', textTransform: 'uppercase' }}>Volume</span>
-                      <span style={{ marginTop: '0.2rem', display: 'block' }}>
+                      <span className="client-meta-label">Volume</span>
+                      <span className="client-meta-val">
                         {order.items.length} références ({order.items.reduce((s, i) => s + i.quantity, 0)} unités)
                       </span>
                     </div>
                   </div>
 
                   {/* Items snapshot summary */}
-                  <div style={{ backgroundColor: 'var(--bg-main)', borderRadius: 'var(--radius-sm)', padding: '0.75rem 1rem', fontSize: '0.82rem' }}>
-                    <div style={{ fontWeight: 600, color: 'var(--primary-900)', marginBottom: '0.35rem' }}>Articles commandés :</div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem' }}>
+                  <div className="client-order-items-box">
+                    <div style={{ fontWeight: 600, color: 'var(--primary-900)', marginBottom: '0.35rem', fontSize: '0.78rem' }}>Articles commandés :</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.45rem' }}>
                       {order.items.map((item, idx) => (
-                        <span key={idx} style={{ backgroundColor: '#ffffff', padding: '0.25rem 0.55rem', borderRadius: '4px', border: '1px solid var(--border-light)' }}>
+                        <span key={idx} className="client-order-item-pill">
                           <strong>{item.quantity}x</strong> {item.productNameSnapshot} ({item.unitPriceSnapshot.toFixed(2)} DH/{item.unitSnapshot})
                         </span>
                       ))}
@@ -246,7 +225,7 @@ export const ClientDashboardPage: React.FC<ClientDashboardPageProps> = ({ onNavi
                   </div>
 
                   {/* Actions: View Details / Reorder / Invoice */}
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.65rem', paddingTop: '0.35rem', flexWrap: 'wrap' }}>
+                  <div className="client-order-actions">
                     <button
                       onClick={() => setInvoiceOrder(order)}
                       className="btn btn-secondary btn-sm"
@@ -271,7 +250,7 @@ export const ClientDashboardPage: React.FC<ClientDashboardPageProps> = ({ onNavi
                       style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}
                     >
                       <RotateCcw size={14} />
-                      <span>Recommander ces produits</span>
+                      <span>Recommander</span>
                     </button>
                   </div>
                 </div>

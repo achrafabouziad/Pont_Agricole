@@ -44,6 +44,8 @@ import {
   ArrowRight,
   Mail,
   FileText,
+  BarChart3,
+  ShoppingBag,
   Printer,
 } from 'lucide-react';
 import { InvoiceModal } from '../components/InvoiceModal';
@@ -430,88 +432,80 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
     <div style={{ padding: '2.5rem 0 6rem', backgroundColor: 'var(--bg-main)', minHeight: '85vh' }}>
       <div className="container">
         {/* Admin Header */}
-        <div
-          style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            gap: '1rem',
-            marginBottom: '2rem',
-          }}
-        >
+        <div className="admin-header-row">
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-              <span className="badge badge-amber" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                <ShieldCheck size={14} /> Espace Direction & Logistique
+            <div className="admin-badge-line">
+              <span className="admin-status-badge">
+                <span className="admin-status-dot" /> Direction & Logistique B2B
               </span>
-              <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>Pont Agricole Maroc</span>
+              <span className="admin-brand-tag">Pont Agricole Maroc</span>
             </div>
-            <h1 style={{ fontSize: '1.85rem', color: 'var(--primary-900)' }}>Tableau de Bord Administrateur</h1>
+            <h1 className="admin-page-title">Tableau de Bord Administrateur</h1>
           </div>
 
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <button
-              onClick={handleOpenAddProduct}
-              className="btn btn-primary btn-sm"
-              style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}
-            >
-              <Plus size={16} />
-              <span>Nouveau Produit</span>
-            </button>
-          </div>
+          <button
+            onClick={handleOpenAddProduct}
+            className="btn btn-primary btn-sm admin-header-btn"
+          >
+            <Plus size={15} />
+            <span>Nouveau Produit</span>
+          </button>
         </div>
 
-        {/* Navigation Tabs */}
-        <div
-          className="mobile-scroll-pills"
-          style={{
-            display: 'flex',
-            gap: '0.45rem',
-            overflowX: 'auto',
-            paddingBottom: '0.5rem',
-            marginBottom: '1.5rem',
-            borderBottom: '1px solid var(--border-light)',
-          }}
-        >
+        {/* Modern Segmented Navigation Tabs */}
+        <div className="admin-segmented-tabs">
           <button
+            type="button"
             onClick={() => setActiveTab('daily-prices')}
-            className={`btn btn-sm ${activeTab === 'daily-prices' ? 'btn-primary' : 'btn-secondary'}`}
-            style={activeTab === 'daily-prices' ? { backgroundColor: 'var(--amber-500)', borderColor: 'var(--amber-600)', color: '#082817', fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: '0.35rem' } : { borderColor: 'var(--amber-400)', color: 'var(--amber-800)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+            className={`admin-tab-btn ${activeTab === 'daily-prices' ? 'active' : ''}`}
           >
-            <Zap size={14} />
+            <Calendar size={14} />
             <span>Mercuriale Quotidienne</span>
           </button>
+
           <button
+            type="button"
             onClick={() => setActiveTab('overview')}
-            className={`btn btn-sm ${activeTab === 'overview' ? 'btn-primary' : 'btn-secondary'}`}
+            className={`admin-tab-btn ${activeTab === 'overview' ? 'active' : ''}`}
           >
-            Vue d'ensemble
+            <BarChart3 size={14} />
+            <span>Vue d'ensemble</span>
           </button>
+
           <button
+            type="button"
             onClick={() => setActiveTab('orders')}
-            className={`btn btn-sm ${activeTab === 'orders' ? 'btn-primary' : 'btn-secondary'}`}
+            className={`admin-tab-btn ${activeTab === 'orders' ? 'active' : ''}`}
           >
-            Commandes ({pendingOrdersCount > 0 ? `${pendingOrdersCount} en attente` : orders.length})
+            <ShoppingBag size={14} />
+            <span>Commandes</span>
+            <span className={`admin-tab-count ${pendingOrdersCount > 0 ? 'alert' : ''}`}>
+              {pendingOrdersCount > 0 ? `${pendingOrdersCount} en attente` : orders.length}
+            </span>
           </button>
+
           <button
+            type="button"
             onClick={() => setActiveTab('clients')}
-            className={`btn btn-sm ${activeTab === 'clients' ? 'btn-primary' : 'btn-secondary'}`}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+            className={`admin-tab-btn ${activeTab === 'clients' ? 'active' : ''}`}
           >
             <Users size={14} />
-            <span>Clients Inscrits ({businesses.length})</span>
-            {pendingBusinessesCount > 0 && (
-              <span className="badge badge-amber" style={{ padding: '0.1rem 0.4rem', fontSize: '0.65rem' }}>
-                {pendingBusinessesCount} en attente
-              </span>
-            )}
+            <span>Clients Inscrits</span>
+            <span className={`admin-tab-count ${pendingBusinessesCount > 0 ? 'alert' : ''}`}>
+              {pendingBusinessesCount > 0 ? `${pendingBusinessesCount} en attente` : businesses.length}
+            </span>
           </button>
+
           <button
+            type="button"
             onClick={() => setActiveTab('products')}
-            className={`btn btn-sm ${activeTab === 'products' ? 'btn-primary' : 'btn-secondary'}`}
+            className={`admin-tab-btn ${activeTab === 'products' ? 'active' : ''}`}
           >
-            Gestion des Produits ({products.length})
+            <Package size={14} />
+            <span>Gestion des Produits</span>
+            <span className="admin-tab-count">
+              {products.length}
+            </span>
           </button>
         </div>
 
@@ -541,89 +535,35 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
             )}
 
             {/* Header Card */}
-            <div
-              className="card"
-              style={{
-                backgroundColor: '#ffffff',
-                padding: '1.75rem',
-                marginBottom: '1.75rem',
-                borderLeft: '5px solid var(--amber-500)',
-                boxShadow: 'var(--shadow-sm)',
-              }}
-            >
-              <div
-                style={{
-                  display: 'flex',
-                  flexWrap: 'wrap',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  gap: '1.25rem',
-                }}
-              >
+            <div className="mercuriale-card">
+              <div className="mercuriale-header-top">
                 <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem' }}>
-                    <span
-                      style={{
-                        padding: '0.2rem 0.6rem',
-                        backgroundColor: 'var(--amber-100)',
-                        color: 'var(--amber-800)',
-                        borderRadius: '4px',
-                        fontSize: '0.75rem',
-                        fontWeight: 700,
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.05em',
-                      }}
-                    >
-                      Mercuriale Quotidienne B2B
-                    </span>
-                    <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                      Arrivages Marché de Gros Maroc
-                    </span>
-                  </div>
-                  <h2 style={{ fontSize: '1.5rem', color: 'var(--primary-900)', marginBottom: '0.35rem' }}>
+                  <span className="mercuriale-pill">
+                    <Clock size={12} />
+                    <span>Arrivages Marché de Gros</span>
+                  </span>
+                  <h2 className="mercuriale-heading">
                     Ajustement Rapide des Prix du Jour
                   </h2>
-                  <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', maxWidth: '680px', lineHeight: 1.5 }}>
+                  <p className="mercuriale-sub">
                     Modifiez vos prix de vente directement dans les cases ci-dessous chaque matin. Les nouveaux tarifs s’appliquent instantanément au catalogue de vos clients CHR.
                   </p>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-                  <button
-                    onClick={handleSaveAllDailyPrices}
-                    disabled={savingDaily}
-                    className="btn btn-primary"
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.5rem',
-                      padding: '0.75rem 1.4rem',
-                      fontSize: '0.95rem',
-                      fontWeight: 700,
-                      boxShadow: '0 4px 12px rgba(29, 110, 66, 0.25)',
-                    }}
-                  >
-                    <Save size={18} />
-                    <span>{savingDaily ? 'Enregistrement...' : 'Enregistrer Tous les Prix du Jour'}</span>
-                  </button>
-                </div>
+                <button
+                  onClick={handleSaveAllDailyPrices}
+                  disabled={savingDaily}
+                  className="btn btn-primary mercuriale-save-btn"
+                >
+                  <Save size={16} />
+                  <span>{savingDaily ? 'Enregistrement...' : 'Enregistrer Tous les Prix'}</span>
+                </button>
               </div>
 
               {/* Quick Actions & Filters Bar */}
-              <div
-                style={{
-                  marginTop: '1.5rem',
-                  paddingTop: '1.25rem',
-                  borderTop: '1px solid var(--border-light)',
-                  display: 'flex',
-                  flexWrap: 'wrap',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  gap: '1rem',
-                }}
-              >
+              <div className="mercuriale-toolbar">
                 {/* Category Pills */}
-                <div className="mobile-scroll-pills catalog-pills-bar" style={{ display: 'flex', gap: '0.4rem' }}>
+                <div className="mercuriale-categories">
                   {[
                     { id: 'all', label: `Tous les produits (${products.length})` },
                     { id: 'cat-legumes', label: `Légumes (${products.filter((p) => p.categoryId === 'cat-legumes').length})` },
@@ -633,68 +573,72 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
                   ].map((cat) => (
                     <button
                       key={cat.id}
+                      type="button"
                       onClick={() => setDailyCategoryFilter(cat.id)}
-                      style={{
-                        padding: '0.4rem 0.8rem',
-                        borderRadius: '20px',
-                        border: '1px solid',
-                        borderColor: dailyCategoryFilter === cat.id ? 'var(--primary-700)' : 'var(--border-light)',
-                        backgroundColor: dailyCategoryFilter === cat.id ? 'var(--primary-700)' : '#ffffff',
-                        color: dailyCategoryFilter === cat.id ? '#ffffff' : 'var(--text-main)',
-                        fontSize: '0.82rem',
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        transition: 'var(--transition)',
-                      }}
+                      className={`mercuriale-cat-pill ${dailyCategoryFilter === cat.id ? 'active' : ''}`}
                     >
                       {cat.label}
                     </button>
                   ))}
                 </div>
 
-                {/* Batch Adjusters */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>
-                    Ajustement rapide :
-                  </span>
-                  <button
-                    onClick={() => handleBatchAdjustCategory(1)}
-                    className="btn btn-secondary btn-sm"
-                    style={{ fontSize: '0.78rem', padding: '0.35rem 0.65rem' }}
-                    title="Ajouter 1 DH à tous les produits affichés"
-                  >
-                    +1.00 DH
-                  </button>
-                  <button
-                    onClick={() => handleBatchAdjustCategory(2)}
-                    className="btn btn-secondary btn-sm"
-                    style={{ fontSize: '0.78rem', padding: '0.35rem 0.65rem' }}
-                    title="Ajouter 2 DH à tous les produits affichés"
-                  >
-                    +2.00 DH
-                  </button>
-                  <button
-                    onClick={() => handleBatchAdjustCategory(-1)}
-                    className="btn btn-secondary btn-sm"
-                    style={{ fontSize: '0.78rem', padding: '0.35rem 0.65rem' }}
-                    title="Diminuer 1 DH à tous les produits affichés"
-                  >
-                    -1.00 DH
-                  </button>
-                </div>
-              </div>
+                {/* Controls Row: Search + Batch Adjusters */}
+                <div className="mercuriale-controls-row">
+                  {/* Search Bar */}
+                  <div className="mercuriale-search-wrap">
+                    <Search
+                      size={16}
+                      style={{
+                        position: 'absolute',
+                        left: '0.85rem',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        color: 'var(--text-muted)',
+                      }}
+                    />
+                    <input
+                      type="text"
+                      placeholder="Filtrer un produit par nom (ex: tomate, oignon, persil, banane...)"
+                      value={dailySearchQuery}
+                      onChange={(e) => setDailySearchQuery(e.target.value)}
+                      className="form-input"
+                      style={{ paddingLeft: '2.3rem', fontSize: '0.88rem', height: '40px' }}
+                    />
+                  </div>
 
-              {/* Search Bar */}
-              <div style={{ marginTop: '1rem', position: 'relative' }}>
-                <Search size={16} style={{ position: 'absolute', left: '0.9rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                <input
-                  type="text"
-                  placeholder="Filtrer un produit par nom (ex: tomate, oignon, persil, banane...)"
-                  value={dailySearchQuery}
-                  onChange={(e) => setDailySearchQuery(e.target.value)}
-                  className="form-input"
-                  style={{ paddingLeft: '2.4rem', fontSize: '0.88rem' }}
-                />
+                  {/* Batch Adjusters */}
+                  <div className="mercuriale-batch-wrap">
+                    <span className="mercuriale-batch-label">
+                      Ajustement global :
+                    </span>
+                    <div className="mercuriale-batch-group">
+                      <button
+                        type="button"
+                        onClick={() => handleBatchAdjustCategory(-1)}
+                        className="batch-btn minus"
+                        title="Diminuer 1 DH à tous les produits affichés"
+                      >
+                        -1.00 DH
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleBatchAdjustCategory(1)}
+                        className="batch-btn plus"
+                        title="Ajouter 1 DH à tous les produits affichés"
+                      >
+                        +1.00 DH
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleBatchAdjustCategory(2)}
+                        className="batch-btn plus"
+                        title="Ajouter 2 DH à tous les produits affichés"
+                      >
+                        +2.00 DH
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 

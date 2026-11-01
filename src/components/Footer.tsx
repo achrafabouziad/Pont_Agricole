@@ -1,11 +1,14 @@
 import React from 'react';
 import { Phone, Mail, MapPin, MessageSquare, ShieldCheck } from 'lucide-react';
 
+import { store } from '../services/store';
+
 interface FooterProps {
   onNavigate?: (page: string) => void;
 }
 
 export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
+  const currentUser = store.getCurrentUser();
   return (
     <footer className="site-footer">
       <div className="container">
@@ -149,7 +152,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
             <span>Facturation en MAD</span>
           </div>
 
-          {onNavigate && (
+          {onNavigate && currentUser?.role === 'admin' && (
             <button
               type="button"
               onClick={() => onNavigate('admin')}
