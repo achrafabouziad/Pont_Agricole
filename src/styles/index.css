@@ -513,11 +513,8 @@ input, select, textarea {
   border-bottom: 1px solid var(--border-light);
 }
 
-.hero-grid {
-  display: grid;
-  grid-template-columns: 1.15fr 0.85fr;
-  gap: 2.5rem;
-  align-items: center;
+.hero-content-wrap {
+  max-width: 760px;
 }
 
 .hero-badge {
@@ -591,134 +588,6 @@ input, select, textarea {
 .hero-trust-chip-icon {
   color: #166534;
   flex-shrink: 0;
-}
-
-/* Quick B2B Live Order Card (Replaces heavy photo) */
-.hero-quick-card {
-  background: #ffffff;
-  border: 1.5px solid var(--border-light);
-  border-radius: var(--radius-md);
-  box-shadow: 0 4px 16px rgba(10, 38, 24, 0.06);
-  padding: 1.25rem 1.35rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.95rem;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.hero-quick-card:hover {
-  box-shadow: 0 6px 20px rgba(10, 38, 24, 0.09);
-}
-
-.hero-quick-card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid #f1f5f9;
-}
-
-.hero-quick-status {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  font-size: 0.84rem;
-  font-weight: 700;
-  color: var(--primary-900);
-}
-
-.hero-quick-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background-color: #16a34a;
-  display: inline-block;
-  animation: pulse 2s infinite;
-}
-
-.hero-quick-pill {
-  font-size: 0.75rem;
-  font-weight: 700;
-  padding: 0.2rem 0.55rem;
-  border-radius: 999px;
-  background-color: var(--primary-50);
-  color: var(--primary-800);
-  border: 1px solid var(--primary-200);
-}
-
-.hero-quick-card-body {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.hero-quick-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.65rem;
-}
-
-.hero-quick-icon-wrap {
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
-  background-color: #f0fdf4;
-  color: #166534;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  margin-top: 1px;
-}
-
-.hero-quick-label {
-  font-size: 0.72rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  color: var(--text-muted);
-  line-height: 1.2;
-}
-
-.hero-quick-value {
-  font-size: 0.86rem;
-  font-weight: 700;
-  color: var(--primary-950);
-  line-height: 1.35;
-}
-
-.hero-quick-subval {
-  font-size: 0.78rem;
-  font-weight: 500;
-  color: var(--text-muted);
-}
-
-.hero-quick-card-footer {
-  padding-top: 0.65rem;
-  border-top: 1px solid #f1f5f9;
-}
-
-.hero-quick-action {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.45rem;
-  padding: 0.55rem 0.75rem;
-  border-radius: 8px;
-  background-color: #f8fafc;
-  border: 1px solid #e2e8f0;
-  color: #166534;
-  font-size: 0.82rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.hero-quick-action:hover {
-  background-color: #f0fdf4;
-  border-color: #86efac;
 }
 
 /* Product Catalog Grid */
@@ -1834,54 +1703,6 @@ table.data-table td {
     border-radius: 6px !important;
   }
 
-  .hero-quick-card {
-    padding: 0.75rem 0.85rem !important;
-    border-radius: 12px !important;
-    gap: 0.65rem !important;
-    margin-top: 0.25rem !important;
-    box-shadow: 0 2px 8px rgba(10, 38, 24, 0.05) !important;
-  }
-
-  .hero-quick-card-header {
-    padding-bottom: 0.45rem !important;
-  }
-
-  .hero-quick-status-text {
-    font-size: 0.78rem !important;
-  }
-
-  .hero-quick-pill {
-    font-size: 0.68rem !important;
-    padding: 0.15rem 0.45rem !important;
-  }
-
-  .hero-quick-card-body {
-    gap: 0.45rem !important;
-  }
-
-  .hero-quick-icon-wrap {
-    width: 24px !important;
-    height: 24px !important;
-    border-radius: 6px !important;
-  }
-
-  .hero-quick-label {
-    font-size: 0.66rem !important;
-  }
-
-  .hero-quick-value {
-    font-size: 0.78rem !important;
-  }
-
-  .hero-quick-card-footer {
-    padding-top: 0.45rem !important;
-  }
-
-  .hero-quick-action {
-    padding: 0.45rem 0.65rem !important;
-    font-size: 0.76rem !important;
-    min-height: 36px !important;
-  }
 
   /* Products 2-Column Grid on Mobile (Clean Native Structure) */
   .catalog-grid,
