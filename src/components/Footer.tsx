@@ -9,6 +9,7 @@ interface FooterProps {
 }
 
 export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
+  const [currentUser, setCurrentUser] = useState(store.getCurrentUser());
   const [settings, setSettings] = useState<CompanySettings | null>(null);
 
   useEffect(() => {
@@ -17,9 +18,12 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
       if (isMounted) setSettings(st);
     });
     const unsubscribe = store.subscribe(() => {
-      store.getCompanySettings().then((st) => {
-        if (isMounted) setSettings(st);
-      });
+      if (isMounted) {
+        setCurrentUser(store.getCurrentUser());
+        store.getCompanySettings().then((st) => {
+          if (isMounted) setSettings(st);
+        });
+      }
     });
     return () => {
       isMounted = false;
