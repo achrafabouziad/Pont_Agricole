@@ -39,7 +39,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
 
   return (
     <div className="modern-product-card">
-      {/* Top Header Row: Discount Pill & Favorite Heart */}
+      {/* Top Header Row: Badge (Discount/Rupture only) & Favorite Heart */}
       <div className="modern-card-topbar">
         <div className="modern-card-badge-wrap">
           {product.badge ? (
@@ -50,11 +50,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
             <span className="modern-badge-pill out-of-stock">
               Rupture
             </span>
-          ) : (
-            <span className="modern-badge-pill fresh">
-              Frais
-            </span>
-          )}
+          ) : null}
         </div>
 
         <button
@@ -91,12 +87,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
         <h3 className="modern-product-title" title={product.name}>
           {product.name}
         </h3>
-
-        <div className="modern-product-sub">
-          <span>{product.origin ? `${product.origin}` : 'Maroc'}</span>
-          <span className="modern-sub-sep">•</span>
-          <span>Au {product.unit}</span>
-        </div>
 
         {/* Bottom Price & Circular Cart Button */}
         <div className="modern-card-bottom">
