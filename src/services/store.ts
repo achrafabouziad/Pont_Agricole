@@ -1039,6 +1039,34 @@ class StoreService {
     }
   }
 
+  public async updateOrder(updatedOrder: Order): Promise<void> {
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase
+          .from('orders')
+          .update({
+            subtotal: updatedOrder.subtotal,
+            total: updatedOrder.total,
+            delivery_address: updatedOrder.deliveryAddress,
+            delivery_city: updatedOrder.deliveryCity,
+            customer_name: updatedOrder.customerName,
+            customer_phone: updatedOrder.customerPhone,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', updatedOrder.id);
+      } catch (err) {
+        console.warn('Error updating order in Supabase', err);
+      }
+    }
+    const orders = getStored<Order[]>(KEY_ORDERS, []);
+    const idx = orders.findIndex((o) => o.id === updatedOrder.id);
+    if (idx >= 0) {
+      orders[idx] = { ...orders[idx], ...updatedOrder, updatedAt: new Date().toISOString() };
+      setStored(KEY_ORDERS, orders);
+      this.notify();
+    }
+  }
+
   // --- CLIENTS & BUSINESSES (ADMIN) ---
   public async getBusinesses(): Promise<Business[]> {
     const list: Business[] = [];

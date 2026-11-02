@@ -279,8 +279,8 @@ export const INITIAL_DELIVERY_ZONES: DeliveryZone[] = [
 export const INITIAL_COMPANY_SETTINGS: CompanySettings = {
   companyName: 'Pont Agricole',
   tagline: 'Le lien entre la terre et l’avenir',
-  phone: '',
-  whatsapp: '',
+  phone: '0707296123',
+  whatsapp: '0707296123',
   email: '',
   address: '',
   city: 'Casablanca',

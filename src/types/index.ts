@@ -36,6 +36,7 @@ export interface Business {
   email?: string;
   googleMapsUrl?: string;
   username?: string;
+  ice?: string;
 }
 
 export interface Category {
@@ -85,6 +86,7 @@ export interface Order {
   customerId: string;
   customerName?: string;
   customerPhone?: string;
+  customerIce?: string;
   businessId?: string;
   businessName?: string;
   businessType?: BusinessType;

@@ -1,6 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { Order, CompanySettings } from '../types';
-import { Printer, X, FileText, CheckCircle, MapPin, Phone, Mail, Building2, Calendar, ShieldCheck } from 'lucide-react';
+import {
+  Printer,
+  X,
+  FileText,
+  CheckCircle,
+  Edit2,
+  Save,
+  Plus,
+  Trash2,
+  RotateCcw,
+  Eye,
+} from 'lucide-react';
 import { store } from '../services/store';
 
 interface InvoiceModalProps {
@@ -9,162 +20,297 @@ interface InvoiceModalProps {
   settings?: CompanySettings | null;
 }
 
-// Convert numbers to French words for Moroccan legal invoices
-function numberToFrenchWords(num: number): string {
-  const units = ['', 'un', 'deux', 'trois', 'quatre', 'cinq', 'six', 'sept', 'huit', 'neuf'];
-  const teens = ['dix', 'onze', 'douze', 'treize', 'quatorze', 'quinze', 'seize', 'dix-sept', 'dix-huit', 'dix-neuf'];
-  const tens = ['', 'dix', 'vingt', 'trente', 'quarante', 'cinquante', 'soixante', 'soixante-dix', 'quatre-vingts', 'quatre-vingt-dix'];
-
-  const convertLessThanOneThousand = (n: number): string => {
-    if (n === 0) return '';
-    let result = '';
-
-    if (n >= 100) {
-      const hundredDigit = Math.floor(n / 100);
-      if (hundredDigit === 1) {
-        result += 'cent ';
-      } else {
-        result += units[hundredDigit] + ' cent ';
-      }
-      n %= 100;
-    }
-
-    if (n >= 20) {
-      const tenDigit = Math.floor(n / 10);
-      const unitDigit = n % 10;
-      if (tenDigit === 7) {
-        result += 'soixante-' + teens[unitDigit] + ' ';
-      } else if (tenDigit === 9) {
-        result += 'quatre-vingt-' + teens[unitDigit] + ' ';
-      } else {
-        result += tens[tenDigit];
-        if (unitDigit === 1) {
-          result += ' et un ';
-        } else if (unitDigit > 1) {
-          result += '-' + units[unitDigit] + ' ';
-        } else {
-          result += ' ';
-        }
-      }
-    } else if (n >= 10) {
-      result += teens[n - 10] + ' ';
-    } else if (n > 0) {
-      result += units[n] + ' ';
-    }
-
-    return result.trim();
-  };
-
-  const integerPart = Math.floor(num);
-  const decimalPart = Math.round((num - integerPart) * 100);
-
-  if (integerPart === 0 && decimalPart === 0) return 'zéro Dirham';
-
-  let words = '';
-  if (integerPart >= 1000000) {
-    const millions = Math.floor(integerPart / 1000000);
-    words += convertLessThanOneThousand(millions) + ' million' + (millions > 1 ? 's ' : ' ');
-  }
-
-  const thousands = Math.floor((integerPart % 1000000) / 1000);
-  if (thousands > 0) {
-    if (thousands === 1) {
-      words += 'mille ';
-    } else {
-      words += convertLessThanOneThousand(thousands) + ' mille ';
-    }
-  }
-
-  const remainder = integerPart % 1000;
-  if (remainder > 0) {
-    words += convertLessThanOneThousand(remainder);
-  }
-
-  words = words.trim() + ' Dirhams';
-
-  if (decimalPart > 0) {
-    words += ' et ' + convertLessThanOneThousand(decimalPart) + ' centimes';
-  }
-
-  return words.charAt(0).toUpperCase() + words.slice(1);
+interface InvoiceRowItem {
+  id: string;
+  designation: string;
+  caisses: number;
+  qteKg: number;
+  puKg: number;
+  montantHt: number;
 }
 
 export const InvoiceModal: React.FC<InvoiceModalProps> = ({ order, onClose, settings: propsSettings }) => {
   const [liveSettings, setLiveSettings] = useState<CompanySettings | null>(propsSettings || null);
+  const [isEditing, setIsEditing] = useState<boolean>(false);
+  const [savingNotice, setSavingNotice] = useState<string | null>(null);
 
-  useEffect(() => {
+  // Header state
+  const [invoiceNumber, setInvoiceNumber] = useState<string>('');
+  const [invoicePhone, setInvoicePhone] = useState<string>('0707296123');
+  const [invoiceDate, setInvoiceDate] = useState<string>('');
+
+  // Facturé à state
+  const [businessName, setBusinessName] = useState<string>('');
+  const [deliveryAddress, setDeliveryAddress] = useState<string>('');
+  const [customerPhone, setCustomerPhone] = useState<string>('');
+  const [customerIce, setCustomerIce] = useState<string>('');
+  const [deliveryCity, setDeliveryCity] = useState<string>('');
+  const [customerCode, setCustomerCode] = useState<string>('');
+
+  // Items table state
+  const [rows, setRows] = useState<InvoiceRowItem[]>([]);
+
+  // Remises & TVA state
+  const [remiseLegumes, setRemiseLegumes] = useState<number>(0);
+  const [remiseGratuit, setRemiseGratuit] = useState<number>(0);
+  const [totalTva, setTotalTva] = useState<number>(0);
+
+  // Initialize and auto-populate all fields from the order
+  const initFromOrder = () => {
+    if (!order) return;
+
     if (!propsSettings) {
-      store.getCompanySettings().then((st) => setLiveSettings(st));
+      store.getCompanySettings().then((st) => {
+        setLiveSettings(st);
+        if (st.phone) setInvoicePhone(st.phone);
+      });
     } else {
       setLiveSettings(propsSettings);
+      if (propsSettings.phone) setInvoicePhone(propsSettings.phone);
     }
-  }, [propsSettings]);
+
+    // Auto lookup business ICE if not on order
+    store.getBusinesses().then((bizList) => {
+      const match = bizList.find(
+        (b) => b.id === order.businessId || b.ownerId === order.customerId || b.phone === order.customerPhone
+      );
+      if (match?.ice) {
+        setCustomerIce(match.ice);
+      }
+    });
+
+    const num = order.orderNumber.replace('#', '').replace(/^PA-/, '');
+    setInvoiceNumber(num || '001');
+
+    const formattedDate = order.requestedDeliveryDate
+      ? order.requestedDeliveryDate
+      : new Date(order.createdAt).toLocaleDateString('fr-FR', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+        });
+    setInvoiceDate(formattedDate);
+
+    setBusinessName(order.businessName || order.customerName || '');
+    setDeliveryAddress(order.deliveryAddress || '');
+    setCustomerPhone(order.customerPhone || '');
+    setCustomerIce(order.customerIce || '');
+    setDeliveryCity(order.deliveryCity || 'Casablanca');
+    setCustomerCode(order.customerId ? order.customerId.slice(-6).toUpperCase() : 'CLT-01');
+
+    // Auto-map items
+    const mappedRows: InvoiceRowItem[] = (order.items || []).map((item, idx) => {
+      const isCaisse = item.unitSnapshot === 'caisse' || item.unitSnapshot === 'carton';
+      const caissesCount = isCaisse ? item.quantity : 1;
+      const qte = item.unitSnapshot === 'kg' ? item.quantity : item.quantity * 10;
+      return {
+        id: item.productId || `row-${idx}`,
+        designation: item.productNameSnapshot || '',
+        caisses: caissesCount,
+        qteKg: qte,
+        puKg: item.unitPriceSnapshot || 0,
+        montantHt: item.lineTotal || 0,
+      };
+    });
+
+    setRows(mappedRows);
+    setRemiseLegumes(0);
+    setRemiseGratuit(0);
+    setTotalTva(0);
+  };
+
+  useEffect(() => {
+    initFromOrder();
+  }, [order, propsSettings]);
 
   if (!order) return null;
 
   const handlePrint = () => {
-    window.print();
+    // Switch to clean preview mode before printing if currently editing
+    setIsEditing(false);
+    setTimeout(() => {
+      window.print();
+    }, 100);
   };
 
-  const invoiceNumber = `FAC-${order.orderNumber.replace('#', '')}`;
-  const formattedOrderDate = new Date(order.createdAt).toLocaleDateString('fr-FR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  });
-  const formattedOrderTime = new Date(order.createdAt).toLocaleTimeString('fr-FR', {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  // Calculations
+  const totalCaisses = rows.reduce((acc, r) => acc + (Number(r.caisses) || 0), 0);
+  const totalHT = rows.reduce((acc, r) => acc + (Number(r.montantHt) || 0), 0);
+  const totalTTC = Math.max(
+    0,
+    totalHT + (Number(totalTva) || 0) - (Number(remiseLegumes) || 0) - (Number(remiseGratuit) || 0)
+  );
 
-  const totalInWords = numberToFrenchWords(order.total);
+  // Row update handlers
+  const handleRowChange = (index: number, field: keyof InvoiceRowItem, val: any) => {
+    setRows((prev) => {
+      const next = [...prev];
+      const cur = { ...next[index], [field]: val };
+      if (field === 'qteKg' || field === 'puKg') {
+        const qte = field === 'qteKg' ? Number(val) || 0 : Number(cur.qteKg) || 0;
+        const pu = field === 'puKg' ? Number(val) || 0 : Number(cur.puKg) || 0;
+        cur.montantHt = Math.round(qte * pu * 100) / 100;
+      }
+      next[index] = cur;
+      return next;
+    });
+  };
 
-  const companyName = liveSettings?.companyName || 'Pont Agricole';
-  const tagline = liveSettings?.tagline || "Centrale d'Achat B2B CHR";
-  const addressLine = [liveSettings?.address, liveSettings?.city].filter(Boolean).join(', ');
-  const contactLines = [
-    liveSettings?.phone ? `Tél : ${liveSettings.phone}` : '',
-    liveSettings?.whatsapp ? `WhatsApp : ${liveSettings.whatsapp}` : '',
-  ].filter(Boolean).join(' | ');
-  const emailLine = liveSettings?.email ? `Email : ${liveSettings.email}` : '';
+  const handleAddRow = () => {
+    setRows((prev) => [
+      ...prev,
+      {
+        id: `custom-${Date.now()}`,
+        designation: '',
+        caisses: 1,
+        qteKg: 10,
+        puKg: 0,
+        montantHt: 0,
+      },
+    ]);
+  };
+
+  const handleRemoveRow = (index: number) => {
+    setRows((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSaveToOrder = async () => {
+    if (!order) return;
+    try {
+      const updatedOrder: Order = {
+        ...order,
+        businessName,
+        deliveryAddress,
+        customerPhone,
+        deliveryCity,
+        customerIce,
+        subtotal: totalHT,
+        total: totalTTC,
+        items: rows.map((r) => ({
+          productId: r.id,
+          productNameSnapshot: r.designation,
+          unitSnapshot: 'caisse',
+          unitPriceSnapshot: r.puKg,
+          quantity: r.caisses,
+          lineTotal: r.montantHt,
+        })),
+      };
+      await store.updateOrder(updatedOrder);
+      setSavingNotice('Facture modifiée et enregistrée avec succès !');
+      setTimeout(() => setSavingNotice(null), 3500);
+      setIsEditing(false);
+    } catch (err) {
+      console.error('Error saving invoice changes', err);
+    }
+  };
+
+  // Pad rows up to minimum 5 rows matching the template design
+  const displayRowsCount = Math.max(5, rows.length);
+  const emptyRowsNeeded = Math.max(0, 5 - rows.length);
 
   return (
     <div className="invoice-modal-backdrop" onClick={onClose}>
       <div
         className="invoice-modal-container"
         onClick={(e) => e.stopPropagation()}
+        style={{ maxWidth: '860px', width: '95%' }}
       >
         {/* Top Control Bar (Hidden when printing) */}
-        <div className="invoice-controls no-print">
+        <div className="invoice-controls no-print" style={{ padding: '0.85rem 1.25rem', borderBottom: '1px solid var(--border-light)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-            <div style={{ padding: '0.4rem', backgroundColor: 'var(--primary-100)', color: 'var(--primary-800)', borderRadius: '8px' }}>
+            <div style={{ padding: '0.4rem', backgroundColor: '#166534', color: '#ffffff', borderRadius: '8px' }}>
               <FileText size={18} />
             </div>
             <div>
-              <h3 style={{ margin: 0, fontSize: '1.05rem', color: 'var(--primary-900)', fontWeight: 700 }}>
-                Facture & Bon de Livraison {order.orderNumber}
+              <h3 style={{ margin: 0, fontSize: '1.05rem', color: '#166534', fontWeight: 800 }}>
+                Facture Officielle Pont Agricole
               </h3>
-              <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                Document officiel B2B conforme aux normes fiscales marocaines
+              <p style={{ margin: 0, fontSize: '0.76rem', color: 'var(--text-muted)' }}>
+                Modèle standardisé CHR • Données automatiquement pré-remplies et modifiables par l'administrateur
               </p>
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+            {/* Toggle Edit Mode */}
+            <button
+              type="button"
+              onClick={() => setIsEditing(!isEditing)}
+              className="btn btn-secondary"
+              style={{
+                fontSize: '0.82rem',
+                padding: '0.45rem 0.85rem',
+                borderRadius: '8px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                backgroundColor: isEditing ? '#fef3c7' : '#ffffff',
+                borderColor: isEditing ? '#f59e0b' : 'var(--border-light)',
+                color: isEditing ? '#92400e' : 'var(--primary-900)',
+                fontWeight: 700,
+              }}
+            >
+              {isEditing ? (
+                <>
+                  <Eye size={15} />
+                  <span>Aperçu Document</span>
+                </>
+              ) : (
+                <>
+                  <Edit2 size={15} />
+                  <span>Modifier la Facture</span>
+                </>
+              )}
+            </button>
+
+            {isEditing && (
+              <>
+                <button
+                  type="button"
+                  onClick={handleSaveToOrder}
+                  className="btn btn-primary"
+                  style={{
+                    backgroundColor: '#166534',
+                    fontSize: '0.82rem',
+                    padding: '0.45rem 0.85rem',
+                    borderRadius: '8px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                    fontWeight: 700,
+                  }}
+                >
+                  <Save size={15} />
+                  <span>Enregistrer</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={initFromOrder}
+                  className="btn btn-secondary"
+                  title="Rétablir les données d'origine de la commande"
+                  style={{ fontSize: '0.82rem', padding: '0.45rem 0.65rem', borderRadius: '8px' }}
+                >
+                  <RotateCcw size={15} />
+                </button>
+              </>
+            )}
+
             <button
               onClick={handlePrint}
               className="btn btn-primary"
               style={{
-                backgroundColor: '#166534',
-                fontSize: '0.85rem',
+                backgroundColor: '#000000',
+                color: '#ffffff',
+                fontSize: '0.82rem',
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '0.45rem',
-                padding: '0.55rem 1.15rem',
+                gap: '0.4rem',
+                padding: '0.45rem 1rem',
                 borderRadius: '8px',
+                fontWeight: 700,
               }}
             >
-              <Printer size={16} />
+              <Printer size={15} />
               <span>Imprimer / PDF</span>
             </button>
 
@@ -172,250 +318,596 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ order, onClose, sett
               onClick={onClose}
               className="btn btn-secondary"
               style={{
-                fontSize: '0.85rem',
-                padding: '0.55rem 0.85rem',
+                fontSize: '0.82rem',
+                padding: '0.45rem 0.65rem',
                 borderRadius: '8px',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.35rem',
               }}
             >
               <X size={16} />
-              <span>Fermer</span>
             </button>
           </div>
         </div>
 
-        {/* Printable Invoice Sheet */}
-        <div id="invoice-printable-area" className="invoice-sheet">
-          {/* Header row: Brand & Invoice Meta */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '2px solid #166534', paddingBottom: '1.5rem', marginBottom: '1.5rem', gap: '1.5rem' }}>
-            {/* Company Info Left */}
-            <div style={{ flex: 1 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', marginBottom: '0.4rem' }}>
-                <img src="/logo.png" alt="Pont Agricole" style={{ width: '44px', height: '44px', objectFit: 'contain' }} />
-                <div>
-                  <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#166534', letterSpacing: '-0.02em', lineHeight: 1.1 }}>
-                    {companyName.toUpperCase()}
-                  </div>
-                  <div style={{ fontSize: '0.68rem', fontWeight: 700, color: '#475569', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                    {tagline}
-                  </div>
+        {savingNotice && (
+          <div
+            className="no-print"
+            style={{
+              padding: '0.65rem 1.25rem',
+              backgroundColor: '#f0fdf4',
+              borderBottom: '1px solid #bbf7d0',
+              color: '#166534',
+              fontSize: '0.82rem',
+              fontWeight: 700,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+            }}
+          >
+            <CheckCircle size={16} />
+            <span>{savingNotice}</span>
+          </div>
+        )}
+
+        {isEditing && (
+          <div
+            className="no-print"
+            style={{
+              padding: '0.55rem 1.25rem',
+              backgroundColor: '#fffbeb',
+              borderBottom: '1px solid #fef3c7',
+              color: '#b45309',
+              fontSize: '0.78rem',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}
+          >
+            <span>
+              ✍️ <strong>Mode Édition Activé :</strong> Vous pouvez modifier n'importe quel texte, quantité, prix ou ligne directement sur la facture.
+            </span>
+            <button
+              type="button"
+              onClick={handleAddRow}
+              style={{
+                border: '1px solid #d97706',
+                backgroundColor: '#ffffff',
+                color: '#b45309',
+                borderRadius: '6px',
+                padding: '0.2rem 0.6rem',
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.3rem',
+              }}
+            >
+              <Plus size={13} /> Ajouter un produit
+            </button>
+          </div>
+        )}
+
+        {/* Printable Invoice Sheet (Matches user image exactly) */}
+        <div
+          id="invoice-printable-area"
+          style={{
+            backgroundColor: '#ffffff',
+            color: '#000000',
+            padding: '2rem 2.5rem',
+            fontFamily: 'Arial, "Helvetica Neue", Helvetica, sans-serif',
+            maxWidth: '780px',
+            margin: '0 auto',
+            boxSizing: 'border-box',
+          }}
+        >
+          {/* Top Logo & Title */}
+          <div style={{ textAlign: 'center', marginBottom: '8px' }}>
+            <img
+              src="/logo.png"
+              alt="Pont Agricole"
+              style={{ width: '85px', height: 'auto', margin: '0 auto 2px', display: 'block', objectFit: 'contain' }}
+            />
+            <div
+              style={{
+                fontSize: '2.3rem',
+                fontWeight: 900,
+                color: '#000000',
+                letterSpacing: '-0.02em',
+                lineHeight: 1.1,
+                fontFamily: 'Arial, sans-serif',
+              }}
+            >
+              Facture
+            </div>
+          </div>
+
+          {/* Subheader Row: N°, TEL, DATE */}
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              fontWeight: 800,
+              fontSize: '1rem',
+              color: '#000000',
+              marginBottom: '12px',
+              padding: '0 2px',
+            }}
+          >
+            <div>
+              <strong>N°: </strong>
+              {isEditing ? (
+                <input
+                  type="text"
+                  value={invoiceNumber}
+                  onChange={(e) => setInvoiceNumber(e.target.value)}
+                  style={{
+                    border: '1px dashed #000',
+                    fontWeight: 800,
+                    fontSize: '0.95rem',
+                    padding: '2px 6px',
+                    width: '120px',
+                  }}
+                />
+              ) : (
+                <span>{invoiceNumber || '..............'}</span>
+              )}
+            </div>
+
+            <div>
+              <strong>TEL : </strong>
+              {isEditing ? (
+                <input
+                  type="text"
+                  value={invoicePhone}
+                  onChange={(e) => setInvoicePhone(e.target.value)}
+                  style={{
+                    border: '1px dashed #000',
+                    fontWeight: 800,
+                    fontSize: '0.95rem',
+                    padding: '2px 6px',
+                    width: '130px',
+                  }}
+                />
+              ) : (
+                <span>{invoicePhone || '0707296123'}</span>
+              )}
+            </div>
+
+            <div>
+              <strong>DATE : </strong>
+              {isEditing ? (
+                <input
+                  type="text"
+                  value={invoiceDate}
+                  onChange={(e) => setInvoiceDate(e.target.value)}
+                  style={{
+                    border: '1px dashed #000',
+                    fontWeight: 800,
+                    fontSize: '0.95rem',
+                    padding: '2px 6px',
+                    width: '120px',
+                  }}
+                />
+              ) : (
+                <span>{invoiceDate || '../../....'}</span>
+              )}
+            </div>
+          </div>
+
+          {/* Box: Facturé à */}
+          <div
+            style={{
+              border: '2.5px solid #000000',
+              padding: '10px 16px 14px',
+              marginBottom: '14px',
+              backgroundColor: '#ffffff',
+            }}
+          >
+            <div
+              style={{
+                fontSize: '1.15rem',
+                fontWeight: 900,
+                color: '#000000',
+                marginBottom: '8px',
+                lineHeight: 1.2,
+              }}
+            >
+              Facturé à
+            </div>
+
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '1.2fr 1fr',
+                gap: '1.25rem',
+                fontSize: '0.92rem',
+                color: '#000000',
+                lineHeight: 1.85,
+              }}
+            >
+              {/* Left Column */}
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginBottom: '4px' }}>
+                  <strong style={{ fontWeight: 800, whiteSpace: 'nowrap' }}>Raison Sociale :</strong>
+                  {isEditing ? (
+                    <input
+                      type="text"
+                      value={businessName}
+                      onChange={(e) => setBusinessName(e.target.value)}
+                      style={{
+                        border: '1px dashed #000',
+                        fontSize: '0.88rem',
+                        padding: '1px 4px',
+                        width: '100%',
+                        fontWeight: 700,
+                      }}
+                    />
+                  ) : (
+                    <span style={{ fontWeight: 700 }}>{businessName || '..............'}</span>
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginBottom: '4px' }}>
+                  <strong style={{ fontWeight: 800, whiteSpace: 'nowrap' }}>Adresse :</strong>
+                  {isEditing ? (
+                    <input
+                      type="text"
+                      value={deliveryAddress}
+                      onChange={(e) => setDeliveryAddress(e.target.value)}
+                      style={{
+                        border: '1px dashed #000',
+                        fontSize: '0.88rem',
+                        padding: '1px 4px',
+                        width: '100%',
+                      }}
+                    />
+                  ) : (
+                    <span>{deliveryAddress || '..............'}</span>
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                  <strong style={{ fontWeight: 800, whiteSpace: 'nowrap' }}>Télephone :</strong>
+                  {isEditing ? (
+                    <input
+                      type="text"
+                      value={customerPhone}
+                      onChange={(e) => setCustomerPhone(e.target.value)}
+                      style={{
+                        border: '1px dashed #000',
+                        fontSize: '0.88rem',
+                        padding: '1px 4px',
+                        width: '100%',
+                      }}
+                    />
+                  ) : (
+                    <span>{customerPhone || '..............'}</span>
+                  )}
                 </div>
               </div>
 
-              <div style={{ fontSize: '0.8rem', color: '#475569', lineHeight: 1.5, marginTop: '0.5rem' }}>
-                {addressLine && <div>{addressLine}</div>}
-                {contactLines && <div>{contactLines}</div>}
-                {emailLine && <div>{emailLine}</div>}
-              </div>
-            </div>
+              {/* Right Column */}
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginBottom: '4px' }}>
+                  <strong style={{ fontWeight: 800, whiteSpace: 'nowrap' }}>Ice :</strong>
+                  {isEditing ? (
+                    <input
+                      type="text"
+                      value={customerIce}
+                      onChange={(e) => setCustomerIce(e.target.value)}
+                      style={{
+                        border: '1px dashed #000',
+                        fontSize: '0.88rem',
+                        padding: '1px 4px',
+                        width: '100%',
+                      }}
+                    />
+                  ) : (
+                    <span>{customerIce || '..............'}</span>
+                  )}
+                </div>
 
-            {/* Document Title Right */}
-            <div style={{ textAlign: 'right', minWidth: '240px' }}>
-              <div style={{ display: 'inline-block', backgroundColor: '#166534', color: '#ffffff', padding: '0.45rem 1rem', borderRadius: '6px', fontWeight: 800, fontSize: '1.1rem', letterSpacing: '0.04em', marginBottom: '0.6rem' }}>
-                FACTURE COMMERCIALE
-              </div>
-              <div style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 600 }}>VALANT BON DE LIVRAISON B2B</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginBottom: '4px' }}>
+                  <strong style={{ fontWeight: 800, whiteSpace: 'nowrap' }}>ville :</strong>
+                  {isEditing ? (
+                    <input
+                      type="text"
+                      value={deliveryCity}
+                      onChange={(e) => setDeliveryCity(e.target.value)}
+                      style={{
+                        border: '1px dashed #000',
+                        fontSize: '0.88rem',
+                        padding: '1px 4px',
+                        width: '100%',
+                      }}
+                    />
+                  ) : (
+                    <span>{deliveryCity || '..............'}</span>
+                  )}
+                </div>
 
-              <div style={{ marginTop: '0.6rem', fontSize: '0.85rem', color: '#0f172a' }}>
-                <div><strong>N° Facture :</strong> <span style={{ fontFamily: 'monospace', fontSize: '0.95rem', color: '#166534', fontWeight: 700 }}>{invoiceNumber}</span></div>
-                <div><strong>Réf. Commande :</strong> {order.orderNumber}</div>
-                <div><strong>Date Commande :</strong> {formattedOrderDate} à {formattedOrderTime}</div>
-                <div><strong>Date de Livraison :</strong> <span style={{ fontWeight: 700, color: '#166534' }}>{order.requestedDeliveryDate}</span></div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                  <strong style={{ fontWeight: 800, whiteSpace: 'nowrap' }}>code :</strong>
+                  {isEditing ? (
+                    <input
+                      type="text"
+                      value={customerCode}
+                      onChange={(e) => setCustomerCode(e.target.value)}
+                      style={{
+                        border: '1px dashed #000',
+                        fontSize: '0.88rem',
+                        padding: '1px 4px',
+                        width: '100%',
+                      }}
+                    />
+                  ) : (
+                    <span>{customerCode || '..............'}</span>
+                  )}
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Parties Meta: Emetteur & Client */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.75rem' }}>
-            {/* Emetteur Legal Mentions */}
-            <div style={{ backgroundColor: '#f8fafc', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '0.8rem', color: '#334155' }}>
-              <div style={{ fontWeight: 800, color: '#166534', fontSize: '0.85rem', marginBottom: '0.45rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                Fournisseur / Émetteur
-              </div>
-              <div><strong>Raison Sociale :</strong> {companyName}</div>
-              {liveSettings?.ice && <div><strong>ICE :</strong> {liveSettings.ice}</div>}
-              {(liveSettings?.ifCode || liveSettings?.rc) && (
-                <div>
-                  {liveSettings?.ifCode && <><strong>IF :</strong> {liveSettings.ifCode} </>}
-                  {liveSettings?.ifCode && liveSettings?.rc && '| '}
-                  {liveSettings?.rc && <><strong>RC :</strong> {liveSettings.rc} </>}
-                </div>
-              )}
-              {(liveSettings?.patente || liveSettings?.cnss) && (
-                <div>
-                  {liveSettings?.patente && <><strong>Patente :</strong> {liveSettings.patente} </>}
-                  {liveSettings?.patente && liveSettings?.cnss && '| '}
-                  {liveSettings?.cnss && <><strong>CNSS :</strong> {liveSettings.cnss} </>}
-                </div>
-              )}
-              {liveSettings?.rib && <div><strong>RIB Bancaire :</strong> {liveSettings.rib}</div>}
-            </div>
+          {/* Table: Produce Items (#, Désignation, Caisses, Qté kg, Pu/KG, Montant HT) */}
+          <table
+            style={{
+              width: '100%',
+              borderCollapse: 'collapse',
+              border: '2.5px solid #000000',
+              marginBottom: '0px',
+              backgroundColor: '#ffffff',
+            }}
+          >
+            <thead>
+              <tr style={{ borderBottom: '2.5px solid #000000' }}>
+                <th style={{ border: '2.5px solid #000000', padding: '8px 4px', textAlign: 'center', width: '45px', fontWeight: 900, fontSize: '0.95rem' }}>
+                  #
+                </th>
+                <th style={{ border: '2.5px solid #000000', padding: '8px 10px', textAlign: 'center', fontWeight: 900, fontSize: '0.95rem' }}>
+                  Désignation
+                </th>
+                <th style={{ border: '2.5px solid #000000', padding: '8px 6px', textAlign: 'center', width: '85px', fontWeight: 900, fontSize: '0.95rem' }}>
+                  Caisses
+                </th>
+                <th style={{ border: '2.5px solid #000000', padding: '8px 6px', textAlign: 'center', width: '90px', fontWeight: 900, fontSize: '0.95rem' }}>
+                  Qté kg
+                </th>
+                <th style={{ border: '2.5px solid #000000', padding: '8px 6px', textAlign: 'center', width: '90px', fontWeight: 900, fontSize: '0.95rem' }}>
+                  Pu/KG
+                </th>
+                <th style={{ border: '2.5px solid #000000', padding: '8px 8px', textAlign: 'center', width: '120px', fontWeight: 900, fontSize: '0.95rem' }}>
+                  Montant HT
+                </th>
+                {isEditing && (
+                  <th className="no-print" style={{ border: '2.5px solid #000000', padding: '8px 4px', width: '35px' }}></th>
+                )}
+              </tr>
+            </thead>
+            <tbody>
+              {/* Active data rows */}
+              {rows.map((row, idx) => (
+                <tr key={row.id} style={{ height: '38px' }}>
+                  <td style={{ border: '2.5px solid #000000', padding: '6px 4px', textAlign: 'center', fontWeight: 900, fontSize: '0.95rem' }}>
+                    {idx + 1}
+                  </td>
+                  <td style={{ border: '2.5px solid #000000', padding: '6px 10px', fontSize: '0.92rem' }}>
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        value={row.designation}
+                        onChange={(e) => handleRowChange(idx, 'designation', e.target.value)}
+                        style={{ width: '100%', border: '1px dashed #000', padding: '2px 4px', fontSize: '0.9rem' }}
+                      />
+                    ) : (
+                      <span>{row.designation}</span>
+                    )}
+                  </td>
+                  <td style={{ border: '2.5px solid #000000', padding: '6px', textAlign: 'center', fontSize: '0.92rem', fontWeight: 700 }}>
+                    {isEditing ? (
+                      <input
+                        type="number"
+                        min="0"
+                        value={row.caisses}
+                        onChange={(e) => handleRowChange(idx, 'caisses', Number(e.target.value))}
+                        style={{ width: '60px', border: '1px dashed #000', textAlign: 'center', padding: '2px' }}
+                      />
+                    ) : (
+                      <span>{row.caisses || ''}</span>
+                    )}
+                  </td>
+                  <td style={{ border: '2.5px solid #000000', padding: '6px', textAlign: 'center', fontSize: '0.92rem', fontWeight: 700 }}>
+                    {isEditing ? (
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.1"
+                        value={row.qteKg}
+                        onChange={(e) => handleRowChange(idx, 'qteKg', Number(e.target.value))}
+                        style={{ width: '65px', border: '1px dashed #000', textAlign: 'center', padding: '2px' }}
+                      />
+                    ) : (
+                      <span>{row.qteKg ? row.qteKg.toFixed(1) : ''}</span>
+                    )}
+                  </td>
+                  <td style={{ border: '2.5px solid #000000', padding: '6px', textAlign: 'center', fontSize: '0.92rem', fontWeight: 700 }}>
+                    {isEditing ? (
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.05"
+                        value={row.puKg}
+                        onChange={(e) => handleRowChange(idx, 'puKg', Number(e.target.value))}
+                        style={{ width: '65px', border: '1px dashed #000', textAlign: 'center', padding: '2px' }}
+                      />
+                    ) : (
+                      <span>{row.puKg ? row.puKg.toFixed(2) : ''}</span>
+                    )}
+                  </td>
+                  <td style={{ border: '2.5px solid #000000', padding: '6px 8px', textAlign: 'right', fontSize: '0.95rem', fontWeight: 800 }}>
+                    {isEditing ? (
+                      <input
+                        type="number"
+                        step="0.1"
+                        value={row.montantHt}
+                        onChange={(e) => handleRowChange(idx, 'montantHt', Number(e.target.value))}
+                        style={{ width: '90px', border: '1px dashed #000', textAlign: 'right', padding: '2px' }}
+                      />
+                    ) : (
+                      <span>{row.montantHt ? row.montantHt.toFixed(2) : ''}</span>
+                    )}
+                  </td>
+                  {isEditing && (
+                    <td className="no-print" style={{ border: '2.5px solid #000000', padding: '4px', textAlign: 'center' }}>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveRow(idx)}
+                        style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer', padding: '2px' }}
+                        title="Supprimer la ligne"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </td>
+                  )}
+                </tr>
+              ))}
 
-            {/* Client B2B Facturé */}
-            <div style={{ backgroundColor: '#f8fafc', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '0.8rem', color: '#334155' }}>
-              <div style={{ fontWeight: 800, color: '#166534', fontSize: '0.85rem', marginBottom: '0.45rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                Client Professionnel CHR
-              </div>
-              <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0f172a' }}>
-                {order.businessName || 'Établissement Professionnel'}
-              </div>
-              {order.businessType && (
-                <div style={{ textTransform: 'capitalize', color: '#64748b', fontSize: '0.75rem', marginBottom: '0.2rem' }}>
-                  Secteur : {order.businessType}
-                </div>
-              )}
-              <div><strong>Contact :</strong> {order.customerName || 'Responsable des Achats / Chef Économe'}</div>
-              <div><strong>Téléphone :</strong> {order.customerPhone}</div>
-              <div><strong>Adresse de Livraison :</strong> {order.deliveryAddress}, {order.deliveryCity}</div>
-            </div>
-          </div>
+              {/* Empty placeholder rows to guarantee template format (at least 5 rows) */}
+              {Array.from({ length: emptyRowsNeeded }).map((_, i) => {
+                const rowNum = rows.length + i + 1;
+                return (
+                  <tr key={`empty-${i}`} style={{ height: '38px' }}>
+                    <td style={{ border: '2.5px solid #000000', padding: '6px 4px', textAlign: 'center', fontWeight: 900, fontSize: '0.95rem' }}>
+                      {rowNum}
+                    </td>
+                    <td style={{ border: '2.5px solid #000000', padding: '6px 10px' }}></td>
+                    <td style={{ border: '2.5px solid #000000', padding: '6px' }}></td>
+                    <td style={{ border: '2.5px solid #000000', padding: '6px' }}></td>
+                    <td style={{ border: '2.5px solid #000000', padding: '6px' }}></td>
+                    <td style={{ border: '2.5px solid #000000', padding: '6px 8px' }}></td>
+                    {isEditing && <td className="no-print" style={{ border: '2.5px solid #000000' }}></td>}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
 
-          {/* Table of Fresh Produce Items */}
-          <div style={{ marginBottom: '1.5rem', overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+          {/* Box: TOTAL CAISSES, TOTAL HT, TOTAL TVA, TOTAL TTC */}
+          <table
+            style={{
+              width: '100%',
+              borderCollapse: 'collapse',
+              border: '2.5px solid #000000',
+              borderTop: 'none',
+              marginBottom: '10px',
+              backgroundColor: '#ffffff',
+            }}
+          >
+            <thead>
+              <tr style={{ borderBottom: '2.5px solid #000000' }}>
+                <th style={{ border: '2.5px solid #000000', padding: '8px 4px', textAlign: 'center', fontWeight: 900, width: '25%', fontSize: '0.92rem' }}>
+                  TOTAL CAISSES
+                </th>
+                <th style={{ border: '2.5px solid #000000', padding: '8px 4px', textAlign: 'center', fontWeight: 900, width: '25%', fontSize: '0.92rem' }}>
+                  TOTAL HT
+                </th>
+                <th style={{ border: '2.5px solid #000000', padding: '8px 4px', textAlign: 'center', fontWeight: 900, width: '25%', fontSize: '0.92rem' }}>
+                  TOTAL TVA
+                </th>
+                <th style={{ border: '2.5px solid #000000', padding: '8px 4px', textAlign: 'center', fontWeight: 900, width: '25%', fontSize: '0.92rem' }}>
+                  TOTAL TTC
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style={{ border: '2.5px solid #000000', padding: '8px 4px', textAlign: 'center', fontWeight: 900, fontSize: '1.1rem' }}>
+                  {totalCaisses}
+                </td>
+                <td style={{ border: '2.5px solid #000000', padding: '8px 4px', textAlign: 'center', fontWeight: 900, fontSize: '1.1rem' }}>
+                  {totalHT.toFixed(2)}
+                </td>
+                <td style={{ border: '2.5px solid #000000', padding: '8px 4px', textAlign: 'center', fontWeight: 900, fontSize: '1.1rem' }}>
+                  {isEditing ? (
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={totalTva}
+                      onChange={(e) => setTotalTva(Number(e.target.value))}
+                      style={{ width: '80px', border: '1px dashed #000', textAlign: 'center', fontWeight: 900 }}
+                    />
+                  ) : (
+                    <span>{totalTva.toFixed(2)}</span>
+                  )}
+                </td>
+                <td style={{ border: '2.5px solid #000000', padding: '8px 4px', textAlign: 'center', fontWeight: 900, fontSize: '1.15rem' }}>
+                  {totalTTC.toFixed(2)}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          {/* Box: TYPES & REMISES (Bottom Right) */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px' }}>
+            <table
+              style={{
+                width: '270px',
+                borderCollapse: 'collapse',
+                border: '2.5px solid #000000',
+                backgroundColor: '#ffffff',
+              }}
+            >
               <thead>
-                <tr style={{ backgroundColor: '#166534', color: '#ffffff', textAlign: 'left' }}>
-                  <th style={{ padding: '0.65rem 0.75rem', fontWeight: 700, width: '70px' }}>Réf.</th>
-                  <th style={{ padding: '0.65rem 0.75rem', fontWeight: 700 }}>Désignation des Fruits & Légumes</th>
-                  <th style={{ padding: '0.65rem 0.75rem', fontWeight: 700, textAlign: 'center', width: '110px' }}>Condit.</th>
-                  <th style={{ padding: '0.65rem 0.75rem', fontWeight: 700, textAlign: 'right', width: '75px' }}>Qté</th>
-                  <th style={{ padding: '0.65rem 0.75rem', fontWeight: 700, textAlign: 'right', width: '110px' }}>P.U. HT (MAD)</th>
-                  <th style={{ padding: '0.65rem 0.75rem', fontWeight: 700, textAlign: 'right', width: '120px' }}>Total Ligne (MAD)</th>
+                <tr style={{ borderBottom: '2.5px solid #000000' }}>
+                  <th style={{ border: '2.5px solid #000000', padding: '6px 12px', textAlign: 'center', fontWeight: 900, fontSize: '0.9rem', width: '50%' }}>
+                    TYPES
+                  </th>
+                  <th style={{ border: '2.5px solid #000000', padding: '6px 12px', textAlign: 'center', fontWeight: 900, fontSize: '0.9rem', width: '50%' }}>
+                    REMISES
+                  </th>
                 </tr>
               </thead>
               <tbody>
-                {order.items.map((item, idx) => (
-                  <tr
-                    key={idx}
-                    style={{
-                      borderBottom: '1px solid #e2e8f0',
-                      backgroundColor: idx % 2 === 0 ? '#ffffff' : '#fcfdfc',
-                    }}
-                  >
-                    <td style={{ padding: '0.6rem 0.75rem', color: '#64748b', fontFamily: 'monospace', fontSize: '0.78rem' }}>
-                      #{idx + 1}
-                    </td>
-                    <td style={{ padding: '0.6rem 0.75rem', fontWeight: 600, color: '#0f172a' }}>
-                      {item.productNameSnapshot}
-                    </td>
-                    <td style={{ padding: '0.6rem 0.75rem', textAlign: 'center', color: '#475569', textTransform: 'capitalize' }}>
-                      {item.unitSnapshot}
-                    </td>
-                    <td style={{ padding: '0.6rem 0.75rem', textAlign: 'right', fontWeight: 700, color: '#0f172a' }}>
-                      {item.quantity}
-                    </td>
-                    <td style={{ padding: '0.6rem 0.75rem', textAlign: 'right', color: '#334155' }}>
-                      {item.unitPriceSnapshot.toFixed(2)} DH
-                    </td>
-                    <td style={{ padding: '0.6rem 0.75rem', textAlign: 'right', fontWeight: 700, color: '#166534' }}>
-                      {item.lineTotal.toFixed(2)} DH
-                    </td>
-                  </tr>
-                ))}
+                <tr style={{ borderBottom: '2px solid #000000' }}>
+                  <td style={{ border: '2.5px solid #000000', padding: '6px 12px', fontWeight: 700, fontSize: '0.9rem' }}>
+                    Légumes
+                  </td>
+                  <td style={{ border: '2.5px solid #000000', padding: '6px 12px', textAlign: 'right', fontWeight: 800, fontSize: '0.95rem' }}>
+                    {isEditing ? (
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.5"
+                        value={remiseLegumes}
+                        onChange={(e) => setRemiseLegumes(Number(e.target.value))}
+                        style={{ width: '70px', border: '1px dashed #000', textAlign: 'right', fontWeight: 800 }}
+                      />
+                    ) : (
+                      <span>{remiseLegumes.toFixed(2)}</span>
+                    )}
+                  </td>
+                </tr>
+                <tr>
+                  <td style={{ border: '2.5px solid #000000', padding: '6px 12px', fontWeight: 700, fontSize: '0.9rem' }}>
+                    V.gratuit
+                  </td>
+                  <td style={{ border: '2.5px solid #000000', padding: '6px 12px', textAlign: 'right', fontWeight: 800, fontSize: '0.95rem' }}>
+                    {isEditing ? (
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.5"
+                        value={remiseGratuit}
+                        onChange={(e) => setRemiseGratuit(Number(e.target.value))}
+                        style={{ width: '70px', border: '1px dashed #000', textAlign: 'right', fontWeight: 800 }}
+                      />
+                    ) : (
+                      <span>{remiseGratuit.toFixed(2)}</span>
+                    )}
+                  </td>
+                </tr>
               </tbody>
             </table>
-          </div>
-
-          {/* Financial Summary & Amount in Words */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: '1.5rem', marginBottom: '1.75rem', alignItems: 'start' }}>
-            {/* Amount in Words and Legal Mentions Left */}
-            <div style={{ backgroundColor: '#f8fafc', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '0.82rem' }}>
-              <div style={{ fontWeight: 700, color: '#166534', marginBottom: '0.35rem' }}>
-                Arrêté de la Présente Facture :
-              </div>
-              <div style={{ fontStyle: 'italic', color: '#1e293b', marginBottom: '0.75rem', lineHeight: 1.4 }}>
-                « Arrêtée la présente facture à la somme nette de <strong>{totalInWords}</strong> TTC. »
-              </div>
-
-              <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '0.6rem', fontSize: '0.75rem', color: '#64748b', lineHeight: 1.4 }}>
-                <div><strong>Régime fiscal TVA :</strong> Fruits et légumes frais bruts non transformés exonérés de TVA conformément à l'article 91-I-1° du Code Général des Impôts marocain.</div>
-                <div><strong>Mode de règlement :</strong> Paiement à réception matinale / Virement bancaire CHR.</div>
-              </div>
-
-              {order.customerNotes && (
-                <div style={{ marginTop: '0.6rem', padding: '0.45rem', backgroundColor: '#fffbeb', border: '1px solid #fef3c7', borderRadius: '4px', fontSize: '0.76rem', color: '#92400e' }}>
-                  <strong>Note de livraison :</strong> "{order.customerNotes}"
-                </div>
-              )}
-            </div>
-
-            {/* Financial Summary Calculation Right */}
-            <div style={{ backgroundColor: '#ffffff', borderRadius: '8px', border: '1.5px solid #166534', overflow: 'hidden' }}>
-              <div style={{ padding: '0.75rem 1rem', display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #e2e8f0', fontSize: '0.85rem' }}>
-                <span style={{ color: '#475569' }}>Total Brut HT</span>
-                <span style={{ fontWeight: 700, color: '#0f172a' }}>{order.subtotal.toFixed(2)} DH</span>
-              </div>
-
-              <div style={{ padding: '0.75rem 1rem', display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #e2e8f0', fontSize: '0.85rem' }}>
-                <span style={{ color: '#475569' }}>Frais de Livraison</span>
-                <span style={{ fontWeight: 700, color: '#166534' }}>
-                  {order.deliveryFee > 0 ? `${order.deliveryFee.toFixed(2)} DH` : 'Gratuite (Offerte)'}
-                </span>
-              </div>
-
-              <div style={{ padding: '0.75rem 1rem', display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #e2e8f0', fontSize: '0.85rem' }}>
-                <span style={{ color: '#475569' }}>TVA Maraîchère (0% Art. 91 CGI)</span>
-                <span style={{ fontWeight: 700, color: '#166534' }}>0.00 DH (Exonéré)</span>
-              </div>
-
-              <div style={{ padding: '1rem', backgroundColor: '#f0fdf4', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#166534' }}>NET À PAYER TTC</div>
-                  <div style={{ fontSize: '0.7rem', color: '#15803d' }}>En Dirhams Marocains (MAD)</div>
-                </div>
-                <div style={{ fontSize: '1.45rem', fontWeight: 900, color: '#166534' }}>
-                  {order.total.toFixed(2)} DH
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Delivery Inspection & Signature Area */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', borderTop: '1px solid #cbd5e1', paddingTop: '1.25rem', marginBottom: '1rem' }}>
-            {/* Signature Pont Agricole */}
-            <div style={{ textAlign: 'center', border: '1px dashed #cbd5e1', padding: '1rem', borderRadius: '6px', minHeight: '110px' }}>
-              <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#166534', marginBottom: '0.35rem' }}>
-                Pour PONT AGRICOLE SARL
-              </div>
-              <div style={{ fontSize: '0.72rem', color: '#64748b' }}>
-                Service Logistique & Expéditions Matinales
-              </div>
-              <div style={{ marginTop: '1.5rem', fontSize: '0.72rem', color: '#94a3b8', fontStyle: 'italic' }}>
-                [Cachet et Signature Émetteur]
-              </div>
-            </div>
-
-            {/* Signature Client Recommandataire */}
-            <div style={{ textAlign: 'center', border: '1px dashed #cbd5e1', padding: '1rem', borderRadius: '6px', minHeight: '110px' }}>
-              <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#166534', marginBottom: '0.35rem' }}>
-                Pour le Client (Bon pour Réception Conforme)
-              </div>
-              <div style={{ fontSize: '0.72rem', color: '#64748b' }}>
-                Signature du Chef Économe / Réceptionnaire
-              </div>
-              <div style={{ marginTop: '1.5rem', fontSize: '0.72rem', color: '#94a3b8', fontStyle: 'italic' }}>
-                Date & Heure de Réception : ____/____/2026 à ____:____
-              </div>
-            </div>
-          </div>
-
-          {/* Legal Footnote */}
-          <div style={{ textAlign: 'center', fontSize: '0.72rem', color: '#94a3b8', borderTop: '1px solid #f1f5f9', paddingTop: '0.75rem', lineHeight: 1.4 }}>
-            {[
-              companyName,
-              liveSettings?.capital ? `au capital de ${liveSettings.capital} DH` : '',
-              liveSettings?.ice ? `ICE: ${liveSettings.ice}` : '',
-              liveSettings?.ifCode ? `IF: ${liveSettings.ifCode}` : '',
-              liveSettings?.rc ? `RC: ${liveSettings.rc}` : '',
-              liveSettings?.patente ? `Patente: ${liveSettings.patente}` : '',
-              liveSettings?.cnss ? `CNSS: ${liveSettings.cnss}` : '',
-            ]
-              .filter(Boolean)
-              .join(' · ')}
-            <br />
-            Marchandises fraîches vérifiées au départ. Tout litige relève de la compétence exclusive du Tribunal de Commerce{liveSettings?.city ? ` de ${liveSettings.city}` : ''}.
           </div>
         </div>
       </div>
