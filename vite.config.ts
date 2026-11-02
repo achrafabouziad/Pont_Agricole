@@ -39,8 +39,10 @@ function localSyncPlugin(): Plugin {
   };
 
   const normalizePhone = (raw: string) => {
-    const digits = (raw || '').replace(/[^0-9]/g, '');
+    let digits = (raw || '').replace(/[^0-9]/g, '');
     if (!digits) return '';
+    if (digits.startsWith('00')) digits = digits.slice(2);
+    if (digits.startsWith('2120') && digits.length === 13) digits = '212' + digits.slice(4);
     if (digits.startsWith('0') && digits.length === 10) return '212' + digits.slice(1);
     if ((digits.startsWith('6') || digits.startsWith('7') || digits.startsWith('5')) && digits.length === 9)
       return '212' + digits;
@@ -103,12 +105,8 @@ function localSyncPlugin(): Plugin {
                   if (inc.id && c.id === inc.id) return true;
                   if (inc.ownerId && c.ownerId === inc.ownerId) return true;
                   const cNormPhone = normalizePhone(c.phone || '');
-                  if (
-                    incNormPhone &&
-                    cNormPhone &&
-                    (incNormPhone === cNormPhone || incNormPhone.endsWith(cNormPhone) || cNormPhone.endsWith(incNormPhone))
-                  )
-                    return true;
+                  if (incNormPhone && cNormPhone && incNormPhone === cNormPhone) return true;
+                  if (inc.email && c.email && inc.email.toLowerCase().trim() === c.email.toLowerCase().trim()) return true;
                   return false;
                 });
 

@@ -32,6 +32,7 @@ const KEY_PRODUCTS = `${STORAGE_PREFIX}products`;
 const KEY_CATEGORIES = `${STORAGE_PREFIX}categories`;
 const KEY_ORDERS = `${STORAGE_PREFIX}orders`;
 const KEY_BUSINESSES = `${STORAGE_PREFIX}all_businesses`;
+const KEY_USER_CREDS = `${STORAGE_PREFIX}user_creds`;
 const KEY_ZONES = `${STORAGE_PREFIX}zones`;
 const KEY_SETTINGS = `${STORAGE_PREFIX}settings`;
 const KEY_CART = `${STORAGE_PREFIX}cart`;
@@ -77,10 +78,16 @@ function setSessionStored<T>(key: string, value: T): void {
   }
 }
 
-// Helper to normalize phone numbers (e.g., 0661234567 -> 212661234567)
+// Helper to normalize phone numbers (e.g., 0661234567 -> 212661234567, +212 06... -> 2126...)
 export function normalizePhone(raw: string): string {
-  const digits = (raw || '').replace(/[^0-9]/g, '');
+  let digits = (raw || '').replace(/[^0-9]/g, '');
   if (!digits) return '';
+  if (digits.startsWith('00')) {
+    digits = digits.slice(2);
+  }
+  if (digits.startsWith('2120') && digits.length === 13) {
+    digits = '212' + digits.slice(4);
+  }
   if (digits.startsWith('0') && digits.length === 10) {
     return '212' + digits.slice(1);
   }
@@ -521,6 +528,23 @@ class StoreService {
 
     // E. Fallback local pour utilisateurs enregistrés localement
     if (matchedBiz) {
+      const creds = getStored<Record<string, string>>(KEY_USER_CREDS, {});
+      const bNorm = normalizePhone(matchedBiz.phone || '');
+      const bDigits = (matchedBiz.phone || '').replace(/[^0-9]/g, '');
+      const storedPass =
+        (bNorm && creds[bNorm]) ||
+        (bDigits && creds[bDigits]) ||
+        (matchedBiz.email && creds[matchedBiz.email.toLowerCase().trim()]) ||
+        creds[cleanLower] ||
+        (normPhone && creds[normPhone]);
+
+      if (storedPass && storedPass !== pass) {
+        return {
+          success: false,
+          error: 'Mot de passe incorrect pour ce compte. Veuillez vérifier votre saisie.',
+        };
+      }
+
       const nowIso = new Date().toISOString();
       this.currentUser = {
         id: matchedBiz.ownerId || matchedBiz.owner_id || `usr-${Date.now()}`,
@@ -555,7 +579,7 @@ class StoreService {
 
     return {
       success: false,
-      error: 'Identifiant ou mot de passe incorrect. Vous pouvez vous connecter avec votre N° de téléphone (mondial), votre nom d’utilisateur (ID) ou votre email.',
+      error: 'Identifiant ou mot de passe incorrect. Vous pouvez vous connecter avec votre N° de téléphone, votre nom d’utilisateur (ID) ou votre email.',
     };
   }
 
@@ -573,7 +597,115 @@ class StoreService {
     const normPhone = normalizePhone(params.phone);
     const cleanDigits = params.phone.replace(/[^0-9]/g, '');
     const nameSlug = params.fullName.toLowerCase().trim().replace(/[^a-z0-9]/g, '');
-    const finalEmail = params.email?.trim().toLowerCase() || `${normPhone || cleanDigits || nameSlug || Date.now()}@pontagricole.client`;
+    const userEmail = params.email ? params.email.trim().toLowerCase() : '';
+
+    // 1. Validation stricte du numéro de téléphone (MANDATAIRE pour la connexion)
+    if (!params.phone || cleanDigits.length < 9) {
+      return {
+        success: false,
+        error: "Veuillez renseigner un numéro de téléphone valide d'au moins 9 à 10 chiffres (ex: 06 61 23 45 67). Ce numéro est obligatoire pour vous connecter à votre compte.",
+      };
+    }
+
+    // 2. Validation de l'email SI renseigné (Email est OPTIONNEL)
+    if (userEmail) {
+      const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+      if (!emailRegex.test(userEmail)) {
+        return {
+          success: false,
+          error: "Veuillez saisir une adresse email valide (ex: contact@restaurant.ma) ou laisser le champ email vide.",
+        };
+      }
+    }
+
+    // 3. VÉRIFICATION STRICTE DES DOUBLONS DANS LE CACHE LOCAL
+    const localBusinesses = getStored<Business[]>(KEY_BUSINESSES, []);
+    const phoneExistsLocal = localBusinesses.some((b) => {
+      const bNorm = normalizePhone(b.phone || '');
+      return normPhone && bNorm && normPhone === bNorm;
+    });
+    if (phoneExistsLocal) {
+      return {
+        success: false,
+        error: "Ce numéro de téléphone est déjà associé à un compte existant. Veuillez vous connecter.",
+      };
+    }
+
+    if (userEmail) {
+      const emailExistsLocal = localBusinesses.some(
+        (b) => b.email && b.email.toLowerCase().trim() === userEmail
+      );
+      if (emailExistsLocal) {
+        return {
+          success: false,
+          error: "Cette adresse email est déjà associée à un compte existant. Veuillez vous connecter ou utiliser un autre email.",
+        };
+      }
+    }
+
+    // 4. VÉRIFICATION DES DOUBLONS SUR LE SERVEUR SYNC (RÉSEAU LOCAL / MULTI-APPAREILS)
+    try {
+      if (typeof fetch !== 'undefined') {
+        const syncRes = await fetch('/api/sync/clients', { cache: 'no-store' });
+        if (syncRes.ok) {
+          const syncClients = await syncRes.json();
+          if (Array.isArray(syncClients)) {
+            const phoneMatch = syncClients.some((c) => {
+              const cNorm = normalizePhone(c.phone || '');
+              return normPhone && cNorm && normPhone === cNorm;
+            });
+            if (phoneMatch) {
+              return {
+                success: false,
+                error: "Ce numéro de téléphone est déjà enregistré sur la plateforme. Veuillez vous connecter.",
+              };
+            }
+            if (userEmail) {
+              const emailMatch = syncClients.some(
+                (c) => c.email && c.email.toLowerCase().trim() === userEmail
+              );
+              if (emailMatch) {
+                return {
+                  success: false,
+                  error: "Cette adresse email est déjà associée à un compte existant. Veuillez vous connecter.",
+                };
+              }
+            }
+          }
+        }
+      }
+    } catch {}
+
+    // 5. VÉRIFICATION DES DOUBLONS DANS SUPABASE (SI CONFIGURÉ)
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { data: dbBizs } = await supabase.from('businesses').select('phone, email').limit(1000);
+        if (dbBizs && dbBizs.length > 0) {
+          const sbPhoneMatch = dbBizs.some((b: any) => {
+            const bNorm = normalizePhone(b.phone || '');
+            return normPhone && bNorm && normPhone === bNorm;
+          });
+          if (sbPhoneMatch) {
+            return {
+              success: false,
+              error: "Ce numéro de téléphone est déjà enregistré dans notre base de données. Veuillez vous connecter.",
+            };
+          }
+          if (userEmail) {
+            const sbEmailMatch = dbBizs.some((b: any) => b.email && b.email.toLowerCase().trim() === userEmail);
+            if (sbEmailMatch) {
+              return {
+                success: false,
+                error: "Cette adresse email est déjà associée à un compte existant. Veuillez vous connecter.",
+              };
+            }
+          }
+        }
+      } catch {}
+    }
+
+    const finalEmail = userEmail || `${normPhone}@pontagricole.client`;
+    const nowIso = new Date().toISOString();
 
     if (isSupabaseConfigured && supabase) {
       try {
@@ -605,7 +737,15 @@ class StoreService {
           return { success: false, error: error.message };
         }
 
-        const userId = data.user?.id || `usr-${Date.now()}`;
+        // Vérifier si Supabase a renvoyé des identités vides (signe d'un email déjà existant avec confirmation d'email active)
+        if (data?.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+          return {
+            success: false,
+            error: "Cette adresse email ou ce numéro de téléphone est déjà enregistré. Veuillez vous connecter directement.",
+          };
+        }
+
+        const userId = data?.user?.id || `usr-${Date.now()}`;
 
         // 1. Sauvegarder explicitement dans la table profiles de Supabase
         try {
@@ -668,13 +808,12 @@ class StoreService {
           console.warn('Business direct save warning', be);
         }
 
-        const nowIso = new Date().toISOString();
         this.currentUser = {
           id: userId,
           fullName: params.fullName,
           phone: params.phone,
           role: 'customer',
-          createdAt: data.user?.created_at || nowIso,
+          createdAt: data?.user?.created_at || nowIso,
           lastSeenAt: nowIso,
         };
 
@@ -695,19 +834,34 @@ class StoreService {
           lastSeenAt: nowIso,
         };
 
+        // Sauvegarder les identifiants en local
+        const creds = getStored<Record<string, string>>(KEY_USER_CREDS, {});
+        creds[normPhone] = params.password;
+        if (cleanDigits) creds[cleanDigits] = params.password;
+        if (userEmail) creds[userEmail] = params.password;
+        setStored(KEY_USER_CREDS, creds);
+
         // Sauvegarder dans la liste pour consultation admin
         const allBiz = getStored<Business[]>(KEY_BUSINESSES, []);
-        const existingIdx = allBiz.findIndex((b) => b.ownerId === userId);
+        const existingIdx = allBiz.findIndex((b) => b.ownerId === userId || (normPhone && normalizePhone(b.phone || '') === normPhone));
         if (existingIdx >= 0) allBiz[existingIdx] = this.currentBusiness;
         else allBiz.unshift(this.currentBusiness);
         setStored(KEY_BUSINESSES, allBiz);
 
         // Synchroniser immédiatement avec le serveur local dev / réseau
-        this.syncBusinessToRemote(this.currentBusiness);
+        await this.syncBusinessToRemote(this.currentBusiness);
 
         setSessionStored(KEY_SESSION_USER, this.currentUser);
         setSessionStored(KEY_SESSION_BUSINESS, this.currentBusiness);
         this.touchPresence(this.currentUser.id, this.currentBusiness?.id, this.currentUser.phone);
+
+        // Diffuser aux autres onglets (Admin Dashboard)
+        if (this.broadcastChannel) {
+          try {
+            this.broadcastChannel.postMessage({ type: 'STORE_UPDATED', action: 'NEW_CLIENT', client: this.currentBusiness, timestamp: Date.now() });
+          } catch {}
+        }
+
         this.notify();
         return { success: true };
       } catch (err: any) {
@@ -716,7 +870,6 @@ class StoreService {
     }
 
     // Fallback registration with local persistence
-    const nowIso = new Date().toISOString();
     const newUserId = `usr-${Date.now()}`;
     const newBizId = `biz-${Date.now()}`;
     const newProfile: UserProfile = {
@@ -744,19 +897,36 @@ class StoreService {
       lastSeenAt: nowIso,
     };
 
+    // Sauvegarder les identifiants
+    const creds = getStored<Record<string, string>>(KEY_USER_CREDS, {});
+    creds[normPhone] = params.password;
+    if (cleanDigits) creds[cleanDigits] = params.password;
+    if (userEmail) creds[userEmail] = params.password;
+    setStored(KEY_USER_CREDS, creds);
+
     // Save in all businesses list for admin
     const allBusinesses = getStored<Business[]>(KEY_BUSINESSES, []);
-    allBusinesses.unshift(newBusiness);
+    const existingIdx = allBusinesses.findIndex((b) => normPhone && normalizePhone(b.phone || '') === normPhone);
+    if (existingIdx >= 0) allBusinesses[existingIdx] = newBusiness;
+    else allBusinesses.unshift(newBusiness);
     setStored(KEY_BUSINESSES, allBusinesses);
 
     // Synchroniser immédiatement avec le serveur local dev / réseau
-    this.syncBusinessToRemote(newBusiness);
+    await this.syncBusinessToRemote(newBusiness);
 
     this.currentUser = newProfile;
     this.currentBusiness = newBusiness;
     setSessionStored(KEY_SESSION_USER, this.currentUser);
     setSessionStored(KEY_SESSION_BUSINESS, this.currentBusiness);
     this.touchPresence(newUserId, newBizId, params.phone);
+
+    // Diffuser aux autres onglets (Admin Dashboard)
+    if (this.broadcastChannel) {
+      try {
+        this.broadcastChannel.postMessage({ type: 'STORE_UPDATED', action: 'NEW_CLIENT', client: newBusiness, timestamp: Date.now() });
+      } catch {}
+    }
+
     this.notify();
     return { success: true };
   }
@@ -1271,16 +1441,18 @@ class StoreService {
     const addOrUpdateClient = (bizObj: Business) => {
       if (!bizObj || !bizObj.businessName) return;
       const bNormPhone = normalizePhone(bizObj.phone || '');
+      const bNormEmail = (bizObj.email || '').trim().toLowerCase();
       const existingIdx = list.findIndex((c) => {
-        if (bizObj.id && c.id === bizObj.id) return true;
-        if (bizObj.ownerId && c.ownerId === bizObj.ownerId) return true;
+        if (bizObj.id && c.id && c.id === bizObj.id) return true;
+        if (bizObj.ownerId && c.ownerId && c.ownerId === bizObj.ownerId) return true;
         const cNormPhone = normalizePhone(c.phone || '');
-        if (
-          bNormPhone &&
-          cNormPhone &&
-          (bNormPhone === cNormPhone || bNormPhone.endsWith(cNormPhone) || cNormPhone.endsWith(bNormPhone))
-        )
+        if (bNormPhone && cNormPhone && bNormPhone.length >= 9 && cNormPhone.length >= 9 && bNormPhone === cNormPhone) {
           return true;
+        }
+        const cNormEmail = (c.email || '').trim().toLowerCase();
+        if (bNormEmail && cNormEmail && bNormEmail === cNormEmail) {
+          return true;
+        }
         return false;
       });
 

@@ -287,17 +287,51 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
     const unsub = store.subscribe(() => {
       loadData();
     });
-    return unsub;
-  }, []);
 
-  // Rafraîchissement automatique en temps réel de l'état de présence des clients
-  useEffect(() => {
-    if (activeTab !== 'clients') return;
-    const interval = setInterval(() => {
-      store.getBusinesses().then((bizs) => setBusinesses(bizs));
-    }, 15000);
-    return () => clearInterval(interval);
-  }, [activeTab]);
+    // Écouter les diffusions inter-onglets et inter-fenêtres (BroadcastChannel)
+    let bc: BroadcastChannel | null = null;
+    try {
+      if (typeof BroadcastChannel !== 'undefined') {
+        bc = new BroadcastChannel('pont_agricole_channel');
+        bc.onmessage = (event) => {
+          if (event.data?.type === 'STORE_UPDATED' || event.data?.type === 'PRESENCE_PING') {
+            loadData();
+          }
+        };
+      }
+    } catch {}
+
+    // Détecter les modifications directes dans le stockage local d'autres fenêtres
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key && e.key.includes('pont_agricole_')) {
+        loadData();
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+
+    // Recharger immédiatement lorsque l'administrateur revient sur l'onglet
+    const handleFocus = () => {
+      loadData();
+    };
+    window.addEventListener('focus', handleFocus);
+
+    // Polling régulier toutes les 4s pour détecter tout nouvel utilisateur ou commande
+    const pollInterval = setInterval(() => {
+      loadData();
+    }, 4000);
+
+    return () => {
+      unsub();
+      if (bc) {
+        try {
+          bc.close();
+        } catch {}
+      }
+      window.removeEventListener('storage', handleStorage);
+      window.removeEventListener('focus', handleFocus);
+      clearInterval(pollInterval);
+    };
+  }, []);
 
   // Stats calculation
   const totalOrdersCount = orders.length;

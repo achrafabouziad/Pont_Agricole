@@ -172,6 +172,20 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
       return;
     }
 
+    const phoneDigits = phoneNumber.replace(/\D/g, '');
+    if (phoneDigits.length < 9) {
+      setErrorMsg('Veuillez saisir un numéro de téléphone valide (au moins 9 chiffres). Ce numéro servira pour vous connecter.');
+      return;
+    }
+
+    if (email.trim()) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email.trim())) {
+        setErrorMsg("L'adresse email n'est pas valide. L'email est optionnel : vous pouvez laisser ce champ vide si vous le souhaitez.");
+        return;
+      }
+    }
+
     if (password.length < 6) {
       setErrorMsg('Le mot de passe doit comporter au moins 6 caractères.');
       return;
@@ -341,13 +355,13 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
             <form onSubmit={handleLoginSubmit}>
               <div style={{ marginBottom: '1.2rem' }}>
                 <label className="auth-minimal-label">
-                  <span>Identifiant de connexion *</span>
-                  <span style={{ fontSize: '0.7rem', color: '#94a3b8', fontWeight: 400 }}>Téléphone, Nom ou Email</span>
+                  <span>Numéro de Téléphone ou Email *</span>
+                  <span style={{ fontSize: '0.7rem', color: '#166534', fontWeight: 600 }}>N° de téléphone recommandé</span>
                 </label>
                 <input
                   type="text"
                   className="auth-minimal-input"
-                  placeholder="Ex: 0661234567, karimalami ou email"
+                  placeholder="Ex: 0661234567 ou email@restaurant.ma"
                   value={loginIdentifier}
                   onChange={(e) => setLoginIdentifier(e.target.value)}
                   required
@@ -455,7 +469,8 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
 
                 <div className="auth-field-col">
                   <label className="auth-minimal-label">
-                    <span>Numéro de Téléphone *</span>
+                    <span style={{ fontWeight: 700, color: '#0f172a' }}>Numéro de Téléphone *</span>
+                    <span style={{ fontSize: '0.7rem', color: '#166534', fontWeight: 600 }}>Obligatoire (pour se connecter)</span>
                   </label>
                   <div className="auth-phone-container">
                     <select
@@ -491,6 +506,9 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
                       required
                     />
                   </div>
+                  <div style={{ fontSize: '0.69rem', color: '#64748b', marginTop: '0.2rem' }}>
+                    Ce numéro sera votre identifiant unique pour vous connecter à votre compte.
+                  </div>
                 </div>
               </div>
 
@@ -499,15 +517,20 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
                 <div className="auth-field-col">
                   <label className="auth-minimal-label">
                     <span>Email Professionnel</span>
-                    <span style={{ fontSize: '0.7rem', color: '#94a3b8', fontWeight: 400 }}>Optionnel</span>
+                    <span style={{ fontSize: '0.7rem', color: '#059669', fontWeight: 600, backgroundColor: '#ecfdf5', padding: '1px 6px', borderRadius: '4px' }}>
+                      Optionnel (Facultatif)
+                    </span>
                   </label>
                   <input
                     type="email"
                     className="auth-minimal-input"
-                    placeholder="contact@restaurant.ma"
+                    placeholder="contact@restaurant.ma (facultatif)"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                   />
+                  <div style={{ fontSize: '0.69rem', color: '#94a3b8', marginTop: '0.2rem' }}>
+                    Pas d'email ? Vous pouvez laisser ce champ vide.
+                  </div>
                 </div>
 
                 <div className="auth-field-col">
