@@ -96,9 +96,31 @@ class StoreService {
   private currentBusiness: Business | null = null;
   private cart: CartItem[] = [];
   private listeners: Set<() => void> = new Set();
+  private broadcastChannel: BroadcastChannel | null = null;
 
   constructor() {
     this.init();
+
+    // Cross-tab synchronization via BroadcastChannel
+    if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+      try {
+        this.broadcastChannel = new BroadcastChannel('pont_agricole_channel');
+        this.broadcastChannel.onmessage = (ev) => {
+          if (ev.data?.type === 'STORE_UPDATED') {
+            this.notify(false);
+          }
+        };
+      } catch {}
+    }
+
+    // Cross-tab synchronization via storage events
+    if (typeof window !== 'undefined') {
+      window.addEventListener('storage', (e) => {
+        if (e.key && e.key.startsWith(STORAGE_PREFIX)) {
+          this.notify(false);
+        }
+      });
+    }
   }
 
   private init() {
@@ -230,8 +252,40 @@ class StoreService {
     return () => this.listeners.delete(listener);
   }
 
-  private notify() {
+  private notify(broadcast = true) {
     this.listeners.forEach((l) => l());
+    if (broadcast && this.broadcastChannel) {
+      try {
+        this.broadcastChannel.postMessage({ type: 'STORE_UPDATED', timestamp: Date.now() });
+      } catch {}
+    }
+  }
+
+  // Synchronisation distante / dev server pour connecter tous les téléphones et ordinateurs
+  private async syncBusinessToRemote(biz: Business): Promise<void> {
+    try {
+      if (typeof fetch !== 'undefined') {
+        await fetch('/api/sync/clients', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(biz),
+        });
+      }
+    } catch {
+      // Offline ou production statique
+    }
+  }
+
+  private async syncPresenceToRemote(userId?: string, businessId?: string, phone?: string): Promise<void> {
+    try {
+      if (typeof fetch !== 'undefined') {
+        await fetch('/api/sync/presence', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId, businessId, phone }),
+        });
+      }
+    } catch {}
   }
 
   // --- AUTH METHODS ---
@@ -648,6 +702,9 @@ class StoreService {
         else allBiz.unshift(this.currentBusiness);
         setStored(KEY_BUSINESSES, allBiz);
 
+        // Synchroniser immédiatement avec le serveur local dev / réseau
+        this.syncBusinessToRemote(this.currentBusiness);
+
         setSessionStored(KEY_SESSION_USER, this.currentUser);
         setSessionStored(KEY_SESSION_BUSINESS, this.currentBusiness);
         this.touchPresence(this.currentUser.id, this.currentBusiness?.id, this.currentUser.phone);
@@ -692,6 +749,9 @@ class StoreService {
     allBusinesses.unshift(newBusiness);
     setStored(KEY_BUSINESSES, allBusinesses);
 
+    // Synchroniser immédiatement avec le serveur local dev / réseau
+    this.syncBusinessToRemote(newBusiness);
+
     this.currentUser = newProfile;
     this.currentBusiness = newBusiness;
     setSessionStored(KEY_SESSION_USER, this.currentUser);
@@ -734,6 +794,9 @@ class StoreService {
         if (norm) presenceMap[norm] = nowIso;
       }
       setStored(KEY_PRESENCE, presenceMap);
+
+      // Synchroniser avec le serveur local dev / réseau
+      this.syncPresenceToRemote(userId, businessId, phone);
 
       // Mettre à jour la date d'activité dans le cache local des entreprises
       const allBiz = getStored<Business[]>(KEY_BUSINESSES, []);
@@ -1205,15 +1268,63 @@ class StoreService {
     const seenIds = new Set<string>();
     const seenPhones = new Set<string>();
 
+    const addOrUpdateClient = (bizObj: Business) => {
+      if (!bizObj || !bizObj.businessName) return;
+      const bNormPhone = normalizePhone(bizObj.phone || '');
+      const existingIdx = list.findIndex((c) => {
+        if (bizObj.id && c.id === bizObj.id) return true;
+        if (bizObj.ownerId && c.ownerId === bizObj.ownerId) return true;
+        const cNormPhone = normalizePhone(c.phone || '');
+        if (
+          bNormPhone &&
+          cNormPhone &&
+          (bNormPhone === cNormPhone || bNormPhone.endsWith(cNormPhone) || cNormPhone.endsWith(bNormPhone))
+        )
+          return true;
+        return false;
+      });
+
+      if (existingIdx >= 0) {
+        const cur = list[existingIdx];
+        list[existingIdx] = {
+          ...cur,
+          ...bizObj,
+          lastSeenAt: bizObj.lastSeenAt || cur.lastSeenAt,
+          approvalStatus: bizObj.approvalStatus || cur.approvalStatus,
+        };
+      } else {
+        list.push(bizObj);
+        if (bizObj.id) seenIds.add(bizObj.id);
+        if (bizObj.ownerId) seenIds.add(bizObj.ownerId);
+        if (bNormPhone) seenPhones.add(bNormPhone);
+      }
+    };
+
+    // 1. Charger depuis le serveur local dev / réseau (/api/sync/clients)
+    try {
+      if (typeof fetch !== 'undefined') {
+        const res = await fetch('/api/sync/clients', { cache: 'no-store' });
+        if (res.ok) {
+          const syncData = await res.json();
+          if (Array.isArray(syncData)) {
+            for (const b of syncData) {
+              addOrUpdateClient(b);
+            }
+          }
+        }
+      }
+    } catch {
+      // Dev sync endpoint non disponible en hébergement statique
+    }
+
+    // 2. Charger depuis Supabase (si configuré)
     if (isSupabaseConfigured && supabase) {
       try {
-        // 1. Fetch from businesses table
         const { data: bizData, error: bizError } = await supabase
           .from('businesses')
           .select('*')
           .order('created_at', { ascending: false });
 
-        // 2. Fetch from profiles table to ensure any registered user is included
         const { data: profData } = await supabase
           .from('profiles')
           .select('*')
@@ -1224,22 +1335,10 @@ class StoreService {
           profMap = new Map(profData.map((p: any) => [p.id, p]));
         }
 
-        const presenceMap = getStored<Record<string, string>>(KEY_PRESENCE, {});
-        const bOwnerIds = new Set<string>();
-
         if (!bizError && bizData && bizData.length > 0) {
           for (const b of bizData) {
             const prof = profMap.get(b.owner_id);
             const bPhone = b.phone || prof?.phone || '';
-            const normPhone = normalizePhone(bPhone);
-
-            const lastSeen =
-              presenceMap[b.id] ||
-              (b.owner_id && presenceMap[b.owner_id]) ||
-              (normPhone && presenceMap[normPhone]) ||
-              b.last_seen_at ||
-              prof?.last_seen_at;
-
             const bizObj: Business = {
               id: b.id,
               ownerId: b.owner_id,
@@ -1254,48 +1353,31 @@ class StoreService {
               email: b.email || prof?.email || '',
               googleMapsUrl: b.google_maps_url || undefined,
               username: b.username || undefined,
-              lastSeenAt: lastSeen || undefined,
+              lastSeenAt: b.last_seen_at || prof?.last_seen_at || undefined,
             };
-
-            list.push(bizObj);
-            seenIds.add(bizObj.id);
-            if (bizObj.ownerId) seenIds.add(bizObj.ownerId);
-            if (normPhone) seenPhones.add(normPhone);
-            if (b.owner_id) bOwnerIds.add(b.owner_id);
+            addOrUpdateClient(bizObj);
           }
         }
 
-        // 3. Any customer in profiles not in businesses
         if (profData && profData.length > 0) {
           for (const prof of profData) {
-            if (prof.role !== 'admin' && !bOwnerIds.has(prof.id) && !seenIds.has(prof.id)) {
+            if (prof.role !== 'admin') {
               const pPhone = prof.phone || '';
-              const pNorm = normalizePhone(pPhone);
-              if (!pNorm || !seenPhones.has(pNorm)) {
-                const pLastSeen =
-                  presenceMap[`biz-${prof.id}`] ||
-                  presenceMap[prof.id] ||
-                  (pNorm && presenceMap[pNorm]) ||
-                  prof.last_seen_at;
-
-                const syntheticBiz: Business = {
-                  id: `biz-${prof.id}`,
-                  ownerId: prof.id,
-                  businessName: prof.business_name || prof.full_name || 'Client Inscrit',
-                  businessType: prof.business_type || 'restaurant',
-                  city: prof.city || 'Maroc',
-                  deliveryAddress: prof.delivery_address || 'Adresse non renseignée',
-                  approvalStatus: 'approved',
-                  createdAt: prof.created_at || new Date().toISOString(),
-                  contactName: prof.full_name,
-                  phone: pPhone,
-                  email: prof.email || '',
-                  lastSeenAt: pLastSeen || undefined,
-                };
-                list.push(syntheticBiz);
-                seenIds.add(syntheticBiz.id);
-                if (pNorm) seenPhones.add(pNorm);
-              }
+              const syntheticBiz: Business = {
+                id: `biz-${prof.id}`,
+                ownerId: prof.id,
+                businessName: prof.business_name || prof.full_name || 'Client Inscrit',
+                businessType: prof.business_type || 'restaurant',
+                city: prof.city || 'Maroc',
+                deliveryAddress: prof.delivery_address || 'Adresse non renseignée',
+                approvalStatus: 'approved',
+                createdAt: prof.created_at || new Date().toISOString(),
+                contactName: prof.full_name,
+                phone: pPhone,
+                email: prof.email || '',
+                lastSeenAt: prof.last_seen_at || undefined,
+              };
+              addOrUpdateClient(syntheticBiz);
             }
           }
         }
@@ -1304,40 +1386,123 @@ class StoreService {
       }
     }
 
-    // 4. Merge with local businesses saved from registrations
+    // 3. Fusionner avec le cache local de l'appareil
     const localBusinesses = getStored<Business[]>(KEY_BUSINESSES, []);
-    const presenceMap = getStored<Record<string, string>>(KEY_PRESENCE, {});
-
     for (const lb of localBusinesses) {
-      const lbNorm = normalizePhone(lb.phone || '');
-      const isAlreadyIncluded =
-        seenIds.has(lb.id) ||
-        (lb.ownerId && seenIds.has(lb.ownerId)) ||
-        (lbNorm && seenPhones.has(lbNorm));
+      addOrUpdateClient(lb);
+    }
 
-      const lbLastSeen =
-        presenceMap[lb.id] ||
-        (lb.ownerId && presenceMap[lb.ownerId]) ||
-        (lbNorm && presenceMap[lbNorm]) ||
-        lb.lastSeenAt;
+    // 4. Récupérer l'état de présence (dev sync + cache local)
+    let presenceMap = getStored<Record<string, string>>(KEY_PRESENCE, {});
+    try {
+      if (typeof fetch !== 'undefined') {
+        const presRes = await fetch('/api/sync/presence', { cache: 'no-store' });
+        if (presRes.ok) {
+          const remotePresence = await presRes.json();
+          if (remotePresence && typeof remotePresence === 'object') {
+            presenceMap = { ...presenceMap, ...remotePresence };
+            setStored(KEY_PRESENCE, presenceMap);
+          }
+        }
+      }
+    } catch {}
 
-      lb.lastSeenAt = lbLastSeen || undefined;
-
-      if (!isAlreadyIncluded) {
-        list.push(lb);
-        seenIds.add(lb.id);
-        if (lbNorm) seenPhones.add(lbNorm);
+    // Appliquer la date de présence à chaque client
+    for (const b of list) {
+      const bNorm = normalizePhone(b.phone || '');
+      const pLastSeen =
+        presenceMap[b.id] ||
+        (b.ownerId && presenceMap[b.ownerId]) ||
+        (bNorm && presenceMap[bNorm]) ||
+        b.lastSeenAt;
+      if (pLastSeen) {
+        b.lastSeenAt = pLastSeen;
       }
     }
 
-    // Sort by newest registration first
-    list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    // Trier du plus récent au plus ancien
+    list.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
 
+    // Mettre à jour le cache local avec tous les clients synchronisés
     setStored(KEY_BUSINESSES, list);
     return list;
   }
 
+  public async addBusinessManual(params: {
+    businessName: string;
+    contactName: string;
+    phone: string;
+    city: string;
+    deliveryAddress: string;
+    businessType: BusinessType;
+    email?: string;
+    approvalStatus?: ApprovalStatus;
+  }): Promise<Business> {
+    const nowIso = new Date().toISOString();
+    const newBizId = `biz-${Date.now()}`;
+    const newUserId = `usr-${Date.now()}`;
+    const normPhone = normalizePhone(params.phone);
+    const nameSlug = params.contactName.toLowerCase().trim().replace(/[^a-z0-9]/g, '');
+    const finalEmail = params.email?.trim().toLowerCase() || `${normPhone || Date.now()}@pontagricole.client`;
+
+    const newBiz: Business = {
+      id: newBizId,
+      ownerId: newUserId,
+      businessName: params.businessName.trim(),
+      businessType: params.businessType,
+      city: params.city.trim() || 'Casablanca',
+      deliveryAddress: params.deliveryAddress.trim() || 'Casablanca',
+      approvalStatus: params.approvalStatus || 'approved',
+      createdAt: nowIso,
+      contactName: params.contactName.trim(),
+      phone: params.phone.trim(),
+      email: finalEmail,
+      username: nameSlug,
+      lastSeenAt: nowIso,
+    };
+
+    // 1. Sauvegarder dans le cache local
+    const all = getStored<Business[]>(KEY_BUSINESSES, []);
+    all.unshift(newBiz);
+    setStored(KEY_BUSINESSES, all);
+
+    // 2. Synchroniser sur le réseau local / dev
+    this.syncBusinessToRemote(newBiz);
+
+    // 3. Synchroniser avec Supabase si configuré
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from('businesses').insert({
+          id: newBizId,
+          owner_id: newUserId,
+          business_name: newBiz.businessName,
+          business_type: newBiz.businessType,
+          city: newBiz.city,
+          delivery_address: newBiz.deliveryAddress,
+          contact_name: newBiz.contactName,
+          phone: newBiz.phone,
+          email: finalEmail,
+          approval_status: newBiz.approvalStatus,
+        });
+      } catch (e) {
+        console.warn('Manual client Supabase sync warning', e);
+      }
+    }
+
+    this.touchPresence(newUserId, newBizId, newBiz.phone);
+    this.notify();
+    return newBiz;
+  }
+
   public async updateBusinessApproval(businessId: string, status: ApprovalStatus): Promise<void> {
+    try {
+      fetch('/api/sync/clients', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: businessId, approvalStatus: status }),
+      }).catch(() => {});
+    } catch {}
+
     if (isSupabaseConfigured && supabase) {
       await supabase.from('businesses').update({ approval_status: status }).eq('id', businessId);
     }
@@ -1356,6 +1521,10 @@ class StoreService {
   }
 
   public async deleteBusiness(businessId: string): Promise<void> {
+    try {
+      fetch(`/api/sync/clients?id=${businessId}`, { method: 'DELETE' }).catch(() => {});
+    } catch {}
+
     if (isSupabaseConfigured && supabase) {
       try {
         await supabase.from('businesses').delete().eq('id', businessId);

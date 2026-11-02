@@ -9,6 +9,7 @@ import {
   OrderStatus,
   ApprovalStatus,
   ProductUnit,
+  BusinessType,
 } from '../types';
 import {
   ShieldCheck,
@@ -41,6 +42,7 @@ import {
   Image as ImageIcon,
   Camera,
   User,
+  UserPlus,
   ArrowRight,
   Mail,
   FileText,
@@ -106,6 +108,21 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
   const [clientSearchQuery, setClientSearchQuery] = useState<string>('');
   const [clientStatusFilter, setClientStatusFilter] = useState<'all' | 'approved' | 'pending' | 'suspended' | 'online' | 'offline'>('all');
   const [isRefreshingClients, setIsRefreshingClients] = useState<boolean>(false);
+  const [syncNotice, setSyncNotice] = useState<{ message: string; count: number; time: string } | null>(null);
+
+  // Manual Add Client Modal State
+  const [isAddClientModalOpen, setIsAddClientModalOpen] = useState<boolean>(false);
+  const [newClientForm, setNewClientForm] = useState({
+    businessName: '',
+    contactName: '',
+    phone: '',
+    city: 'Casablanca',
+    deliveryAddress: '',
+    businessType: 'restaurant' as BusinessType,
+    email: '',
+  });
+  const [addingClient, setAddingClient] = useState<boolean>(false);
+  const [addClientError, setAddClientError] = useState<string | null>(null);
 
   // Daily Mercuriale / Price edits state
   const [priceEdits, setPriceEdits] = useState<Record<string, { price: number; isAvailable: boolean }>>({});
@@ -309,8 +326,69 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
 
   const handleRefreshClients = async () => {
     setIsRefreshingClients(true);
-    await loadData();
-    setTimeout(() => setIsRefreshingClients(false), 500);
+    setSyncNotice(null);
+    try {
+      const refreshedBizs = await store.getBusinesses();
+      setBusinesses(refreshedBizs);
+      const nowTime = new Date().toLocaleTimeString('fr-FR', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      });
+      setSyncNotice({
+        message: `${refreshedBizs.length} client(s) répertorié(s)`,
+        count: refreshedBizs.length,
+        time: nowTime,
+      });
+      setTimeout(() => setSyncNotice(null), 4000);
+    } catch (err) {
+      console.error('Erreur actualisation clients', err);
+    } finally {
+      setIsRefreshingClients(false);
+    }
+  };
+
+  const handleManualAddClient = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newClientForm.businessName.trim() || !newClientForm.contactName.trim() || !newClientForm.phone.trim()) {
+      setAddClientError('Veuillez renseigner au moins le nom du responsable, l\'établissement et le téléphone.');
+      return;
+    }
+    setAddingClient(true);
+    setAddClientError(null);
+    try {
+      await store.addBusinessManual(newClientForm);
+      await loadData();
+      setIsAddClientModalOpen(false);
+      const addedName = newClientForm.businessName;
+      setNewClientForm({
+        businessName: '',
+        contactName: '',
+        phone: '',
+        city: 'Casablanca',
+        deliveryAddress: '',
+        businessType: 'restaurant',
+        email: '',
+      });
+      const nowTime = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      setSyncNotice({
+        message: `Client "${addedName}" ajouté et enregistré !`,
+        count: businesses.length + 1,
+        time: nowTime,
+      });
+      setTimeout(() => setSyncNotice(null), 4000);
+    } catch (err: any) {
+      setAddClientError(err.message || 'Erreur lors de la création du client.');
+    } finally {
+      setAddingClient(false);
+    }
+  };
+
+  // Détecter si un client a été inscrit récemment (moins de 2 heures)
+  const isClientNew = (createdAt?: string) => {
+    if (!createdAt) return false;
+    const diffMs = Date.now() - new Date(createdAt).getTime();
+    return diffMs >= 0 && diffMs < 2 * 60 * 60 * 1000;
   };
 
   // Clients calculation & filtering (avec détection de présence en ligne)
@@ -1438,7 +1516,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
             {/* Header & Refresh */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '1rem' }}>
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
                   <h3 style={{ fontSize: '1.25rem', color: 'var(--primary-900)', margin: 0, fontWeight: 700 }}>
                     Clients & Établissements Inscrits ({businesses.length})
                   </h3>
@@ -1447,22 +1525,52 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
                       {pendingBusinessesCount} en attente de validation
                     </span>
                   )}
+                  {syncNotice && (
+                    <span
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.35rem',
+                        fontSize: '0.78rem',
+                        color: '#15803d',
+                        backgroundColor: '#dcfce7',
+                        border: '1px solid #bbf7d0',
+                        padding: '0.2rem 0.65rem',
+                        borderRadius: '12px',
+                        fontWeight: 600,
+                      }}
+                    >
+                      <CheckCircle size={13} />
+                      <span>{syncNotice.message} ({syncNotice.time})</span>
+                    </span>
+                  )}
                 </div>
                 <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                   Consultez, contactez en 1 clic (WhatsApp & Appel direct) et gérez l'ensemble des comptes clients de la plateforme.
                 </p>
               </div>
 
-              <button
-                onClick={handleRefreshClients}
-                disabled={isRefreshingClients}
-                className="btn btn-secondary btn-sm"
-                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.82rem' }}
-                title="Recharger la liste des clients"
-              >
-                <RefreshCw size={14} className={isRefreshingClients ? 'spin' : ''} />
-                <span>{isRefreshingClients ? 'Actualisation...' : 'Actualiser la liste'}</span>
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <button
+                  onClick={() => setIsAddClientModalOpen(true)}
+                  className="btn btn-primary btn-sm"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.82rem' }}
+                >
+                  <UserPlus size={15} />
+                  <span>+ Nouveau Client Pro</span>
+                </button>
+
+                <button
+                  onClick={handleRefreshClients}
+                  disabled={isRefreshingClients}
+                  className="btn btn-secondary btn-sm"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.82rem' }}
+                  title="Recharger la liste des clients"
+                >
+                  <RefreshCw size={14} className={isRefreshingClients ? 'spin' : ''} />
+                  <span>{isRefreshingClients ? 'Actualisation...' : 'Actualiser la liste'}</span>
+                </button>
+              </div>
             </div>
 
             {/* Quick Metrics & Filter Pills */}
@@ -1798,9 +1906,27 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
                                   {initials}
                                 </div>
                                 <div>
-                                  <strong style={{ fontSize: '0.95rem', color: 'var(--primary-900)', display: 'block' }}>
-                                    {biz.businessName}
-                                  </strong>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
+                                    <strong style={{ fontSize: '0.95rem', color: 'var(--primary-900)' }}>
+                                      {biz.businessName}
+                                    </strong>
+                                    {isClientNew(biz.createdAt) && (
+                                      <span
+                                        style={{
+                                          fontSize: '0.62rem',
+                                          backgroundColor: '#16a34a',
+                                          color: '#ffffff',
+                                          fontWeight: 800,
+                                          padding: '0.1rem 0.45rem',
+                                          borderRadius: '4px',
+                                          letterSpacing: '0.04em',
+                                          display: 'inline-block',
+                                        }}
+                                      >
+                                        NOUVEAU
+                                      </span>
+                                    )}
+                                  </div>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: '0.2rem', flexWrap: 'wrap' }}>
                                     <span className="badge badge-brand" style={{ fontSize: '0.7rem', textTransform: 'capitalize' }}>
                                       {biz.businessType || 'Professionnel CHR'}
@@ -2088,9 +2214,27 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
                               {initials}
                             </div>
                             <div>
-                              <strong style={{ fontSize: '0.96rem', color: 'var(--primary-900)' }}>
-                                {biz.businessName}
-                              </strong>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
+                                <strong style={{ fontSize: '0.96rem', color: 'var(--primary-900)' }}>
+                                  {biz.businessName}
+                                </strong>
+                                {isClientNew(biz.createdAt) && (
+                                  <span
+                                    style={{
+                                      fontSize: '0.62rem',
+                                      backgroundColor: '#16a34a',
+                                      color: '#ffffff',
+                                      fontWeight: 800,
+                                      padding: '0.08rem 0.4rem',
+                                      borderRadius: '4px',
+                                      letterSpacing: '0.04em',
+                                      display: 'inline-block',
+                                    }}
+                                  >
+                                    NOUVEAU
+                                  </span>
+                                )}
+                              </div>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: '0.15rem' }}>
                                 <span className="badge badge-brand" style={{ fontSize: '0.68rem', textTransform: 'capitalize' }}>
                                   {biz.businessType || 'Professionnel'}
@@ -3089,6 +3233,169 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
                 </button>
                 <button type="submit" className="btn btn-primary" style={{ padding: '0.65rem 1.4rem' }}>
                   {editingProduct ? 'Enregistrer Nom & Photo' : 'Créer le Produit'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: AJOUTER UN NOUVEAU CLIENT MANUELLEMENT */}
+      {isAddClientModalOpen && (
+        <div className="modal-overlay" onClick={() => setIsAddClientModalOpen(false)}>
+          <div
+            className="modal-content"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: '580px', maxHeight: '90vh', overflowY: 'auto' }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', borderBottom: '1px solid var(--border-light)', paddingBottom: '0.75rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                <div style={{ padding: '0.5rem', backgroundColor: 'var(--primary-100)', color: 'var(--primary-800)', borderRadius: '8px' }}>
+                  <UserPlus size={20} />
+                </div>
+                <div>
+                  <h2 style={{ fontSize: '1.25rem', margin: 0, color: 'var(--primary-900)' }}>
+                    Ajouter un Nouveau Client Pro
+                  </h2>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>
+                    Création manuelle d'un compte établissement validé (commande par téléphone ou WhatsApp).
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {addClientError && (
+              <div className="alert alert-error" style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <AlertCircle size={16} />
+                <span>{addClientError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleManualAddClient}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
+                <div className="form-group">
+                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>
+                    Nom de l'établissement *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ex: Restaurant Le Marrakech"
+                    value={newClientForm.businessName}
+                    onChange={(e) => setNewClientForm({ ...newClientForm, businessName: e.target.value })}
+                    className="form-input"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>
+                    Nom du Responsable / Contact *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ex: Karim Benali"
+                    value={newClientForm.contactName}
+                    onChange={(e) => setNewClientForm({ ...newClientForm, contactName: e.target.value })}
+                    className="form-input"
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
+                <div className="form-group">
+                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>
+                    Type d'établissement *
+                  </label>
+                  <select
+                    value={newClientForm.businessType}
+                    onChange={(e) => setNewClientForm({ ...newClientForm, businessType: e.target.value as BusinessType })}
+                    className="form-input"
+                  >
+                    <option value="restaurant">Restaurant / Brasserie</option>
+                    <option value="hotel">Hôtel / Palace</option>
+                    <option value="cafe">Café / Salon de Thé</option>
+                    <option value="caterer">Traiteur / Événementiel</option>
+                    <option value="supermarket">Supermarché / Épicerie</option>
+                    <option value="other">Autre Professionnel CHR</option>
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>
+                    N° Téléphone (Appels & WhatsApp) *
+                  </label>
+                  <input
+                    type="tel"
+                    required
+                    placeholder="Ex: 06 61 23 45 67"
+                    value={newClientForm.phone}
+                    onChange={(e) => setNewClientForm({ ...newClientForm, phone: e.target.value })}
+                    className="form-input"
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
+                <div className="form-group">
+                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>
+                    Ville *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ex: Casablanca"
+                    value={newClientForm.city}
+                    onChange={(e) => setNewClientForm({ ...newClientForm, city: e.target.value })}
+                    className="form-input"
+                  />
+                </div>
+
+                <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>
+                    Adresse de livraison précise *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ex: 24 Rue de Normandie, Quartier Gauthier"
+                    value={newClientForm.deliveryAddress}
+                    onChange={(e) => setNewClientForm({ ...newClientForm, deliveryAddress: e.target.value })}
+                    className="form-input"
+                  />
+                </div>
+              </div>
+
+              <div className="form-group" style={{ marginBottom: '1.25rem' }}>
+                <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>
+                  Adresse Email (optionnelle)
+                </label>
+                <input
+                  type="email"
+                  placeholder="contact@restaurant.ma"
+                  value={newClientForm.email}
+                  onChange={(e) => setNewClientForm({ ...newClientForm, email: e.target.value })}
+                  className="form-input"
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', borderTop: '1px solid var(--border-light)', paddingTop: '1rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setIsAddClientModalOpen(false)}
+                  className="btn btn-secondary"
+                  disabled={addingClient}
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.65rem 1.4rem' }}
+                  disabled={addingClient}
+                >
+                  <UserPlus size={16} />
+                  <span>{addingClient ? 'Création en cours...' : 'Enregistrer le Client Pro'}</span>
                 </button>
               </div>
             </form>
