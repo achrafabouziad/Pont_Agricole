@@ -1,21 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import { store } from '../services/store';
 import { BusinessType } from '../types';
-import {
-  UserCheck,
-  AlertTriangle,
-  ExternalLink,
-  ArrowRight,
-  Mail,
-  MessageCircle,
-  CheckCircle2,
-  ArrowLeft,
-  RefreshCw,
-  Copy,
-  Check,
-  ShieldCheck,
-} from 'lucide-react';
-import { INITIAL_COMPANY_SETTINGS } from '../data/mockData';
+import { UserCheck, AlertTriangle, ExternalLink, ArrowRight } from 'lucide-react';
 
 interface AuthPageProps {
   onSuccess: () => void;
@@ -86,33 +72,6 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
   const [city, setCity] = useState('Casablanca');
   const [deliveryAddress, setDeliveryAddress] = useState('');
   const [termsAgreed, setTermsAgreed] = useState<boolean>(true);
-
-  // Verification OTP state
-  const [verificationStep, setVerificationStep] = useState<'form' | 'verify'>('form');
-  const [verificationChannel, setVerificationChannel] = useState<'email' | 'phone'>('phone');
-  const [verificationTarget, setVerificationTarget] = useState<string>('');
-  const [verificationCode, setVerificationCode] = useState<string>('');
-  const [otpDigits, setOtpDigits] = useState<string[]>(['', '', '', '', '', '']);
-  const [resendCooldown, setResendCooldown] = useState<number>(0);
-  const [copiedCode, setCopiedCode] = useState<boolean>(false);
-  const [pendingRegisterParams, setPendingRegisterParams] = useState<any>(null);
-
-  const otpRefs = [
-    useRef<HTMLInputElement>(null),
-    useRef<HTMLInputElement>(null),
-    useRef<HTMLInputElement>(null),
-    useRef<HTMLInputElement>(null),
-    useRef<HTMLInputElement>(null),
-    useRef<HTMLInputElement>(null),
-  ];
-
-  useEffect(() => {
-    if (resendCooldown <= 0) return;
-    const interval = setInterval(() => {
-      setResendCooldown((c) => (c > 0 ? c - 1 : 0));
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [resendCooldown]);
 
   // Automatic Geolocation state
   const [locating, setLocating] = useState<boolean>(false);
@@ -234,19 +193,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
 
     setLoading(true);
     try {
-      // 1. Vérifier si le téléphone ou l'email est déjà enregistré avant de demander la vérification
-      const avail = await store.checkAvailability(fullPhone, email.trim() || undefined);
-      if (!avail.available) {
-        setErrorMsg(avail.error || "Ce compte existe déjà.");
-        return;
-      }
-
-      // 2. Déterminer le canal de vérification : Email si renseigné, sinon Téléphone (WhatsApp)
-      const channel: 'email' | 'phone' = email.trim() ? 'email' : 'phone';
-      const target = channel === 'email' ? email.trim() : fullPhone;
-      const code = Math.floor(100000 + Math.random() * 900000).toString();
-
-      setPendingRegisterParams({
+      const res = await store.register({
         fullName: fullName.trim(),
         businessName: businessName.trim(),
         businessType,
@@ -256,104 +203,17 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
         city,
         deliveryAddress: deliveryAddress.trim(),
         googleMapsUrl: gpsCoords?.url,
-        verificationChannel: channel,
       });
 
-      setVerificationChannel(channel);
-      setVerificationTarget(target);
-      setVerificationCode(code);
-      setOtpDigits(['', '', '', '', '', '']);
-      setResendCooldown(45);
-      setVerificationStep('verify');
-    } catch (err: any) {
-      setErrorMsg(err.message || "Erreur lors de la validation.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleOtpDigitChange = (index: number, val: string) => {
-    const char = val.replace(/[^0-9]/g, '').slice(-1);
-    const newDigits = [...otpDigits];
-    newDigits[index] = char;
-    setOtpDigits(newDigits);
-    setErrorMsg(null);
-
-    if (char && index < 5) {
-      otpRefs[index + 1].current?.focus();
-    }
-  };
-
-  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Backspace' && !otpDigits[index] && index > 0) {
-      otpRefs[index - 1].current?.focus();
-    }
-  };
-
-  const handleOtpPaste = (e: React.ClipboardEvent) => {
-    e.preventDefault();
-    const pasted = e.clipboardData.getData('text').replace(/[^0-9]/g, '').slice(0, 6);
-    if (!pasted) return;
-    const newDigits = ['', '', '', '', '', ''];
-    for (let i = 0; i < pasted.length; i++) {
-      newDigits[i] = pasted[i];
-    }
-    setOtpDigits(newDigits);
-    setErrorMsg(null);
-    const nextIdx = Math.min(pasted.length, 5);
-    otpRefs[nextIdx].current?.focus();
-  };
-
-  const handleAutofillCode = () => {
-    const digits = verificationCode.split('').slice(0, 6);
-    setOtpDigits(digits);
-    setErrorMsg(null);
-    setCopiedCode(true);
-    setTimeout(() => setCopiedCode(false), 2000);
-    otpRefs[5].current?.focus();
-  };
-
-  const handleResendCode = () => {
-    if (resendCooldown > 0) return;
-    const newCode = Math.floor(100000 + Math.random() * 900000).toString();
-    setVerificationCode(newCode);
-    setOtpDigits(['', '', '', '', '', '']);
-    setResendCooldown(45);
-    setSuccessNotice('Nouveau code généré avec succès !');
-    setTimeout(() => setSuccessNotice(null), 3000);
-  };
-
-  const handleConfirmOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorMsg(null);
-
-    const entered = otpDigits.join('');
-    if (entered.length !== 6) {
-      setErrorMsg("Veuillez saisir l'intégralité du code de vérification à 6 chiffres.");
-      return;
-    }
-
-    if (entered !== verificationCode) {
-      setErrorMsg("Code de vérification incorrect. Veuillez vérifier les 6 chiffres ou cliquer sur Renvoyer le code.");
-      return;
-    }
-
-    if (!pendingRegisterParams) {
-      setErrorMsg("Données d'inscription expirées. Veuillez recommencer.");
-      setVerificationStep('form');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const res = await store.register(pendingRegisterParams);
       if (res.success) {
-        setSuccessNotice('Compte vérifié et créé avec succès ! Bienvenue sur la plateforme Pont Agricole.');
+        setSuccessNotice(
+          `Compte créé avec succès ! Bienvenue sur la plateforme Pont Agricole.`
+        );
         setTimeout(() => {
           onSuccess();
         }, 1100);
       } else {
-        setErrorMsg(res.error || "Erreur lors de la création du compte.");
+        setErrorMsg(res.error || "Erreur lors de l'inscription.");
       }
     } catch (err: any) {
       setErrorMsg(err.message || "Erreur lors de l'inscription.");
@@ -382,29 +242,11 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
             </div>
 
             {/* Clear, Clickable Pill Badge for Quick Switching */}
-            {verificationStep === 'verify' ? (
-              <div
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '0.4rem',
-                  fontSize: '0.78rem',
-                  fontWeight: 700,
-                  color: '#166534',
-                  backgroundColor: '#ecfdf5',
-                  padding: '0.35rem 0.75rem',
-                  borderRadius: '9999px',
-                }}
-              >
-                <ShieldCheck size={14} />
-                <span>Étape 2/2 : Vérification</span>
-              </div>
-            ) : isLoginMode ? (
+            {isLoginMode ? (
               <button
                 type="button"
                 onClick={() => {
                   setIsLoginMode(false);
-                  setVerificationStep('form');
                   setErrorMsg(null);
                 }}
                 className="auth-switch-badge-btn"
@@ -419,7 +261,6 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
                 type="button"
                 onClick={() => {
                   setIsLoginMode(true);
-                  setVerificationStep('form');
                   setErrorMsg(null);
                 }}
                 className="auth-switch-badge-btn"
@@ -433,46 +274,40 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
           </div>
 
           {/* Prominent Segmented Switcher (Impossible to miss) */}
-          {verificationStep === 'form' && (
-            <div className="auth-segmented-switcher">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsLoginMode(true);
-                  setVerificationStep('form');
-                  setErrorMsg(null);
-                }}
-                className={`auth-switcher-tab ${isLoginMode ? 'active' : ''}`}
-              >
-                Se connecter
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setIsLoginMode(false);
-                  setVerificationStep('form');
-                  setErrorMsg(null);
-                }}
-                className={`auth-switcher-tab ${!isLoginMode ? 'active' : ''}`}
-              >
-                S'inscrire (Sign up)
-              </button>
-            </div>
-          )}
+          <div className="auth-segmented-switcher">
+            <button
+              type="button"
+              onClick={() => {
+                setIsLoginMode(true);
+                setErrorMsg(null);
+              }}
+              className={`auth-switcher-tab ${isLoginMode ? 'active' : ''}`}
+            >
+              Se connecter
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setIsLoginMode(false);
+                setErrorMsg(null);
+              }}
+              className={`auth-switcher-tab ${!isLoginMode ? 'active' : ''}`}
+            >
+              S'inscrire (Sign up)
+            </button>
+          </div>
 
           {/* Form Title & Minimal Subtitle with High-End Typography */}
-          {verificationStep === 'form' && (
-            <div style={{ marginBottom: '1.4rem' }}>
-              <h1 className="auth-heading">
-                {isLoginMode ? 'Se connecter' : 'Créer un compte'}
-              </h1>
-              <p className="auth-subheading">
-                {isLoginMode
-                  ? 'Accédez à votre espace professionnel, vos commandes et vos tarifs de gros.'
-                  : 'Réservé aux restaurants, hôtels, cafés et traiteurs au Maroc.'}
-              </p>
-            </div>
-          )}
+          <div style={{ marginBottom: '1.4rem' }}>
+            <h1 className="auth-heading">
+              {isLoginMode ? 'Se connecter' : 'Créer un compte'}
+            </h1>
+            <p className="auth-subheading">
+              {isLoginMode
+                ? 'Accédez à votre espace professionnel, vos commandes et vos tarifs de gros.'
+                : 'Réservé aux restaurants, hôtels, cafés et traiteurs au Maroc.'}
+            </p>
+          </div>
 
           {/* Feedback Alerts */}
           {errorMsg && (
@@ -515,223 +350,9 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
             </div>
           )}
 
-          {verificationStep === 'verify' ? (
-            /* OTP VERIFICATION VIEW */
-            <div className="auth-otp-wrapper">
-              <div style={{ marginBottom: '1.25rem' }}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setVerificationStep('form');
-                    setErrorMsg(null);
-                  }}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: '#64748b',
-                    fontSize: '0.84rem',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    padding: 0,
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '0.4rem',
-                    marginBottom: '0.85rem',
-                  }}
-                >
-                  <ArrowLeft size={15} />
-                  <span>Modifier mes informations</span>
-                </button>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.4rem' }}>
-                  <div
-                    style={{
-                      width: '38px',
-                      height: '38px',
-                      borderRadius: '10px',
-                      background: verificationChannel === 'email' ? '#ecfdf5' : '#dcfce7',
-                      color: '#166534',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      flexShrink: 0,
-                    }}
-                  >
-                    {verificationChannel === 'email' ? <Mail size={20} /> : <MessageCircle size={20} />}
-                  </div>
-                  <h1 className="auth-heading" style={{ margin: 0, fontSize: '1.6rem' }}>
-                    {verificationChannel === 'email'
-                      ? "Vérification de l'adresse Email"
-                      : "Vérification du numéro WhatsApp"}
-                  </h1>
-                </div>
-
-                <p className="auth-subheading" style={{ marginTop: '0.35rem' }}>
-                  {verificationChannel === 'email'
-                    ? "Veuillez saisir le code à 6 chiffres envoyé à votre adresse email :"
-                    : "Pour valider votre inscription, saisissez le code à 6 chiffres lié à votre numéro :"}
-                </p>
-
-                <div style={{ marginTop: '0.65rem' }}>
-                  <span
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '0.45rem',
-                      background: '#f1f5f9',
-                      border: '1px solid #e2e8f0',
-                      padding: '0.35rem 0.85rem',
-                      borderRadius: '9999px',
-                      fontSize: '0.84rem',
-                      fontWeight: 700,
-                      color: '#0f172a',
-                    }}
-                  >
-                    {verificationChannel === 'email' ? <Mail size={13} color="#166534" /> : <MessageCircle size={13} color="#166534" />}
-                    <span>{verificationTarget}</span>
-                  </span>
-                </div>
-              </div>
-
-              {/* Direct Code Banner for Testing & Instant Access */}
-              <div
-                style={{
-                  background: '#f0fdf4',
-                  border: '1px solid #bbf7d0',
-                  borderRadius: '12px',
-                  padding: '0.75rem 1rem',
-                  marginBottom: '1.25rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  flexWrap: 'wrap',
-                  gap: '0.5rem',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <ShieldCheck size={18} color="#166534" style={{ flexShrink: 0 }} />
-                  <span style={{ fontSize: '0.82rem', color: '#166534', fontWeight: 600 }}>
-                    Code de confirmation : <strong style={{ fontSize: '1.05rem', letterSpacing: '0.12em', color: '#14532d' }}>{verificationCode}</strong>
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleAutofillCode}
-                  style={{
-                    background: '#166534',
-                    color: '#ffffff',
-                    border: 'none',
-                    borderRadius: '8px',
-                    padding: '0.35rem 0.75rem',
-                    fontSize: '0.75rem',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '0.35rem',
-                    transition: 'all 0.2s ease',
-                  }}
-                >
-                  {copiedCode ? <Check size={13} /> : <Copy size={13} />}
-                  <span>{copiedCode ? 'Rempli !' : 'Remplir auto'}</span>
-                </button>
-              </div>
-
-              {/* If Phone, show WhatsApp Direct Button */}
-              {verificationChannel === 'phone' && (
-                <div style={{ marginBottom: '1.25rem' }}>
-                  <a
-                    href={`https://wa.me/212707296123?text=${encodeURIComponent(
-                      `Bonjour Pont Agricole, mon code de validation pour l'établissement "${pendingRegisterParams?.businessName || businessName}" est : ${verificationCode}`
-                    )}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="auth-whatsapp-btn"
-                  >
-                    <MessageCircle size={17} />
-                    <span>Ouvrir WhatsApp pour confirmer</span>
-                    <ExternalLink size={13} />
-                  </a>
-                  <p style={{ fontSize: '0.7rem', color: '#64748b', textAlign: 'center', marginTop: '0.4rem', marginInline: 'auto' }}>
-                    Discussion directe avec Pont Agricole ({INITIAL_COMPANY_SETTINGS.whatsapp || '0707296123'}).
-                  </p>
-                </div>
-              )}
-
-              {/* OTP Digits Form */}
-              <form onSubmit={handleConfirmOtp}>
-                <label className="auth-minimal-label" style={{ textAlign: 'center', display: 'block', marginBottom: '0.4rem' }}>
-                  <span>Saisissez les 6 chiffres du code</span>
-                </label>
-
-                <div className="auth-otp-grid" onPaste={handleOtpPaste}>
-                  {otpDigits.map((digit, idx) => (
-                    <input
-                      key={idx}
-                      ref={otpRefs[idx]}
-                      type="text"
-                      inputMode="numeric"
-                      maxLength={1}
-                      value={digit}
-                      onChange={(e) => handleOtpDigitChange(idx, e.target.value)}
-                      onKeyDown={(e) => handleOtpKeyDown(idx, e)}
-                      className="auth-otp-box"
-                      autoFocus={idx === 0}
-                      aria-label={`Chiffre ${idx + 1}`}
-                    />
-                  ))}
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={loading || otpDigits.join('').length !== 6}
-                  className="auth-pill-btn"
-                  style={{ width: '100%', marginBottom: '1rem' }}
-                >
-                  {loading ? (
-                    'Activation en cours...'
-                  ) : (
-                    <>
-                      <CheckCircle2 size={16} />
-                      <span>Valider et activer mon compte</span>
-                    </>
-                  )}
-                </button>
-
-                {/* Resend Code / Timer Action */}
-                <div style={{ textAlign: 'center', fontSize: '0.82rem', color: '#64748b' }}>
-                  {resendCooldown > 0 ? (
-                    <span>
-                      Renvoyer un nouveau code dans <strong style={{ color: '#0f172a' }}>{resendCooldown}s</strong>
-                    </span>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={handleResendCode}
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        color: '#166534',
-                        fontWeight: 700,
-                        cursor: 'pointer',
-                        padding: 0,
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '0.35rem',
-                      }}
-                    >
-                      <RefreshCw size={13} />
-                      <span>Renvoyer un nouveau code</span>
-                    </button>
-                  )}
-                </div>
-              </form>
-            </div>
-          ) : (
-            <>
-              {/* LOGIN FORM */}
-              {isLoginMode ? (
-                <form onSubmit={handleLoginSubmit}>
+          {/* LOGIN FORM */}
+          {isLoginMode ? (
+            <form onSubmit={handleLoginSubmit}>
               <div style={{ marginBottom: '1.2rem' }}>
                 <label className="auth-minimal-label">
                   <span>Numéro de Téléphone ou Email *</span>
@@ -1037,9 +658,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
               </div>
             </form>
           )}
-        </>
-      )}
-    </div>
+        </div>
 
         {/* RIGHT COLUMN: EDITORIAL VISUAL PANEL (MATCHING REFERENCE IMAGE) */}
         <div className="auth-split-visual-col">
