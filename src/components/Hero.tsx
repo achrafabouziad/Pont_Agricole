@@ -1,5 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowRight, CheckCircle2, ShieldCheck, Clock, Truck, MapPin } from 'lucide-react';
+import { store } from '../services/store';
+import { CompanySettings } from '../types';
 
 interface HeroProps {
   onExploreCatalog: () => void;
@@ -7,6 +9,24 @@ interface HeroProps {
 }
 
 export const Hero: React.FC<HeroProps> = ({ onExploreCatalog, onCreateAccount }) => {
+  const [settings, setSettings] = useState<CompanySettings | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    store.getCompanySettings().then((st) => {
+      if (isMounted) setSettings(st);
+    });
+    const unsubscribe = store.subscribe(() => {
+      store.getCompanySettings().then((st) => {
+        if (isMounted) setSettings(st);
+      });
+    });
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
+  }, []);
+
   return (
     <section className="hero-section">
       <div className="container">
@@ -26,7 +46,7 @@ export const Hero: React.FC<HeroProps> = ({ onExploreCatalog, onCreateAccount })
             </h1>
 
             <p className="hero-desc">
-              Légumes maraîchers calibrés pour la restauration, fruits gorgés de soleil et herbes cueillies à l’aube. Commandez jusqu’à 21h00, livraison le lendemain matin avant 09h00 directement dans vos cuisines.
+              Légumes maraîchers calibrés pour la restauration, fruits gorgés de soleil et herbes fraîches du terroir marocain. Commandez directement en ligne avec livraison dédiée dans vos cuisines et chambres froides.
             </p>
 
             {/* CTAs */}
@@ -58,8 +78,8 @@ export const Hero: React.FC<HeroProps> = ({ onExploreCatalog, onCreateAccount })
               <div className="hero-trust-item">
                 <Truck size={16} className="hero-trust-icon" />
                 <div>
-                  <div className="hero-trust-label">Livraison avant 09h00</div>
-                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Tournées matinales CHR</div>
+                  <div className="hero-trust-label">Livraison Dédiée CHR</div>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Tournées professionnelles</div>
                 </div>
               </div>
               <div className="hero-trust-item">
@@ -106,7 +126,7 @@ export const Hero: React.FC<HeroProps> = ({ onExploreCatalog, onCreateAccount })
                   />
                   <div>
                     <div style={{ fontWeight: 700, color: 'var(--primary-900)', fontSize: '0.88rem', letterSpacing: '-0.01em' }}>
-                      Pont Agricole
+                      {settings?.companyName || 'Pont Agricole'}
                     </div>
                     <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
                       Fournisseur Agréé CHR
@@ -116,10 +136,16 @@ export const Hero: React.FC<HeroProps> = ({ onExploreCatalog, onCreateAccount })
 
                 <div style={{ textAlign: 'right', borderLeft: '1px solid var(--border-light)', paddingLeft: '1rem' }}>
                   <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.04em' }}>
-                    Clôture Quotidienne
+                    {settings?.orderCutoffTime ? 'Clôture Quotidienne' : 'Commandes B2B'}
                   </div>
                   <div style={{ fontSize: '0.86rem', fontWeight: 700, color: 'var(--amber-600)', display: 'flex', alignItems: 'center', gap: '0.25rem', justifyContent: 'flex-end' }}>
-                    <Clock size={13} /> 21h00
+                    {settings?.orderCutoffTime ? (
+                      <>
+                        <Clock size={13} /> {settings.orderCutoffTime}
+                      </>
+                    ) : (
+                      <span>Service Actif</span>
+                    )}
                   </div>
                 </div>
               </div>

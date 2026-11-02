@@ -227,7 +227,7 @@ export const INITIAL_DELIVERY_ZONES: DeliveryZone[] = [
     deliveryFee: 35,
     minimumOrderAmount: 300,
     isActive: true,
-    estimatedHours: 'Livraison le matin avant 09h00',
+    estimatedHours: 'Tournée quotidienne CHR',
   },
   {
     id: 'zone-rabat',
@@ -236,7 +236,7 @@ export const INITIAL_DELIVERY_ZONES: DeliveryZone[] = [
     deliveryFee: 45,
     minimumOrderAmount: 400,
     isActive: true,
-    estimatedHours: 'Livraison matinale 07h00 - 10h00',
+    estimatedHours: 'Tournée quotidienne CHR',
   },
   {
     id: 'zone-kech',
@@ -245,7 +245,7 @@ export const INITIAL_DELIVERY_ZONES: DeliveryZone[] = [
     deliveryFee: 50,
     minimumOrderAmount: 500,
     isActive: true,
-    estimatedHours: 'Livraison quotidienne 06h30 - 09h30',
+    estimatedHours: 'Tournée quotidienne CHR',
   },
   {
     id: 'zone-tanger',
@@ -254,7 +254,7 @@ export const INITIAL_DELIVERY_ZONES: DeliveryZone[] = [
     deliveryFee: 50,
     minimumOrderAmount: 450,
     isActive: true,
-    estimatedHours: 'Livraison avant 10h00',
+    estimatedHours: 'Tournée quotidienne CHR',
   },
   {
     id: 'zone-fes',
@@ -263,7 +263,7 @@ export const INITIAL_DELIVERY_ZONES: DeliveryZone[] = [
     deliveryFee: 40,
     minimumOrderAmount: 350,
     isActive: true,
-    estimatedHours: 'Livraison 07h00 - 10h30',
+    estimatedHours: 'Tournée quotidienne CHR',
   },
   {
     id: 'zone-agadir',
@@ -272,177 +272,37 @@ export const INITIAL_DELIVERY_ZONES: DeliveryZone[] = [
     deliveryFee: 40,
     minimumOrderAmount: 350,
     isActive: true,
-    estimatedHours: 'Livraison matinale 06h30 - 09h00',
+    estimatedHours: 'Tournée quotidienne CHR',
   },
 ];
 
 export const INITIAL_COMPANY_SETTINGS: CompanySettings = {
-  companyName: 'Pont Agricole SARL-AU',
+  companyName: 'Pont Agricole',
   tagline: 'Le lien entre la terre et l’avenir',
-  phone: '+212 5 22 45 78 90',
-  whatsapp: '+212 6 61 98 76 54',
-  email: 'contact@pontagricole.ma',
-  address: 'Halle aux Primeurs, Marché de Gros, Casablanca, Maroc',
-  minOrderDefault: 300,
-  freeDeliveryThreshold: 1200,
+  phone: '',
+  whatsapp: '',
+  email: '',
+  address: '',
+  city: 'Casablanca',
+  minOrderDefault: 0,
+  freeDeliveryThreshold: 0,
   deliveryDays: ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'],
-  orderCutoffTime: '21h00 pour livraison le lendemain matin',
+  orderCutoffTime: '',
+  ice: '',
+  rc: '',
+  ifCode: '',
+  patente: '',
+  cnss: '',
+  capital: '',
+  rib: '',
 };
 
-// Demo users to test instantly
+// Admin profile
 export const DEMO_ADMIN_PROFILE: UserProfile = {
   id: 'admin-001',
-  fullName: 'Karim Tazi (Direction Commerciale)',
-  phone: '+212 6 61 12 34 56',
+  fullName: 'Achraf Abouziad',
+  phone: '',
   role: 'admin',
   createdAt: '2026-01-15T08:00:00Z',
 };
 
-export const DEMO_CLIENT_PROFILE: UserProfile = {
-  id: 'user-resto-001',
-  fullName: 'Chef Youssef Bennani',
-  phone: '+212 6 62 88 99 00',
-  role: 'customer',
-  createdAt: '2026-03-01T10:00:00Z',
-};
-
-export const DEMO_CLIENT_BUSINESS: Business = {
-  id: 'biz-resto-001',
-  ownerId: 'user-resto-001',
-  businessName: 'Le Bistrot du Port Casablanca',
-  businessType: 'restaurant',
-  city: 'Casablanca',
-  deliveryAddress: '34 Boulevard Franklin Roosevelt, Gauthier, Casablanca',
-  approvalStatus: 'approved',
-  createdAt: '2026-03-01T10:00:00Z',
-};
-
-export const DEMO_PENDING_CLIENT_PROFILE: UserProfile = {
-  id: 'user-hotel-002',
-  fullName: 'Amine El Fassi (Chef Économe)',
-  phone: '+212 6 63 44 55 66',
-  role: 'customer',
-  createdAt: '2026-04-10T14:30:00Z',
-};
-
-export const DEMO_PENDING_BUSINESS: Business = {
-  id: 'biz-hotel-002',
-  ownerId: 'user-hotel-002',
-  businessName: 'Atlas Palace Hotel & Spa',
-  businessType: 'hotel',
-  city: 'Marrakech',
-  deliveryAddress: 'Avenue Mohammed VI, Hivernage, Marrakech',
-  approvalStatus: 'pending',
-  createdAt: '2026-04-10T14:30:00Z',
-};
-
-export const DEMO_INITIAL_ORDERS: Order[] = [
-  {
-    id: 'ord-1001',
-    orderNumber: 'PA-20260420-0089',
-    customerId: 'user-resto-001',
-    customerName: 'Chef Youssef Bennani',
-    customerPhone: '+212 6 62 88 99 00',
-    businessId: 'biz-resto-001',
-    businessName: 'Le Bistrot du Port Casablanca',
-    businessType: 'restaurant',
-    status: 'delivering',
-    deliveryAddress: '34 Boulevard Franklin Roosevelt, Gauthier, Casablanca',
-    deliveryCity: 'Casablanca',
-    requestedDeliveryDate: '2026-04-23',
-    subtotal: 620.0,
-    deliveryFee: 0, // Free delivery because > 600 or special pro contract
-    total: 620.0,
-    customerNotes: 'Livraison quai arrière avant le service de midi svp.',
-    items: [
-      {
-        productId: 'prod-tomates',
-        productNameSnapshot: 'Tomates Rondes Extra (Caisse)',
-        unitSnapshot: 'caisse',
-        unitPriceSnapshot: 85.0,
-        quantity: 2,
-        lineTotal: 170.0,
-      },
-      {
-        productId: 'prod-oranges',
-        productNameSnapshot: 'Oranges Valencia Late à Jus (Caisse)',
-        unitSnapshot: 'caisse',
-        unitPriceSnapshot: 90.0,
-        quantity: 3,
-        lineTotal: 270.0,
-      },
-      {
-        productId: 'prod-menthe',
-        productNameSnapshot: 'Menthe Fraîche Bréjite Sélectionnée',
-        unitSnapshot: 'botte',
-        unitPriceSnapshot: 3.0,
-        quantity: 20,
-        lineTotal: 60.0,
-      },
-      {
-        productId: 'prod-citrons',
-        productNameSnapshot: 'Citrons 4 Saisons Non Traités',
-        unitSnapshot: 'kg',
-        unitPriceSnapshot: 12.0,
-        quantity: 10,
-        lineTotal: 120.0,
-      },
-    ],
-    createdAt: '2026-04-20T18:45:00Z',
-    updatedAt: '2026-04-21T07:15:00Z',
-  },
-  {
-    id: 'ord-1002',
-    orderNumber: 'PA-20260418-0062',
-    customerId: 'user-resto-001',
-    customerName: 'Chef Youssef Bennani',
-    customerPhone: '+212 6 62 88 99 00',
-    businessId: 'biz-resto-001',
-    businessName: 'Le Bistrot du Port Casablanca',
-    businessType: 'restaurant',
-    status: 'delivered',
-    deliveryAddress: '34 Boulevard Franklin Roosevelt, Gauthier, Casablanca',
-    deliveryCity: 'Casablanca',
-    requestedDeliveryDate: '2026-04-19',
-    subtotal: 440.0,
-    deliveryFee: 35.0,
-    total: 475.0,
-    customerNotes: 'Bien reçu avec facture papier signée.',
-    items: [
-      {
-        productId: 'prod-pdt',
-        productNameSnapshot: 'Pommes de Terre Spéciales Frite & Rôtie',
-        unitSnapshot: 'caisse',
-        unitPriceSnapshot: 110.0,
-        quantity: 2,
-        lineTotal: 220.0,
-      },
-      {
-        productId: 'prod-oignons',
-        productNameSnapshot: 'Oignons Jaunes Secs Calibrés',
-        unitSnapshot: 'caisse',
-        unitPriceSnapshot: 75.0,
-        quantity: 2,
-        lineTotal: 150.0,
-      },
-      {
-        productId: 'prod-persil',
-        productNameSnapshot: 'Persil Plat Frais Marocain (Lot de bottes)',
-        unitSnapshot: 'botte',
-        unitPriceSnapshot: 2.5,
-        quantity: 20,
-        lineTotal: 50.0,
-      },
-      {
-        productId: 'prod-coriandre',
-        productNameSnapshot: 'Coriandre Fraîche (Qozbor)',
-        unitSnapshot: 'botte',
-        unitPriceSnapshot: 2.5,
-        quantity: 8,
-        lineTotal: 20.0,
-      },
-    ],
-    createdAt: '2026-04-18T16:20:00Z',
-    updatedAt: '2026-04-19T08:30:00Z',
-  },
-];

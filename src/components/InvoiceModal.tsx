@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Order, CompanySettings } from '../types';
 import { Printer, X, FileText, CheckCircle, MapPin, Phone, Mail, Building2, Calendar, ShieldCheck } from 'lucide-react';
+import { store } from '../services/store';
 
 interface InvoiceModalProps {
   order: Order | null;
@@ -88,7 +89,17 @@ function numberToFrenchWords(num: number): string {
   return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
-export const InvoiceModal: React.FC<InvoiceModalProps> = ({ order, onClose, settings }) => {
+export const InvoiceModal: React.FC<InvoiceModalProps> = ({ order, onClose, settings: propsSettings }) => {
+  const [liveSettings, setLiveSettings] = useState<CompanySettings | null>(propsSettings || null);
+
+  useEffect(() => {
+    if (!propsSettings) {
+      store.getCompanySettings().then((st) => setLiveSettings(st));
+    } else {
+      setLiveSettings(propsSettings);
+    }
+  }, [propsSettings]);
+
   if (!order) return null;
 
   const handlePrint = () => {
@@ -107,6 +118,15 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ order, onClose, sett
   });
 
   const totalInWords = numberToFrenchWords(order.total);
+
+  const companyName = liveSettings?.companyName || 'Pont Agricole';
+  const tagline = liveSettings?.tagline || "Centrale d'Achat B2B CHR";
+  const addressLine = [liveSettings?.address, liveSettings?.city].filter(Boolean).join(', ');
+  const contactLines = [
+    liveSettings?.phone ? `Tél : ${liveSettings.phone}` : '',
+    liveSettings?.whatsapp ? `WhatsApp : ${liveSettings.whatsapp}` : '',
+  ].filter(Boolean).join(' | ');
+  const emailLine = liveSettings?.email ? `Email : ${liveSettings.email}` : '';
 
   return (
     <div className="invoice-modal-backdrop" onClick={onClose}>
@@ -176,18 +196,18 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ order, onClose, sett
                 <img src="/logo.png" alt="Pont Agricole" style={{ width: '44px', height: '44px', objectFit: 'contain' }} />
                 <div>
                   <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#166534', letterSpacing: '-0.02em', lineHeight: 1.1 }}>
-                    PONT AGRICOLE SARL
+                    {companyName.toUpperCase()}
                   </div>
                   <div style={{ fontSize: '0.68rem', fontWeight: 700, color: '#475569', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                    CENTRALE D'ACHAT & LOGISTIQUE MARAÎCHÈRE CHR
+                    {tagline}
                   </div>
                 </div>
               </div>
 
               <div style={{ fontSize: '0.8rem', color: '#475569', lineHeight: 1.5, marginTop: '0.5rem' }}>
-                <div>Boulevard d'Anfa, Quartier Racine, Casablanca, Maroc</div>
-                <div>Tél : +212 5 22 40 50 60 | Mobile : +212 6 61 23 45 67</div>
-                <div>Email : facturation@pontagricole.ma | Web : www.pontagricole.ma</div>
+                {addressLine && <div>{addressLine}</div>}
+                {contactLines && <div>{contactLines}</div>}
+                {emailLine && <div>{emailLine}</div>}
               </div>
             </div>
 
@@ -214,11 +234,23 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ order, onClose, sett
               <div style={{ fontWeight: 800, color: '#166534', fontSize: '0.85rem', marginBottom: '0.45rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                 Fournisseur / Émetteur
               </div>
-              <div><strong>Raison Sociale :</strong> PONT AGRICOLE SARL</div>
-              <div><strong>ICE :</strong> 003291845000082</div>
-              <div><strong>IF :</strong> 52841930 | <strong>RC :</strong> 584920 Casablanca</div>
-              <div><strong>Patente :</strong> 37492018 | <strong>CNSS :</strong> 4829105</div>
-              <div><strong>Compte Bancaire :</strong> Attijariwafa Bank 007 780 0001234567890123 45</div>
+              <div><strong>Raison Sociale :</strong> {companyName}</div>
+              {liveSettings?.ice && <div><strong>ICE :</strong> {liveSettings.ice}</div>}
+              {(liveSettings?.ifCode || liveSettings?.rc) && (
+                <div>
+                  {liveSettings?.ifCode && <><strong>IF :</strong> {liveSettings.ifCode} </>}
+                  {liveSettings?.ifCode && liveSettings?.rc && '| '}
+                  {liveSettings?.rc && <><strong>RC :</strong> {liveSettings.rc} </>}
+                </div>
+              )}
+              {(liveSettings?.patente || liveSettings?.cnss) && (
+                <div>
+                  {liveSettings?.patente && <><strong>Patente :</strong> {liveSettings.patente} </>}
+                  {liveSettings?.patente && liveSettings?.cnss && '| '}
+                  {liveSettings?.cnss && <><strong>CNSS :</strong> {liveSettings.cnss} </>}
+                </div>
+              )}
+              {liveSettings?.rib && <div><strong>RIB Bancaire :</strong> {liveSettings.rib}</div>}
             </div>
 
             {/* Client B2B Facturé */}
@@ -371,8 +403,19 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ order, onClose, sett
 
           {/* Legal Footnote */}
           <div style={{ textAlign: 'center', fontSize: '0.72rem', color: '#94a3b8', borderTop: '1px solid #f1f5f9', paddingTop: '0.75rem', lineHeight: 1.4 }}>
-            Pont Agricole SARL au capital de 1.000.000 DH · ICE: 003291845000082 · IF: 52841930 · RC Casablanca 584920 · Patente 37492018 · CNSS 4829105<br />
-            Marchandises fraîches vérifiées au départ. Tout litige relève de la compétence exclusive du Tribunal de Commerce de Casablanca.
+            {[
+              companyName,
+              liveSettings?.capital ? `au capital de ${liveSettings.capital} DH` : '',
+              liveSettings?.ice ? `ICE: ${liveSettings.ice}` : '',
+              liveSettings?.ifCode ? `IF: ${liveSettings.ifCode}` : '',
+              liveSettings?.rc ? `RC: ${liveSettings.rc}` : '',
+              liveSettings?.patente ? `Patente: ${liveSettings.patente}` : '',
+              liveSettings?.cnss ? `CNSS: ${liveSettings.cnss}` : '',
+            ]
+              .filter(Boolean)
+              .join(' · ')}
+            <br />
+            Marchandises fraîches vérifiées au départ. Tout litige relève de la compétence exclusive du Tribunal de Commerce{liveSettings?.city ? ` de ${liveSettings.city}` : ''}.
           </div>
         </div>
       </div>

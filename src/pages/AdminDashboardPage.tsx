@@ -76,6 +76,28 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [zones, setZones] = useState<DeliveryZone[]>([]);
   const [settings, setSettings] = useState<CompanySettings | null>(null);
+  const [settingsForm, setSettingsForm] = useState<CompanySettings>({
+    companyName: 'Pont Agricole',
+    tagline: '',
+    phone: '',
+    whatsapp: '',
+    email: '',
+    address: '',
+    city: '',
+    ice: '',
+    rc: '',
+    ifCode: '',
+    patente: '',
+    cnss: '',
+    capital: '',
+    rib: '',
+    minOrderDefault: 0,
+    freeDeliveryThreshold: 0,
+    deliveryDays: ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'],
+    orderCutoffTime: '',
+  });
+  const [savingSettings, setSavingSettings] = useState<boolean>(false);
+  const [settingsSaveNotice, setSettingsSaveNotice] = useState<string | null>(null);
 
   // Selected order for commercial invoice view & print
   const [selectedInvoiceOrder, setSelectedInvoiceOrder] = useState<Order | null>(null);
@@ -127,6 +149,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
     setBusinesses(bizs);
     setZones(zns);
     setSettings(stgs);
+    setSettingsForm(stgs);
 
     // Initialize daily price state
     setPriceEdits((prev) => {
@@ -225,6 +248,21 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
     setSavingDaily(false);
     setDailySaveNotice(`${updates.length} prix de vente du jour enregistrés avec succès. Le catalogue B2B est actualisé.`);
     setTimeout(() => setDailySaveNotice(null), 4000);
+  };
+
+  const handleSaveCompanySettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingSettings(true);
+    try {
+      await store.saveCompanySettings(settingsForm);
+      setSettings(settingsForm);
+      setSettingsSaveNotice('Informations & coordonnées officielles de l\'entreprise enregistrées avec succès !');
+      setTimeout(() => setSettingsSaveNotice(null), 4000);
+    } catch (err) {
+      console.error('Error saving company settings', err);
+    } finally {
+      setSavingSettings(false);
+    }
   };
 
   useEffect(() => {
@@ -506,6 +544,15 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
             <span className="admin-tab-count">
               {products.length}
             </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('settings')}
+            className={`admin-tab-btn ${activeTab === 'settings' ? 'active' : ''}`}
+          >
+            <SlidersHorizontal size={14} />
+            <span>Infos Entreprise & Paramètres</span>
           </button>
         </div>
 
@@ -2226,6 +2273,369 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* TAB 5: COMPANY SETTINGS & OFFICIAL CONTACTS (ADMIN ONLY) */}
+        {activeTab === 'settings' && (
+          <div className="admin-settings-tab">
+            {/* Header info */}
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'flex-start',
+                flexWrap: 'wrap',
+                gap: '1rem',
+                marginBottom: '1.5rem',
+              }}
+            >
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                  <div
+                    style={{
+                      width: '32px',
+                      height: '32px',
+                      borderRadius: '8px',
+                      backgroundColor: 'var(--primary-100)',
+                      color: 'var(--primary-800)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <SlidersHorizontal size={17} />
+                  </div>
+                  <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--primary-900)', margin: 0 }}>
+                    Coordonnées Officielles & Paramètres de l'Entreprise
+                  </h2>
+                </div>
+                <p style={{ fontSize: '0.84rem', color: 'var(--text-muted)', margin: 0, maxWidth: '780px' }}>
+                  Espace réservé exclusivement à l'administrateur. Renseignez ici les véritables coordonnées de Pont Agricole (numéros de contact, WhatsApp direct, adresse du dépôt, heure limite de commande et mentions fiscales marocaines pour les factures). Les visiteurs ne voient aucune donnée fictive.
+                </p>
+              </div>
+            </div>
+
+            {settingsSaveNotice && (
+              <div
+                style={{
+                  padding: '1rem 1.25rem',
+                  backgroundColor: 'var(--emerald-50)',
+                  border: '1px solid var(--emerald-200)',
+                  borderRadius: 'var(--radius-sm)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.75rem',
+                  marginBottom: '1.5rem',
+                  color: 'var(--emerald-900)',
+                  fontSize: '0.88rem',
+                  fontWeight: 600,
+                  boxShadow: 'var(--shadow-xs)',
+                }}
+              >
+                <CheckCircle size={18} color="var(--emerald-600)" />
+                <span>{settingsSaveNotice}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSaveCompanySettings} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              {/* Section 1: Contact & Coordonnées Publiques */}
+              <div className="card" style={{ padding: '1.5rem', borderRadius: 'var(--radius-md)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.4rem', borderBottom: '1px solid var(--border-light)', paddingBottom: '0.75rem' }}>
+                  <Phone size={17} color="var(--primary-700)" />
+                  <h3 style={{ fontSize: '1.05rem', fontWeight: 700, margin: 0, color: 'var(--primary-900)' }}>
+                    Canaux de Contact & Coordonnées Publiques
+                  </h3>
+                </div>
+                <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '1.25rem' }}>
+                  Ces informations s'affichent dynamiquement dans le pied de page du site et les boutons de contact direct.
+                </p>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.1rem' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--primary-900)', marginBottom: '0.35rem' }}>
+                      Nom Commercial
+                    </label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={settingsForm.companyName}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, companyName: e.target.value })}
+                      placeholder="Pont Agricole"
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--primary-900)', marginBottom: '0.35rem' }}>
+                      Slogan / Activité
+                    </label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={settingsForm.tagline}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, tagline: e.target.value })}
+                      placeholder="Centrale d'Achat & Approvisionnement Maraîcher B2B"
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--primary-900)', marginBottom: '0.35rem' }}>
+                      Téléphone Standard Fixe ou Mobile
+                    </label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={settingsForm.phone}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, phone: e.target.value })}
+                      placeholder="ex: +212 5 22 XX XX XX"
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--primary-900)', marginBottom: '0.35rem' }}>
+                      Numéro WhatsApp Pro (Commandes directes)
+                    </label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={settingsForm.whatsapp}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, whatsapp: e.target.value })}
+                      placeholder="ex: +212 6 XX XX XX XX"
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--primary-900)', marginBottom: '0.35rem' }}>
+                      Email Professionnel
+                    </label>
+                    <input
+                      type="email"
+                      className="form-control"
+                      value={settingsForm.email}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, email: e.target.value })}
+                      placeholder="ex: contact@votre-domaine.ma"
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--primary-900)', marginBottom: '0.35rem' }}>
+                      Ville du Siège / Dépôt Principal
+                    </label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={settingsForm.city || ''}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, city: e.target.value })}
+                      placeholder="ex: Casablanca"
+                    />
+                  </div>
+
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--primary-900)', marginBottom: '0.35rem' }}>
+                      Adresse Physique / Dépôt
+                    </label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={settingsForm.address}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, address: e.target.value })}
+                      placeholder="ex: Zone Industrielle, Quartier..."
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Section 2: Horaires de Commande & Logistique */}
+              <div className="card" style={{ padding: '1.5rem', borderRadius: 'var(--radius-md)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.4rem', borderBottom: '1px solid var(--border-light)', paddingBottom: '0.75rem' }}>
+                  <Clock size={17} color="var(--primary-700)" />
+                  <h3 style={{ fontSize: '1.05rem', fontWeight: 700, margin: 0, color: 'var(--primary-900)' }}>
+                    Paramètres de Commandes & Seuils de Livraison
+                  </h3>
+                </div>
+                <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '1.25rem' }}>
+                  Ajustez l'heure de clôture quotidienne et les montants minimaux exigés aux clients.
+                </p>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.1rem' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--primary-900)', marginBottom: '0.35rem' }}>
+                      Heure Limite de Commande Quotidienne
+                    </label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={settingsForm.orderCutoffTime || ''}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, orderCutoffTime: e.target.value })}
+                      placeholder="ex: 21h00 (laisser vide si pas de limite fixe)"
+                    />
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block', marginTop: '0.25rem' }}>
+                      Affiché sur l'en-tête du site si renseigné.
+                    </span>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--primary-900)', marginBottom: '0.35rem' }}>
+                      Montant Minimum de Commande par Défaut (MAD)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      className="form-control"
+                      value={settingsForm.minOrderDefault || 0}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, minOrderDefault: Number(e.target.value) })}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--primary-900)', marginBottom: '0.35rem' }}>
+                      Seuil de Livraison Gratuite (MAD)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      className="form-control"
+                      value={settingsForm.freeDeliveryThreshold || 0}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, freeDeliveryThreshold: Number(e.target.value) })}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Section 3: Mentions Fiscales & Légales Marocaines */}
+              <div className="card" style={{ padding: '1.5rem', borderRadius: 'var(--radius-md)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.4rem', borderBottom: '1px solid var(--border-light)', paddingBottom: '0.75rem' }}>
+                  <FileText size={17} color="var(--primary-700)" />
+                  <h3 style={{ fontSize: '1.05rem', fontWeight: 700, margin: 0, color: 'var(--primary-900)' }}>
+                    Mentions Fiscales & Légales Marocaines (Facturation B2B)
+                  </h3>
+                </div>
+                <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '1.25rem' }}>
+                  Ces identifiants officiels sont imprimés sur les factures commerciales générées depuis l'onglet Commandes.
+                </p>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.1rem' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--primary-900)', marginBottom: '0.35rem' }}>
+                      ICE (Identifiant Commun de l’Entreprise - 15 chiffres)
+                    </label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={settingsForm.ice || ''}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, ice: e.target.value })}
+                      placeholder="ex: 00XXXXXXXXXXXXX"
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--primary-900)', marginBottom: '0.35rem' }}>
+                      Registre du Commerce (RC)
+                    </label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={settingsForm.rc || ''}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, rc: e.target.value })}
+                      placeholder="ex: 123456 Casablanca"
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--primary-900)', marginBottom: '0.35rem' }}>
+                      Identifiant Fiscal (IF)
+                    </label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={settingsForm.ifCode || ''}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, ifCode: e.target.value })}
+                      placeholder="ex: 12345678"
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--primary-900)', marginBottom: '0.35rem' }}>
+                      N° de Patente
+                    </label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={settingsForm.patente || ''}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, patente: e.target.value })}
+                      placeholder="ex: 37492018"
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--primary-900)', marginBottom: '0.35rem' }}>
+                      N° d'Affiliation CNSS
+                    </label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={settingsForm.cnss || ''}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, cnss: e.target.value })}
+                      placeholder="ex: 4829105"
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--primary-900)', marginBottom: '0.35rem' }}>
+                      Capital Social (en DH)
+                    </label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={settingsForm.capital || ''}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, capital: e.target.value })}
+                      placeholder="ex: 100.000"
+                    />
+                  </div>
+
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--primary-900)', marginBottom: '0.35rem' }}>
+                      RIB Bancaire (pour virements professionnels des clients)
+                    </label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={settingsForm.rib || ''}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, rib: e.target.value })}
+                      placeholder="ex: Nom de Banque - 007 780 0001234567890123 45"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Submit Button */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '0.5rem' }}>
+                <button
+                  type="submit"
+                  disabled={savingSettings}
+                  className="btn btn-primary btn-lg"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    minWidth: '220px',
+                    justifyContent: 'center',
+                  }}
+                >
+                  {savingSettings ? (
+                    <>
+                      <RefreshCw size={18} className="animate-spin" />
+                      <span>Enregistrement en cours...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save size={18} />
+                      <span>Enregistrer les Informations</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         )}
       </div>

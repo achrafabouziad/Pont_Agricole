@@ -119,8 +119,18 @@ export interface CompanySettings {
   whatsapp: string;
   email: string;
   address: string;
+  city?: string;
   minOrderDefault: number;
   freeDeliveryThreshold: number;
   deliveryDays: string[];
   orderCutoffTime: string;
+  // Identifiants légaux et fiscaux marocains (BL & Factures)
+  ice?: string;
+  rc?: string;
+  ifCode?: string;
+  patente?: string;
+  cnss?: string;
+  capital?: string;
+  rib?: string;
 }
+

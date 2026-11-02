@@ -156,9 +156,9 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectCategory
               <div className="advantage-icon-wrap primary">
                 <Clock size={18} />
               </div>
-              <h3 className="advantage-title">Livraisons Ultra-Matinales</h3>
+              <h3 className="advantage-title">Livraisons Dédiées CHR</h3>
               <p className="advantage-desc">
-                Livrées avant 09h00 directement en chambre froide pour vos mises en place de midi.
+                Livrées directement dans vos locaux et chambres froides pour vos mises en place de service.
               </p>
             </div>
 
@@ -290,17 +290,17 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectCategory
 
             <div className="card step-card">
               <div className="step-num">02</div>
-              <h3 className="step-title">Validez avant 21h00</h3>
+              <h3 className="step-title">Validez votre Commande</h3>
               <p className="step-desc">
-                Confirmez votre commande directement en ligne avec vos quantités souhaitées.
+                Confirmez votre commande en toute autonomie sur la plateforme selon vos besoins.
               </p>
             </div>
 
             <div className="card step-card">
               <div className="step-num">03</div>
-              <h3 className="step-title">Livraison avant 09h00</h3>
+              <h3 className="step-title">Réceptionnez en Cuisine</h3>
               <p className="step-desc">
-                Nos camions frigorifiques livrent directement dans vos chambres froides avant vos services.
+                Nos tournées dédiées livrent directement dans vos chambres froides selon les modalités convenues.
               </p>
             </div>
           </div>

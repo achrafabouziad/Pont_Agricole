@@ -18,11 +18,6 @@ import {
   INITIAL_DELIVERY_ZONES,
   INITIAL_COMPANY_SETTINGS,
   DEMO_ADMIN_PROFILE,
-  DEMO_CLIENT_PROFILE,
-  DEMO_CLIENT_BUSINESS,
-  DEMO_PENDING_CLIENT_PROFILE,
-  DEMO_PENDING_BUSINESS,
-  DEMO_INITIAL_ORDERS,
 } from '../data/mockData';
 import { supabase, isSupabaseConfigured } from './supabase';
 
@@ -96,10 +91,60 @@ class StoreService {
       setStored(KEY_SETTINGS, INITIAL_COMPANY_SETTINGS);
     }
     if (!localStorage.getItem(KEY_BUSINESSES)) {
-      setStored(KEY_BUSINESSES, [DEMO_CLIENT_BUSINESS, DEMO_PENDING_BUSINESS]);
+      setStored(KEY_BUSINESSES, []);
     }
     if (!localStorage.getItem(KEY_ORDERS)) {
-      setStored(KEY_ORDERS, DEMO_INITIAL_ORDERS);
+      setStored(KEY_ORDERS, []);
+    }
+
+    // Nettoyer les fausses commandes ou comptes démo résiduels
+    const storedOrders = getStored<Order[]>(KEY_ORDERS, []);
+    const cleanOrders = storedOrders.filter(
+      (o) => o.id !== 'ord-1001' && o.id !== 'ord-1002' && !o.customerName?.includes('Bennani')
+    );
+    if (cleanOrders.length !== storedOrders.length) {
+      setStored(KEY_ORDERS, cleanOrders);
+    }
+
+    const storedBiz = getStored<Business[]>(KEY_BUSINESSES, []);
+    const cleanBiz = storedBiz.filter(
+      (b) =>
+        b.id !== 'biz-resto-001' &&
+        b.id !== 'biz-hotel-002' &&
+        b.id !== 'biz-empty-001' &&
+        b.id !== 'biz-empty-002' &&
+        !b.businessName?.includes('Bistrot du Port') &&
+        !b.businessName?.includes('Atlas Palace')
+    );
+    if (cleanBiz.length !== storedBiz.length) {
+      setStored(KEY_BUSINESSES, cleanBiz);
+    }
+
+    // Assainir les coordonnées de l'entreprise : vider les anciens faux numéros et fausses adresses
+    const st = getStored<CompanySettings>(KEY_SETTINGS, INITIAL_COMPANY_SETTINGS);
+    let stChanged = false;
+    if (st.phone === '+212 5 22 45 78 90') {
+      st.phone = '';
+      stChanged = true;
+    }
+    if (st.whatsapp === '+212 6 61 98 76 54') {
+      st.whatsapp = '';
+      stChanged = true;
+    }
+    if (st.email?.includes('contact@pontagricole.ma') || st.email?.includes('pro@pontagricole.ma')) {
+      st.email = '';
+      stChanged = true;
+    }
+    if (st.address?.includes('Halle aux Primeurs')) {
+      st.address = '';
+      stChanged = true;
+    }
+    if (st.orderCutoffTime?.includes('21h00')) {
+      st.orderCutoffTime = '';
+      stChanged = true;
+    }
+    if (stChanged) {
+      setStored(KEY_SETTINGS, st);
     }
 
     // Authentification obligatoire : Visiteur non connecté par défaut
@@ -851,7 +896,7 @@ class StoreService {
       }
     }
 
-    const allOrders = getStored<Order[]>(KEY_ORDERS, DEMO_INITIAL_ORDERS);
+    const allOrders = getStored<Order[]>(KEY_ORDERS, []);
     // If client, filter to their orders
     if (this.currentUser && this.currentUser.role === 'customer') {
       return allOrders.filter((o) => o.customerId === this.currentUser?.id);
@@ -960,7 +1005,7 @@ class StoreService {
     }
 
     // Persist locally
-    const orders = getStored<Order[]>(KEY_ORDERS, DEMO_INITIAL_ORDERS);
+    const orders = getStored<Order[]>(KEY_ORDERS, []);
     orders.unshift(newOrder);
     setStored(KEY_ORDERS, orders);
 
@@ -983,7 +1028,7 @@ class StoreService {
         .eq('id', orderId);
     }
 
-    const orders = getStored<Order[]>(KEY_ORDERS, DEMO_INITIAL_ORDERS);
+    const orders = getStored<Order[]>(KEY_ORDERS, []);
     const order = orders.find((o) => o.id === orderId);
     if (order) {
       order.status = status;
@@ -1084,18 +1129,7 @@ class StoreService {
     }
 
     // 4. Merge with local businesses saved from registrations
-    const localBusinesses = getStored<Business[]>(KEY_BUSINESSES, [
-      {
-        ...DEMO_CLIENT_BUSINESS,
-        contactName: DEMO_CLIENT_PROFILE.fullName,
-        phone: DEMO_CLIENT_PROFILE.phone,
-      },
-      {
-        ...DEMO_PENDING_BUSINESS,
-        contactName: DEMO_PENDING_CLIENT_PROFILE.fullName,
-        phone: DEMO_PENDING_CLIENT_PROFILE.phone,
-      },
-    ]);
+    const localBusinesses = getStored<Business[]>(KEY_BUSINESSES, []);
 
     for (const lb of localBusinesses) {
       const lbNorm = normalizePhone(lb.phone || '');
@@ -1122,7 +1156,7 @@ class StoreService {
     if (isSupabaseConfigured && supabase) {
       await supabase.from('businesses').update({ approval_status: status }).eq('id', businessId);
     }
-    const businesses = getStored<Business[]>(KEY_BUSINESSES, [DEMO_CLIENT_BUSINESS, DEMO_PENDING_BUSINESS]);
+    const businesses = getStored<Business[]>(KEY_BUSINESSES, []);
     const b = businesses.find((biz) => biz.id === businessId);
     if (b) {
       b.approvalStatus = status;
@@ -1191,39 +1225,67 @@ class StoreService {
 
   public async getCompanySettings(): Promise<CompanySettings> {
     if (isSupabaseConfigured && supabase) {
-      const { data, error } = await supabase.from('company_settings').select('*').single();
-      if (!error && data) {
-        return {
-          companyName: data.company_name,
-          tagline: data.tagline,
-          phone: data.phone,
-          whatsapp: data.whatsapp,
-          email: data.email,
-          address: data.address,
-          minOrderDefault: Number(data.min_order_default),
-          freeDeliveryThreshold: Number(data.free_delivery_threshold),
-          deliveryDays: ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'],
-          orderCutoffTime: data.order_cutoff_time,
-        };
+      try {
+        const { data, error } = await supabase.from('company_settings').select('*').single();
+        if (!error && data) {
+          return {
+            companyName: data.company_name || 'Pont Agricole',
+            tagline: data.tagline || '',
+            phone: data.phone || '',
+            whatsapp: data.whatsapp || '',
+            email: data.email || '',
+            address: data.address || '',
+            city: data.city || '',
+            ice: data.ice || '',
+            rc: data.rc || '',
+            ifCode: data.if_code || data.ifCode || '',
+            patente: data.patente || '',
+            cnss: data.cnss || '',
+            capital: data.capital || '',
+            rib: data.rib || '',
+            minOrderDefault: Number(data.min_order_default || 0),
+            freeDeliveryThreshold: Number(data.free_delivery_threshold || 0),
+            deliveryDays: data.delivery_days || ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'],
+            orderCutoffTime: data.order_cutoff_time || '',
+          };
+        }
+      } catch (err) {
+        console.warn('Error reading company settings from Supabase', err);
       }
     }
-    return getStored<CompanySettings>(KEY_SETTINGS, INITIAL_COMPANY_SETTINGS);
+    const local = getStored<CompanySettings>(KEY_SETTINGS, INITIAL_COMPANY_SETTINGS);
+    return {
+      ...INITIAL_COMPANY_SETTINGS,
+      ...local,
+    };
   }
 
   public async saveCompanySettings(settings: CompanySettings): Promise<void> {
     if (isSupabaseConfigured && supabase) {
-      await supabase.from('company_settings').upsert({
-        id: 1,
-        company_name: settings.companyName,
-        tagline: settings.tagline,
-        phone: settings.phone,
-        whatsapp: settings.whatsapp,
-        email: settings.email,
-        address: settings.address,
-        min_order_default: settings.minOrderDefault,
-        free_delivery_threshold: settings.freeDeliveryThreshold,
-        order_cutoff_time: settings.orderCutoffTime,
-      });
+      try {
+        await supabase.from('company_settings').upsert({
+          id: 1,
+          company_name: settings.companyName,
+          tagline: settings.tagline,
+          phone: settings.phone,
+          whatsapp: settings.whatsapp,
+          email: settings.email,
+          address: settings.address,
+          city: settings.city,
+          ice: settings.ice,
+          rc: settings.rc,
+          if_code: settings.ifCode,
+          patente: settings.patente,
+          cnss: settings.cnss,
+          capital: settings.capital,
+          rib: settings.rib,
+          min_order_default: settings.minOrderDefault,
+          free_delivery_threshold: settings.freeDeliveryThreshold,
+          order_cutoff_time: settings.orderCutoffTime,
+        });
+      } catch (err) {
+        console.warn('Error upserting company settings to Supabase', err);
+      }
     }
     setStored(KEY_SETTINGS, settings);
     this.notify();
