@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { store } from '../services/store';
 import { BusinessType } from '../types';
-import { UserCheck, AlertTriangle, ExternalLink, ArrowRight } from 'lucide-react';
+import { UserCheck, AlertTriangle, ExternalLink, ArrowRight, KeyRound, MessageCircle, PhoneCall, X } from 'lucide-react';
 
 interface AuthPageProps {
   onSuccess: () => void;
@@ -320,12 +320,34 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
                 marginBottom: '1.25rem',
                 display: 'flex',
                 alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
                 gap: '0.5rem',
                 fontWeight: 500,
               }}
             >
-              <AlertTriangle size={16} style={{ flexShrink: 0 }} />
-              <span>{errorMsg}</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <AlertTriangle size={16} style={{ flexShrink: 0 }} />
+                <span>{errorMsg}</span>
+              </div>
+              {isLoginMode && !showForgotPassword && (
+                <button
+                  type="button"
+                  onClick={() => setShowForgotPassword(true)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#991b1b',
+                    fontWeight: 700,
+                    textDecoration: 'underline',
+                    fontSize: '0.76rem',
+                    cursor: 'pointer',
+                    padding: 0,
+                  }}
+                >
+                  Mot de passe oublié ?
+                </button>
+              )}
             </div>
           )}
 
@@ -367,7 +389,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
                 />
               </div>
 
-              <div style={{ marginBottom: '1.2rem' }}>
+              <div style={{ marginBottom: showForgotPassword ? '0.75rem' : '1.2rem' }}>
                 <label className="auth-minimal-label">
                   <span>Mot de passe *</span>
                 </label>
@@ -382,22 +404,99 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.45rem' }}>
                   <button
                     type="button"
-                    onClick={() => setShowForgotPassword(true)}
+                    onClick={() => setShowForgotPassword(!showForgotPassword)}
                     style={{
                       background: 'none',
                       border: 'none',
-                      color: '#166534',
-                      fontSize: '0.76rem',
+                      color: showForgotPassword ? '#15803d' : '#166534',
+                      fontSize: '0.78rem',
                       fontWeight: 600,
                       cursor: 'pointer',
                       padding: 0,
                       textDecoration: 'underline',
                     }}
                   >
-                    Mot de passe oublié ?
+                    {showForgotPassword ? 'Masquer l’aide' : 'Mot de passe oublié ?'}
                   </button>
                 </div>
               </div>
+
+              {/* Emplacement Dédié : Récupération Mot de passe (Intégré dans le formulaire, jamais écrasé à droite) */}
+              {showForgotPassword && (
+                <div
+                  style={{
+                    backgroundColor: '#f8fafc',
+                    border: '1.5px solid #bbf7d0',
+                    borderRadius: '12px',
+                    padding: '1rem',
+                    marginBottom: '1.2rem',
+                    animation: 'slideUp 0.2s ease-out',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.45rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', color: '#166534', fontWeight: 800, fontSize: '0.85rem' }}>
+                      <KeyRound size={15} />
+                      <span>Récupération mot de passe</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowForgotPassword(false)}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: '2px', display: 'flex', alignItems: 'center' }}
+                      title="Fermer"
+                    >
+                      <X size={15} />
+                    </button>
+                  </div>
+
+                  <p style={{ fontSize: '0.78rem', color: '#475569', lineHeight: 1.45, margin: '0 0 0.8rem 0' }}>
+                    Pour des raisons de sécurité B2B, l'administrateur Pont Agricole réinitialise votre mot de passe immédiatement :
+                  </p>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    <a
+                      href="https://wa.me/212707296123?text=Bonjour%20Pont%20Agricole,%20j'ai%20oubli%C3%A9%20mon%20mot%20de%20passe%20pour%20acc%C3%A9der%20%C3%A0%20mon%20compte%20client.%20Merci%20de%20m'aider."
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        backgroundColor: '#25D366',
+                        color: '#ffffff',
+                        borderRadius: '8px',
+                        padding: '0.7rem 1rem',
+                        fontSize: '0.82rem',
+                        fontWeight: 700,
+                        textDecoration: 'none',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.5rem',
+                        boxShadow: '0 2px 6px rgba(37, 211, 102, 0.2)',
+                      }}
+                    >
+                      <MessageCircle size={16} /> Contacter le support sur WhatsApp
+                    </a>
+
+                    <a
+                      href="tel:0707296123"
+                      style={{
+                        backgroundColor: '#ffffff',
+                        color: '#1e293b',
+                        border: '1.5px solid #cbd5e1',
+                        borderRadius: '8px',
+                        padding: '0.6rem 1rem',
+                        fontSize: '0.8rem',
+                        fontWeight: 600,
+                        textDecoration: 'none',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.5rem',
+                      }}
+                    >
+                      <PhoneCall size={15} /> Appeler le support (07 07 29 61 23)
+                    </a>
+                  </div>
+                </div>
+              )}
 
               <button
                 type="submit"
@@ -732,76 +831,6 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
         </div>
       </div>
 
-      {/* Modal Mot de Passe Oublié */}
-      {showForgotPassword && (
-        <div className="modal-backdrop" onClick={() => setShowForgotPassword(false)}>
-          <div
-            className="modal-container"
-            style={{ maxWidth: '420px', borderRadius: '14px', padding: '1.4rem', backgroundColor: '#ffffff', margin: 'auto' }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.9rem' }}>
-              <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>
-                Mot de passe oublié ?
-              </h3>
-              <button
-                type="button"
-                onClick={() => setShowForgotPassword(false)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b', fontSize: '1.1rem', padding: '2px 6px' }}
-              >
-                ✕
-              </button>
-            </div>
-
-            <p style={{ fontSize: '0.84rem', color: '#475569', lineHeight: 1.5, marginBottom: '1.25rem' }}>
-              Pour des raisons de sécurité B2B, la réinitialisation de votre compte client s'effectue directement auprès de l'administrateur Pont Agricole.
-            </p>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
-              <a
-                href="https://wa.me/212707296123?text=Bonjour%20Pont%20Agricole,%20j'ai%20oubli%C3%A9%20mon%20mot%20de%20passe%20pour%20acc%C3%A9der%20%C3%A0%20mon%20compte%20client.%20Merci%20de%20m'aider."
-                target="_blank"
-                rel="noopener noreferrer"
-                className="auth-pill-btn"
-                style={{
-                  backgroundColor: '#25D366',
-                  color: '#ffffff',
-                  textAlign: 'center',
-                  textDecoration: 'none',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '0.5rem',
-                  fontWeight: 700,
-                  height: '42px',
-                }}
-              >
-                <span>📱</span> Contacter le support sur WhatsApp
-              </a>
-
-              <a
-                href="tel:0707296123"
-                className="auth-pill-btn"
-                style={{
-                  backgroundColor: '#f8fafc',
-                  color: '#1e293b',
-                  border: '1px solid #e2e8f0',
-                  textAlign: 'center',
-                  textDecoration: 'none',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '0.5rem',
-                  fontWeight: 600,
-                  height: '42px',
-                }}
-              >
-                <span>📞</span> Appeler le support (0707296123)
-              </a>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

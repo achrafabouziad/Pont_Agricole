@@ -637,7 +637,7 @@ class StoreService {
 
     return {
       success: false,
-      error: 'Identifiant ou mot de passe incorrect. Vous pouvez vous connecter avec votre N° de téléphone, votre nom d’utilisateur (ID) ou votre email.',
+      error: 'Identifiant ou mot de passe incorrect. Vérifiez votre nom d’utilisateur ou votre N° de téléphone.',
     };
   }
 
