@@ -643,15 +643,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
             </div>
 
             {/* Produce Cards Grid for Daily Pricing */}
-            <div
-              className="daily-pricing-grid"
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-                gap: '1rem',
-                marginBottom: '2rem',
-              }}
-            >
+            <div className="daily-pricing-grid">
               {products
                 .filter((p) => {
                   if (dailyCategoryFilter !== 'all' && p.categoryId !== dailyCategoryFilter) return false;

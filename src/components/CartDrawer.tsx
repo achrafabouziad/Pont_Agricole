@@ -289,14 +289,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
 
         {/* Footer with Calculations & Submit */}
         {cart.length > 0 && (
-          <div
-            style={{
-              padding: '1.25rem',
-              borderTop: '1px solid var(--border-light)',
-              backgroundColor: '#ffffff',
-              boxShadow: '0 -4px 12px rgba(0, 0, 0, 0.05)',
-            }}
-          >
+          <div className="drawer-footer">
             {/* Error banner */}
             {errorMessage && (
               <div

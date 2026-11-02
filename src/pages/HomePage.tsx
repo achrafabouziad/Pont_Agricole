@@ -65,12 +65,15 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectCategory
               >
                 <img src={cat.imageUrl} alt={cat.name} className="mobile-cat-thumb" />
                 <span className="mobile-cat-name">{cat.name}</span>
+                <span className="mobile-cat-arrow">
+                  <ArrowRight size={12} />
+                </span>
               </button>
             ))}
           </div>
 
-          {/* Desktop Categories Grid */}
-          <div className="desktop-categories-grid">
+          {/* Desktop Categories Grid (Hidden on Mobile) */}
+          <div className="desktop-categories-grid desktop-categories-wrapper">
             {categories.map((cat) => (
               <div
                 key={cat.id}
