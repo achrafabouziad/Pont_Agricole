@@ -74,25 +74,25 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({ initialCategoryId, onO
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '0.35rem',
+                gap: '0.45rem',
                 backgroundColor: 'var(--primary-50)',
                 color: 'var(--primary-800)',
-                border: '1px solid var(--primary-100)',
+                border: '1px solid var(--primary-200)',
                 borderRadius: 'var(--radius-xs)',
-                padding: '0.2rem 0.6rem',
-                fontSize: '0.72rem',
+                padding: '0.35rem 0.75rem',
+                fontSize: '0.82rem',
                 fontWeight: 700,
               }}
             >
-              <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--primary-600)', display: 'inline-block' }} />
+              <span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: 'var(--primary-600)', display: 'inline-block' }} />
               Cours du jour actualisés
             </span>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Facturation en Dirham Marocain (MAD)</span>
+            <span style={{ fontSize: '0.88rem', color: 'var(--text-muted)' }}>Facturation en Dirham Marocain (MAD)</span>
           </div>
-          <h1 style={{ fontSize: 'clamp(1.6rem, 3.2vw, 2.3rem)', color: 'var(--primary-950)', marginBottom: '0.4rem' }}>
+          <h1 style={{ fontSize: 'clamp(1.75rem, 5vw, 2.4rem)', fontWeight: 800, color: 'var(--primary-950)', marginBottom: '0.5rem', letterSpacing: '-0.02em' }}>
             Catalogue Produits Frais
           </h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.92rem', maxWidth: '680px' }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.98rem', maxWidth: '680px', lineHeight: 1.5 }}>
             Approvisionnement direct pour Cafés, Restaurants et Hôtels au Maroc.
           </p>
         </div>
@@ -104,8 +104,8 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({ initialCategoryId, onO
             {/* Search Input */}
             <div className="catalog-search-wrap">
               <Search
-                size={17}
-                style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-light)' }}
+                size={19}
+                style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-light)' }}
               />
               <input
                 type="text"
@@ -113,18 +113,18 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({ initialCategoryId, onO
                 placeholder="Rechercher tomates, menthe, citrons..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                style={{ paddingLeft: '2.3rem' }}
+                style={{ paddingLeft: '2.5rem', minHeight: '44px', fontSize: '16px' }}
               />
             </div>
 
             {/* Quick row for unit & in-stock */}
             <div className="catalog-filter-subrow">
-              <div style={{ flex: 1, minWidth: '120px' }}>
+              <div style={{ flex: 1, minWidth: '130px' }}>
                 <select
                   className="form-select"
                   value={selectedUnit}
                   onChange={(e) => setSelectedUnit(e.target.value)}
-                  style={{ padding: '0.55rem 0.75rem', fontSize: '0.85rem' }}
+                  style={{ padding: '0.65rem 0.85rem', fontSize: '16px', minHeight: '44px' }}
                 >
                   <option value="all">Toutes unités</option>
                   <option value="caisse">Caisse</option>
@@ -136,12 +136,12 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({ initialCategoryId, onO
               </div>
 
               {/* In stock only toggle */}
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.82rem', cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', fontSize: '0.92rem', fontWeight: 600, cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
                 <input
                   type="checkbox"
                   checked={onlyAvailable}
                   onChange={(e) => setOnlyAvailable(e.target.checked)}
-                  style={{ width: '15px', height: '15px', accentColor: 'var(--primary-600)' }}
+                  style={{ width: '18px', height: '18px', accentColor: 'var(--primary-600)', cursor: 'pointer' }}
                 />
                 <span>En stock</span>
               </label>

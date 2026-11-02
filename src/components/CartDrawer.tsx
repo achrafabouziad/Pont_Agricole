@@ -182,63 +182,65 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                   <img
                     src={item.product.imageUrl}
                     alt={item.product.name}
-                    style={{ width: '56px', height: '56px', borderRadius: '8px', objectFit: 'cover' }}
+                    style={{ width: '64px', height: '64px', borderRadius: '10px', objectFit: 'cover' }}
                   />
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--primary-900)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    <div style={{ fontWeight: 700, fontSize: '0.98rem', color: 'var(--primary-900)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {item.product.name}
                     </div>
-                    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                    <div style={{ fontSize: '0.84rem', color: 'var(--text-muted)', marginTop: '0.1rem' }}>
                       {item.product.price.toFixed(2)} DH / {item.product.unit}
                     </div>
-                    <div style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--primary-700)', marginTop: '0.2rem' }}>
+                    <div style={{ fontWeight: 800, fontSize: '0.98rem', color: 'var(--primary-700)', marginTop: '0.25rem' }}>
                       {(item.product.price * item.quantity).toFixed(2)} DH
                     </div>
                   </div>
 
                   {/* Quantity Stepper */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', backgroundColor: '#ffffff', borderRadius: '6px', border: '1px solid var(--border-light)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', backgroundColor: '#ffffff', borderRadius: '8px', border: '1.5px solid var(--border-light)', padding: '2px' }}>
                     <button
                       onClick={() => handleQuantityChange(item.product.id, item.quantity - 1)}
-                      style={{ padding: '0.35rem 0.45rem', color: 'var(--text-main)' }}
+                      style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-main)', borderRadius: '6px' }}
+                      title="Diminuer la quantité"
                     >
-                      <Minus size={12} />
+                      <Minus size={15} />
                     </button>
-                    <span style={{ fontSize: '0.85rem', fontWeight: 700, minWidth: '22px', textAlign: 'center' }}>
+                    <span style={{ fontSize: '0.95rem', fontWeight: 800, minWidth: '24px', textAlign: 'center', color: 'var(--primary-900)' }}>
                       {item.quantity}
                     </span>
                     <button
                       onClick={() => handleQuantityChange(item.product.id, item.quantity + 1)}
-                      style={{ padding: '0.35rem 0.45rem', color: 'var(--text-main)' }}
+                      style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-main)', borderRadius: '6px' }}
+                      title="Augmenter la quantité"
                     >
-                      <Plus size={12} />
+                      <Plus size={15} />
                     </button>
                   </div>
 
                   {/* Remove Button */}
                   <button
                     onClick={() => handleRemove(item.product.id)}
-                    style={{ padding: '0.4rem', color: '#dc2626' }}
+                    style={{ width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#dc2626', borderRadius: '8px', marginLeft: '0.2rem' }}
                     title="Supprimer"
                   >
-                    <Trash2 size={16} />
+                    <Trash2 size={18} />
                   </button>
                 </div>
               ))}
 
               {/* Order Options */}
-              <div style={{ marginTop: '1.25rem', padding: '1rem', backgroundColor: '#ffffff', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)' }}>
-                <div style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--primary-900)', marginBottom: '0.85rem' }}>
+              <div style={{ marginTop: '1.25rem', padding: '1.15rem', backgroundColor: '#ffffff', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)' }}>
+                <div style={{ fontWeight: 800, fontSize: '1.02rem', color: 'var(--primary-900)', marginBottom: '0.95rem' }}>
                   Détails de Livraison
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label" style={{ fontSize: '0.8rem' }}>Ville de livraison</label>
+                  <label className="form-label" style={{ fontSize: '0.88rem', fontWeight: 600 }}>Ville de livraison</label>
                   <select
                     className="form-select"
                     value={selectedCity}
                     onChange={(e) => setSelectedCity(e.target.value)}
-                    style={{ fontSize: '0.85rem', padding: '0.55rem' }}
+                    style={{ fontSize: '16px', padding: '0.7rem' }}
                   >
                     {zones.map((z) => (
                       <option key={z.id} value={z.city}>
@@ -249,37 +251,37 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label" style={{ fontSize: '0.8rem' }}>Adresse de l’établissement (Restaurant, Hôtel, Café)</label>
+                  <label className="form-label" style={{ fontSize: '0.88rem', fontWeight: 600 }}>Adresse de l’établissement (Restaurant, Hôtel, Café)</label>
                   <input
                     type="text"
                     className="form-input"
                     placeholder="Ex: 12 Rue de Normandie, Gauthier, Casablanca"
                     value={deliveryAddress}
                     onChange={(e) => setDeliveryAddress(e.target.value)}
-                    style={{ fontSize: '0.85rem', padding: '0.55rem' }}
+                    style={{ fontSize: '16px', padding: '0.7rem' }}
                   />
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label" style={{ fontSize: '0.8rem' }}>Date de livraison souhaitée</label>
+                  <label className="form-label" style={{ fontSize: '0.88rem', fontWeight: 600 }}>Date de livraison souhaitée</label>
                   <input
                     type="date"
                     className="form-input"
                     value={requestedDate}
                     onChange={(e) => setRequestedDate(e.target.value)}
-                    style={{ fontSize: '0.85rem', padding: '0.55rem' }}
+                    style={{ fontSize: '16px', padding: '0.7rem' }}
                   />
                 </div>
 
                 <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label" style={{ fontSize: '0.8rem' }}>Instructions cuisine ou déchargement</label>
+                  <label className="form-label" style={{ fontSize: '0.88rem', fontWeight: 600 }}>Instructions cuisine ou déchargement</label>
                   <textarea
                     className="form-textarea"
                     placeholder="Ex: Déposer quai de réception arrière avant 08h30"
                     rows={2}
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
-                    style={{ fontSize: '0.85rem', padding: '0.55rem' }}
+                    style={{ fontSize: '16px', padding: '0.7rem' }}
                   />
                 </div>
               </div>
@@ -341,19 +343,19 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
             ) : null}
 
             {/* Calculations lines */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.88rem', color: 'var(--text-muted)', marginBottom: '0.35rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.94rem', color: 'var(--text-muted)', marginBottom: '0.4rem' }}>
               <span>Sous-total HT</span>
-              <span style={{ fontWeight: 600 }}>{subtotal.toFixed(2)} DH</span>
+              <span style={{ fontWeight: 700, color: 'var(--text-main)' }}>{subtotal.toFixed(2)} DH</span>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.88rem', color: 'var(--text-muted)', marginBottom: '0.6rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.94rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
               <span>Frais de livraison ({selectedCity})</span>
-              <span style={{ color: 'var(--primary-600)', fontWeight: 700 }}>
+              <span style={{ color: 'var(--primary-700)', fontWeight: 800 }}>
                 Gratuits (0 DH)
               </span>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.15rem', fontWeight: 800, color: 'var(--primary-900)', borderTop: '1px solid var(--border-light)', paddingTop: '0.6rem', marginBottom: '1rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.25rem', fontWeight: 800, color: 'var(--primary-900)', borderTop: '1.5px solid var(--border-light)', paddingTop: '0.75rem', marginBottom: '1.15rem' }}>
               <span>Total Estimé</span>
               <span style={{ color: 'var(--primary-800)' }}>{total.toFixed(2)} DH</span>
             </div>
@@ -365,10 +367,18 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
               className="btn btn-primary"
               style={{
                 width: '100%',
-                padding: '0.85rem',
-                fontSize: '1rem',
+                padding: '0.95rem 1rem',
+                minHeight: '52px',
+                fontSize: '1.05rem',
+                fontWeight: 800,
+                borderRadius: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.5rem',
                 opacity: submitting || !currentUser ? 0.6 : 1,
                 cursor: submitting || !currentUser ? 'not-allowed' : 'pointer',
+                boxShadow: '0 3px 10px rgba(10, 38, 24, 0.15)',
               }}
             >
               {submitting ? (
@@ -378,7 +388,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
               ) : (
                 <>
                   <span>Confirmer la commande en gros</span>
-                  <ArrowRight size={18} />
+                  <ArrowRight size={20} />
                 </>
               )}
             </button>
