@@ -487,21 +487,31 @@ class StoreService {
     const candidateEmails: string[] = [];
     if (cleanLower.includes('@')) {
       candidateEmails.push(cleanLower);
+    } else {
+      if (digits) {
+        candidateEmails.push(`${digits}@phone.pontagricole.com`);
+      }
+      if (normPhone && normPhone !== digits) {
+        candidateEmails.push(`${normPhone}@phone.pontagricole.com`);
+      }
+      if (digits.startsWith('212') && digits.length >= 11) {
+        candidateEmails.push(`0${digits.slice(3)}@phone.pontagricole.com`);
+      } else if (digits.startsWith('0') && digits.length === 10) {
+        candidateEmails.push(`212${digits.slice(1)}@phone.pontagricole.com`);
+      }
     }
+
     if (matchedBiz?.email) {
       candidateEmails.push(matchedBiz.email.toLowerCase().trim());
     }
     if (matchedProfile?.email) {
       candidateEmails.push(matchedProfile.email.toLowerCase().trim());
     }
-    if (normPhone) {
-      candidateEmails.push(`${normPhone}@pontagricole.client`);
-    }
-    if (digits.length >= 7) {
-      candidateEmails.push(`${digits}@pontagricole.client`);
-    }
-    if (slug.length >= 3) {
-      candidateEmails.push(`${slug}@pontagricole.client`);
+    if (matchedBiz?.phone) {
+      const bizDigits = matchedBiz.phone.replace(/[^0-9]/g, '');
+      if (bizDigits) {
+        candidateEmails.push(`${bizDigits}@phone.pontagricole.com`);
+      }
     }
 
     const uniqueCandidates = Array.from(new Set(candidateEmails.filter(Boolean)));
@@ -748,7 +758,7 @@ class StoreService {
       } catch {}
     }
 
-    const finalEmail = userEmail || `${normPhone}@pontagricole.client`;
+    const finalEmail = userEmail || `${cleanDigits}@phone.pontagricole.com`;
     const nowIso = new Date().toISOString();
 
     if (isSupabaseConfigured && supabase) {
@@ -1820,9 +1830,9 @@ class StoreService {
     const nowIso = new Date().toISOString();
     const newBizId = `biz-${Date.now()}`;
     const newUserId = `usr-${Date.now()}`;
-    const normPhone = normalizePhone(params.phone);
+    const cleanDigits = (params.phone || '').replace(/[^0-9]/g, '');
     const nameSlug = params.contactName.toLowerCase().trim().replace(/[^a-z0-9]/g, '');
-    const finalEmail = params.email?.trim().toLowerCase() || `${normPhone || Date.now()}@pontagricole.client`;
+    const finalEmail = params.email?.trim().toLowerCase() || `${cleanDigits || Date.now()}@phone.pontagricole.com`;
 
     const newBiz: Business = {
       id: newBizId,
