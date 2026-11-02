@@ -162,10 +162,11 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({
               onChange={(e) => setSortBy(e.target.value as any)}
               aria-label="Trier par prix"
             >
-              <option value="default">Prix ∨</option>
+              <option value="default">Prix</option>
               <option value="price_asc">Prix: Croissant</option>
               <option value="price_desc">Prix: Décroissant</option>
             </select>
+            <ChevronDown size={14} className="mobile-filter-pill-arrow" />
           </div>
 
           {/* Unit Pill */}
@@ -176,13 +177,14 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({
               onChange={(e) => setSelectedUnit(e.target.value)}
               aria-label="Filtrer par unité"
             >
-              <option value="all">Unité ∨</option>
+              <option value="all">Unité</option>
               <option value="caisse">Caisse</option>
               <option value="carton">Carton</option>
               <option value="kg">Au Kg</option>
               <option value="botte">Botte</option>
               <option value="piece">Pièce</option>
             </select>
+            <ChevronDown size={14} className="mobile-filter-pill-arrow" />
           </div>
 
           {/* In Stock Pill */}

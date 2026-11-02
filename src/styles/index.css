@@ -1921,120 +1921,205 @@ table.data-table td {
     padding: 0.85rem 0 2.5rem !important;
   }
 
-  /* Catalog Page Responsive Layout */
-  /* Catalog Mobile Styles */
+  /* Catalog Page Responsive Layout - Modern Mobile App Header */
   .catalog-page-wrapper {
-    padding: 0.85rem 0 3.5rem !important;
+    padding: 0.5rem 0 5rem !important;
   }
 
-  .catalog-header {
-    margin-bottom: 0.65rem !important;
+  /* Hide desktop header & filters completely on mobile */
+  .catalog-desktop-header-area {
+    display: none !important;
   }
 
-  .catalog-header-badges {
-    gap: 0.35rem !important;
-    margin-bottom: 0.35rem !important;
-  }
-
-  .catalog-title {
-    font-size: 1.45rem !important;
-    font-weight: 800 !important;
-    margin-bottom: 0.2rem !important;
-  }
-
-  .catalog-subtitle {
-    font-size: 0.82rem !important;
-    line-height: 1.35 !important;
-    margin-bottom: 0.4rem !important;
-  }
-
-  .catalog-filter-card {
-    padding: 0.65rem 0.75rem !important;
-    margin-bottom: 0.85rem !important;
-    border-radius: 12px !important;
-    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05) !important;
-    background: #ffffff !important;
-  }
-
-  .catalog-filter-top {
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 0.5rem !important;
-    margin-bottom: 0.55rem !important;
-    width: 100% !important;
-  }
-
-  .catalog-search-wrap {
-    width: 100% !important;
-    flex: none !important;
-    min-width: 100% !important;
-    height: 42px !important;
-    position: relative !important;
-  }
-
-  .catalog-search-icon {
-    left: 12px !important;
-  }
-
-  .catalog-search-input {
-    height: 42px !important;
-    font-size: 14px !important;
-    padding-left: 2.35rem !important;
-    padding-right: 2.25rem !important;
-    border-radius: 9px !important;
-  }
-
-  .catalog-filter-subrow {
-    width: 100% !important;
+  /* Native Mobile App Topbar */
+  .catalog-mobile-topbar {
     display: flex !important;
     align-items: center !important;
     justify-content: space-between !important;
-    gap: 0.5rem !important;
-  }
-
-  .catalog-unit-select-wrap {
-    flex: 1 1 auto !important;
-    min-width: 0 !important;
-  }
-
-  .catalog-unit-select {
+    padding: 0.5rem 0.15rem 0.4rem !important;
+    margin-bottom: 0.35rem !important;
     width: 100% !important;
-    height: 38px !important;
-    font-size: 13.5px !important;
-    padding: 0 0.65rem !important;
-    border-radius: 8px !important;
+    box-sizing: border-box !important;
   }
 
-  .catalog-stock-toggle {
-    height: 38px !important;
-    padding: 0 0.75rem !important;
-    font-size: 13px !important;
-    border-radius: 8px !important;
+  .mobile-round-action-btn {
+    width: 44px !important;
+    height: 44px !important;
+    min-width: 44px !important;
+    border-radius: 50% !important;
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    color: #1e293b !important;
+    cursor: pointer !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04) !important;
+    transition: all 0.2s ease !important;
+    padding: 0 !important;
+    flex-shrink: 0 !important;
+    -webkit-tap-highlight-color: transparent !important;
+  }
+
+  .mobile-round-action-btn:active {
+    transform: scale(0.95) !important;
+    background: #f1f5f9 !important;
+  }
+
+  .mobile-round-action-btn.active {
+    background: #166534 !important;
+    color: #ffffff !important;
+    border-color: #166534 !important;
+    box-shadow: 0 3px 8px rgba(22, 101, 52, 0.25) !important;
+  }
+
+  .catalog-mobile-topbar-title {
+    font-size: 1.25rem !important;
+    font-weight: 700 !important;
+    color: #0f172a !important;
+    margin: 0 !important;
+    text-align: center !important;
+    flex: 1 !important;
+    padding: 0 0.65rem !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    letter-spacing: -0.015em !important;
+    line-height: 1.2 !important;
+  }
+
+  /* Collapsible Search Reveal Box */
+  .catalog-search-reveal {
+    display: flex !important;
+    align-items: center !important;
+    background: #ffffff !important;
+    border: 1.5px solid #166534 !important;
+    border-radius: 14px !important;
+    padding: 0.45rem 0.95rem !important;
+    margin: 0.25rem 0.15rem 0.75rem !important;
+    box-shadow: 0 4px 14px rgba(22, 101, 52, 0.08) !important;
+    animation: slideDownFade 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  }
+
+  .catalog-search-reveal-icon {
+    color: #166534 !important;
+    margin-right: 0.6rem !important;
     flex-shrink: 0 !important;
   }
 
-  .catalog-category-rail {
+  .catalog-search-reveal-input {
+    flex: 1 !important;
+    border: none !important;
+    outline: none !important;
+    font-size: 0.95rem !important;
+    color: #0f172a !important;
+    background: transparent !important;
+    padding: 0.35rem 0 !important;
+    font-family: inherit !important;
+  }
+
+  .catalog-search-reveal-clear {
+    background: #f1f5f9 !important;
+    border: none !important;
+    border-radius: 50% !important;
+    width: 24px !important;
+    height: 24px !important;
     display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    color: #64748b !important;
+    cursor: pointer !important;
+    margin-left: 0.5rem !important;
+    flex-shrink: 0 !important;
+  }
+
+  /* Horizontal Filter Pills Row (Matching Reference Image 1) */
+  .catalog-mobile-filter-pills {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.65rem !important;
+    padding: 0.35rem 0.15rem 0.85rem !important;
     overflow-x: auto !important;
     -webkit-overflow-scrolling: touch !important;
     scrollbar-width: none !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .catalog-mobile-filter-pills::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  .mobile-filter-pill-wrap {
+    position: relative !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    flex-shrink: 0 !important;
+  }
+
+  .mobile-filter-pill-select {
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 9999px !important;
+    padding: 0.52rem 2.15rem 0.52rem 1.05rem !important;
+    font-size: 0.88rem !important;
+    font-weight: 600 !important;
+    color: #334155 !important;
+    cursor: pointer !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+    outline: none !important;
+    transition: all 0.2s ease !important;
+    font-family: inherit !important;
+    line-height: 1.2 !important;
+  }
+
+  .mobile-filter-pill-select:focus,
+  .mobile-filter-pill-select:active {
+    border-color: #166534 !important;
+    color: #166534 !important;
+  }
+
+  .mobile-filter-pill-arrow {
+    position: absolute !important;
+    right: 0.85rem !important;
+    pointer-events: none !important;
+    color: #475569 !important;
+    display: flex !important;
+    align-items: center !important;
+  }
+
+  .mobile-filter-pill-btn {
+    display: inline-flex !important;
+    align-items: center !important;
     gap: 0.35rem !important;
-    padding-top: 0.55rem !important;
-    margin: 0 -0.25rem !important;
-    padding-left: 0.25rem !important;
-    padding-right: 0.25rem !important;
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 9999px !important;
+    padding: 0.52rem 1.05rem !important;
+    font-size: 0.88rem !important;
+    font-weight: 600 !important;
+    color: #334155 !important;
+    cursor: pointer !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+    white-space: nowrap !important;
+    transition: all 0.2s ease !important;
+    flex-shrink: 0 !important;
+    font-family: inherit !important;
+    line-height: 1.2 !important;
+    -webkit-tap-highlight-color: transparent !important;
   }
 
-  .catalog-cat-pill {
-    height: 34px !important;
-    padding: 0 0.75rem !important;
-    font-size: 12.5px !important;
-    border-radius: 999px !important;
+  .mobile-filter-pill-btn:active {
+    transform: scale(0.97) !important;
   }
 
-  .catalog-cat-count {
-    font-size: 11px !important;
-    padding: 0 5px !important;
+  .mobile-filter-pill-btn.active {
+    background: #ecfdf5 !important;
+    border-color: #10b981 !important;
+    color: #047857 !important;
+    font-weight: 700 !important;
   }
 
   /* ========================================================================
@@ -2438,7 +2523,16 @@ table.data-table td {
 }
 
 /* Catalog Filter Default Desktop Styles */
-/* Catalog Filter Desktop Styles */
+.catalog-mobile-topbar,
+.catalog-mobile-filter-pills,
+.catalog-search-reveal {
+  display: none;
+}
+
+.catalog-desktop-header-area {
+  display: block;
+}
+
 .catalog-page-wrapper {
   padding: 2.5rem 0 5rem;
 }
