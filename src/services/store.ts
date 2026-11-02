@@ -2028,6 +2028,82 @@ class StoreService {
     this.notify();
   }
 
+  public getClientPassword(biz: Business): string {
+    if (!biz) return '';
+    if (biz.password) return biz.password;
+    const creds = getStored<Record<string, string>>(KEY_USER_CREDS, {});
+    const norm = normalizePhone(biz.phone || '');
+    const digits = (biz.phone || '').replace(/[^0-9]/g, '');
+    const user = (biz.username || '').toLowerCase().trim();
+    const email = (biz.email || '').toLowerCase().trim();
+    return (
+      (user && creds[user]) ||
+      (norm && creds[norm]) ||
+      (digits && creds[digits]) ||
+      (email && creds[email]) ||
+      (biz.ownerId && creds[biz.ownerId]) ||
+      ''
+    );
+  }
+
+  public async adminResetClientPassword(
+    businessId: string,
+    newPassword: string
+  ): Promise<{ success: boolean; error?: string }> {
+    const cleanPass = newPassword.trim();
+    if (!cleanPass || cleanPass.length < 4) {
+      return { success: false, error: 'Le mot de passe doit comporter au moins 4 caractères.' };
+    }
+
+    const businesses = getStored<Business[]>(KEY_BUSINESSES, []);
+    const b = businesses.find((biz) => biz.id === businessId);
+    if (!b) {
+      return { success: false, error: 'Établissement client introuvable.' };
+    }
+
+    b.password = cleanPass;
+    setStored(KEY_BUSINESSES, businesses);
+
+    const creds = getStored<Record<string, string>>(KEY_USER_CREDS, {});
+    const norm = normalizePhone(b.phone || '');
+    const digits = (b.phone || '').replace(/[^0-9]/g, '');
+    const user = (b.username || '').toLowerCase().trim();
+    const email = (b.email || '').toLowerCase().trim();
+
+    if (norm) creds[norm] = cleanPass;
+    if (digits) creds[digits] = cleanPass;
+    if (user) creds[user] = cleanPass;
+    if (email) creds[email] = cleanPass;
+    if (b.ownerId) creds[b.ownerId] = cleanPass;
+    setStored(KEY_USER_CREDS, creds);
+
+    // Sync via dev sync server
+    try {
+      if (typeof fetch !== 'undefined') {
+        await fetch('/api/sync/clients', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(b),
+        });
+      }
+    } catch {}
+
+    // Diffuser aux autres onglets
+    if (this.broadcastChannel) {
+      try {
+        this.broadcastChannel.postMessage({
+          type: 'STORE_UPDATED',
+          action: 'CLIENT_PASSWORD_UPDATED',
+          clientId: businessId,
+          timestamp: Date.now(),
+        });
+      } catch {}
+    }
+
+    this.notify();
+    return { success: true };
+  }
+
   // --- DELIVERY ZONES & SETTINGS ---
   public async getDeliveryZones(): Promise<DeliveryZone[]> {
     if (isSupabaseConfigured && supabase) {

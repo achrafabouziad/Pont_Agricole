@@ -52,6 +52,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
   const [loading, setLoading] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successNotice, setSuccessNotice] = useState<string | null>(null);
+  const [showForgotPassword, setShowForgotPassword] = useState<boolean>(false);
 
   // Login form state (universal: Email, Phone, or Name ID)
   const [loginIdentifier, setLoginIdentifier] = useState('');
@@ -366,7 +367,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
                 />
               </div>
 
-              <div style={{ marginBottom: '1.5rem' }}>
+              <div style={{ marginBottom: '1.2rem' }}>
                 <label className="auth-minimal-label">
                   <span>Mot de passe *</span>
                 </label>
@@ -378,6 +379,24 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
                   onChange={(e) => setLoginPassword(e.target.value)}
                   required
                 />
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.45rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => setShowForgotPassword(true)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#166534',
+                      fontSize: '0.76rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      padding: 0,
+                      textDecoration: 'underline',
+                    }}
+                  >
+                    Mot de passe oublié ?
+                  </button>
+                </div>
               </div>
 
               <button
@@ -712,6 +731,77 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
           </div>
         </div>
       </div>
+
+      {/* Modal Mot de Passe Oublié */}
+      {showForgotPassword && (
+        <div className="modal-backdrop" onClick={() => setShowForgotPassword(false)}>
+          <div
+            className="modal-container"
+            style={{ maxWidth: '420px', borderRadius: '14px', padding: '1.4rem', backgroundColor: '#ffffff', margin: 'auto' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.9rem' }}>
+              <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>
+                Mot de passe oublié ?
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowForgotPassword(false)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b', fontSize: '1.1rem', padding: '2px 6px' }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <p style={{ fontSize: '0.84rem', color: '#475569', lineHeight: 1.5, marginBottom: '1.25rem' }}>
+              Pour des raisons de sécurité B2B, la réinitialisation de votre compte client s'effectue directement auprès de l'administrateur Pont Agricole.
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+              <a
+                href="https://wa.me/212707296123?text=Bonjour%20Pont%20Agricole,%20j'ai%20oubli%C3%A9%20mon%20mot%20de%20passe%20pour%20acc%C3%A9der%20%C3%A0%20mon%20compte%20client.%20Merci%20de%20m'aider."
+                target="_blank"
+                rel="noopener noreferrer"
+                className="auth-pill-btn"
+                style={{
+                  backgroundColor: '#25D366',
+                  color: '#ffffff',
+                  textAlign: 'center',
+                  textDecoration: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.5rem',
+                  fontWeight: 700,
+                  height: '42px',
+                }}
+              >
+                <span>📱</span> Contacter le support sur WhatsApp
+              </a>
+
+              <a
+                href="tel:0707296123"
+                className="auth-pill-btn"
+                style={{
+                  backgroundColor: '#f8fafc',
+                  color: '#1e293b',
+                  border: '1px solid #e2e8f0',
+                  textAlign: 'center',
+                  textDecoration: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.5rem',
+                  fontWeight: 600,
+                  height: '42px',
+                }}
+              >
+                <span>📞</span> Appeler le support (0707296123)
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

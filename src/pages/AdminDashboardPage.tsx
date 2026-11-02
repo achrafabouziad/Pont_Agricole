@@ -49,6 +49,10 @@ import {
   BarChart3,
   ShoppingBag,
   Printer,
+  KeyRound,
+  Eye,
+  EyeOff,
+  X,
 } from 'lucide-react';
 import { InvoiceModal } from '../components/InvoiceModal';
 
@@ -123,6 +127,46 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
   });
   const [addingClient, setAddingClient] = useState<boolean>(false);
   const [addClientError, setAddClientError] = useState<string | null>(null);
+
+  // Password Reset Modal State
+  const [passwordResetClient, setPasswordResetClient] = useState<Business | null>(null);
+  const [newPasswordInput, setNewPasswordInput] = useState<string>('');
+  const [savingNewPassword, setSavingNewPassword] = useState<boolean>(false);
+  const [passwordNotice, setPasswordNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [showPasswordText, setShowPasswordText] = useState<boolean>(false);
+
+  const handleOpenPasswordModal = (biz: Business) => {
+    setPasswordResetClient(biz);
+    const existingPass = store.getClientPassword(biz);
+    setNewPasswordInput(existingPass || '');
+    setPasswordNotice(null);
+    setShowPasswordText(false);
+  };
+
+  const handleSaveClientPassword = async () => {
+    if (!passwordResetClient) return;
+    if (!newPasswordInput.trim() || newPasswordInput.trim().length < 4) {
+      setPasswordNotice({ type: 'error', message: 'Le mot de passe doit comporter au moins 4 caractères.' });
+      return;
+    }
+    setSavingNewPassword(true);
+    setPasswordNotice(null);
+    try {
+      const res = await store.adminResetClientPassword(passwordResetClient.id, newPasswordInput.trim());
+      if (res.success) {
+        setPasswordNotice({ type: 'success', message: 'Mot de passe mis à jour avec succès !' });
+        setBusinesses((prev) =>
+          prev.map((b) => (b.id === passwordResetClient.id ? { ...b, password: newPasswordInput.trim() } : b))
+        );
+      } else {
+        setPasswordNotice({ type: 'error', message: res.error || 'Erreur lors de la mise à jour.' });
+      }
+    } catch (e: any) {
+      setPasswordNotice({ type: 'error', message: e.message || 'Erreur inconnue.' });
+    } finally {
+      setSavingNewPassword(false);
+    }
+  };
 
   // Daily Mercuriale / Price edits state
   const [priceEdits, setPriceEdits] = useState<Record<string, { price: number; isAvailable: boolean }>>({});
@@ -2186,6 +2230,21 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
                                   </button>
                                 )}
                                 <button
+                                  onClick={() => handleOpenPasswordModal(biz)}
+                                  className="btn btn-secondary btn-sm"
+                                  style={{
+                                    color: '#0369a1',
+                                    fontSize: '0.75rem',
+                                    padding: '0.25rem 0.55rem',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '0.25rem',
+                                  }}
+                                  title="Consulter ou modifier le mot de passe"
+                                >
+                                  <KeyRound size={12} /> Mot de passe
+                                </button>
+                                <button
                                   onClick={() => handleDeleteClient(biz.id, biz.businessName)}
                                   className="btn btn-secondary btn-sm"
                                   style={{
@@ -2446,6 +2505,21 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
                               Suspendre
                             </button>
                           )}
+                          <button
+                            onClick={() => handleOpenPasswordModal(biz)}
+                            className="btn btn-secondary btn-sm"
+                            style={{
+                              color: '#0369a1',
+                              fontSize: '0.75rem',
+                              padding: '0.3rem 0.65rem',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.25rem',
+                            }}
+                            title="Consulter ou modifier le mot de passe"
+                          >
+                            <KeyRound size={12} /> Mot de passe
+                          </button>
                           <button
                             onClick={() => handleDeleteClient(biz.id, biz.businessName)}
                             className="btn btn-secondary btn-sm"
@@ -3433,6 +3507,155 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Réinitialisation / Consultation Mot de Passe Client */}
+      {passwordResetClient && (
+        <div className="modal-backdrop" onClick={() => setPasswordResetClient(null)}>
+          <div
+            className="modal-container"
+            style={{ maxWidth: '440px', borderRadius: '16px', overflow: 'hidden' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-header" style={{ padding: '1.25rem', borderBottom: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--primary-900)', margin: 0 }}>
+                  Gestion Mot de Passe
+                </h3>
+                <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.2rem', margin: 0 }}>
+                  {passwordResetClient.businessName} ({passwordResetClient.contactName || 'Responsable'})
+                </p>
+              </div>
+              <button
+                onClick={() => setPasswordResetClient(null)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b', padding: '4px' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="modal-body" style={{ padding: '1.25rem' }}>
+              {/* Infos Client */}
+              <div style={{ backgroundColor: '#f8fafc', padding: '0.85rem 1rem', borderRadius: '8px', marginBottom: '1.2rem', fontSize: '0.82rem', border: '1px solid #e2e8f0' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
+                  <span style={{ color: '#64748b' }}>Téléphone :</span>
+                  <strong style={{ color: '#0f172a' }}>{passwordResetClient.phone || 'Non renseigné'}</strong>
+                </div>
+                {passwordResetClient.username && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
+                    <span style={{ color: '#64748b' }}>Nom d'utilisateur :</span>
+                    <strong style={{ color: '#166534' }}>@{passwordResetClient.username}</strong>
+                  </div>
+                )}
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#64748b' }}>Ville :</span>
+                  <span style={{ color: '#0f172a', fontWeight: 600 }}>{passwordResetClient.city}</span>
+                </div>
+              </div>
+
+              {/* Champ Mot de Passe */}
+              <div style={{ marginBottom: '1.2rem' }}>
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '0.4rem' }}>
+                  Nouveau Mot de Passe *
+                </label>
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                  <input
+                    type={showPasswordText ? 'text' : 'password'}
+                    value={newPasswordInput}
+                    onChange={(e) => setNewPasswordInput(e.target.value)}
+                    placeholder="Ex: pass1234"
+                    className="form-input"
+                    style={{ paddingRight: '40px', fontSize: '0.9rem', height: '42px', fontWeight: 600, width: '100%' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPasswordText(!showPasswordText)}
+                    style={{
+                      position: 'absolute',
+                      right: '10px',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      color: '#64748b',
+                      padding: '4px',
+                    }}
+                    title={showPasswordText ? 'Masquer' : 'Afficher'}
+                  >
+                    {showPasswordText ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+                <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '0.35rem' }}>
+                  Minimum 4 caractères. Le client pourra immédiatement se connecter avec ce mot de passe.
+                </div>
+              </div>
+
+              {passwordNotice && (
+                <div
+                  style={{
+                    padding: '0.65rem 0.85rem',
+                    borderRadius: '6px',
+                    fontSize: '0.82rem',
+                    marginBottom: '1rem',
+                    backgroundColor: passwordNotice.type === 'success' ? '#dcfce7' : '#fee2e2',
+                    color: passwordNotice.type === 'success' ? '#166534' : '#991b1b',
+                    fontWeight: 600,
+                  }}
+                >
+                  {passwordNotice.message}
+                </div>
+              )}
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                <button
+                  type="button"
+                  onClick={handleSaveClientPassword}
+                  disabled={savingNewPassword || !newPasswordInput.trim()}
+                  className="btn btn-primary"
+                  style={{ width: '100%', justifyContent: 'center', backgroundColor: '#166534', height: '40px', fontWeight: 700 }}
+                >
+                  {savingNewPassword ? 'Enregistrement...' : 'Enregistrer le mot de passe'}
+                </button>
+
+                {/* Envoi direct sur WhatsApp */}
+                {(() => {
+                  const cleanPhone = (passwordResetClient.phone || '').replace(/[^0-9]/g, '');
+                  const waPhone = cleanPhone.startsWith('0')
+                    ? `212${cleanPhone.slice(1)}`
+                    : cleanPhone.startsWith('212')
+                    ? cleanPhone
+                    : `212${cleanPhone}`;
+                  const waMsg = encodeURIComponent(
+                    `Bonjour ${passwordResetClient.contactName || ''},\nVotre mot de passe pour accéder à la plateforme Pont Agricole (${passwordResetClient.businessName}) a été mis à jour.\n\nIdentifiant : ${passwordResetClient.username ? `@${passwordResetClient.username}` : passwordResetClient.phone}\nMot de passe : ${newPasswordInput.trim()}\n\nVous pouvez vous connecter dès maintenant sur notre site.`
+                  );
+
+                  return cleanPhone && newPasswordInput.trim() ? (
+                    <a
+                      href={`https://wa.me/${waPhone}?text=${waMsg}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn btn-secondary"
+                      style={{
+                        width: '100%',
+                        justifyContent: 'center',
+                        backgroundColor: '#25D366',
+                        color: '#ffffff',
+                        fontWeight: 700,
+                        textDecoration: 'none',
+                        border: 'none',
+                        height: '40px',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.4rem',
+                      }}
+                    >
+                      <MessageCircle size={15} /> Envoyer sur WhatsApp en 1 clic
+                    </a>
+                  ) : null;
+                })()}
+              </div>
+            </div>
           </div>
         </div>
       )}
