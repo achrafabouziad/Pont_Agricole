@@ -58,11 +58,11 @@ export const Hero: React.FC<HeroProps> = ({ onExploreCatalog, onCreateAccount })
               <button
                 type="button"
                 onClick={() => {
-                  document.getElementById('advantages')?.scrollIntoView({ behavior: 'smooth' });
+                  document.getElementById('solutions')?.scrollIntoView({ behavior: 'smooth' });
                 }}
                 className="btn btn-secondary btn-lg hero-secondary-btn"
               >
-                <span>Avantages CHR</span>
+                <span>Solutions CHR</span>
               </button>
             </div>
 

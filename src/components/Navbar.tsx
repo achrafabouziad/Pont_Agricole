@@ -77,7 +77,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, onOpenC
             onClick={() => {
               if (currentPage !== 'home') onNavigate('home');
               setTimeout(() => {
-                document.getElementById('advantages')?.scrollIntoView({ behavior: 'smooth' });
+                document.getElementById('solutions')?.scrollIntoView({ behavior: 'smooth' });
               }, 100);
             }}
             className="nav-link"

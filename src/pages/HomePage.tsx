@@ -3,7 +3,7 @@ import { Hero } from '../components/Hero';
 import { ProductCard } from '../components/ProductCard';
 import { store } from '../services/store';
 import { Category, Product } from '../types';
-import { Sparkles, Utensils, Coffee, Hotel, Award, CheckCircle, ArrowRight, ShieldCheck, Clock, TrendingUp } from 'lucide-react';
+import { Utensils, Coffee, Hotel, ArrowRight } from 'lucide-react';
 
 interface HomePageProps {
   onNavigate: (page: string) => void;
@@ -136,67 +136,8 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectCategory
         </div>
       </section>
 
-      {/* 4. Avantages CHR (Why Pont Agricole) */}
-      <section id="advantages" className="home-advantages-section">
-        <div className="container">
-          <div className="home-section-header">
-            <span className="badge badge-brand">
-              Standard D'Excellence CHR
-            </span>
-            <h2 className="home-section-title">
-              Conçu pour les Exigences de la Restauration
-            </h2>
-            <p className="home-section-subtitle">
-              Gagnez du temps sur vos achats, sécurisez votre rentabilité et garantissez des assiettes de premier choix.
-            </p>
-          </div>
-
-          <div className="home-advantages-grid">
-            <div className="card advantage-card">
-              <div className="advantage-icon-wrap primary">
-                <Clock size={18} />
-              </div>
-              <h3 className="advantage-title">Livraisons Dédiées CHR</h3>
-              <p className="advantage-desc">
-                Livrées directement dans vos locaux et chambres froides pour vos mises en place de service.
-              </p>
-            </div>
-
-            <div className="card advantage-card">
-              <div className="advantage-icon-wrap amber">
-                <TrendingUp size={18} />
-              </div>
-              <h3 className="advantage-title">Tarifs de Gros Stables</h3>
-              <p className="advantage-desc">
-                Prix négociés en amont pour vous prémunir de la volatilité des cours du marché.
-              </p>
-            </div>
-
-            <div className="card advantage-card">
-              <div className="advantage-icon-wrap primary">
-                <Award size={18} />
-              </div>
-              <h3 className="advantage-title">Calibrage & Tri Rigoureux</h3>
-              <p className="advantage-desc">
-                Zéro perte en cuisine. Chaque caisse respecte vos exigences de découpe et dressage.
-              </p>
-            </div>
-
-            <div className="card advantage-card">
-              <div className="advantage-icon-wrap amber">
-                <ShieldCheck size={18} />
-              </div>
-              <h3 className="advantage-title">Facturation Pro en MAD</h3>
-              <p className="advantage-desc">
-                Bons de livraison clairs et factures commerciales détaillées pour votre comptabilité.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 5. Destiné aux CHR */}
-      <section className="home-solutions-section">
+      {/* 4. Destiné aux CHR */}
+      <section id="solutions" className="home-solutions-section">
         <div className="container">
           <div className="home-solutions-grid">
             <div className="home-solutions-content">
@@ -259,49 +200,6 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectCategory
                 alt="Cuisine professionnelle"
                 className="home-solutions-img"
               />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 6. Protocole Logistique */}
-      <section className="home-steps-section">
-        <div className="container">
-          <div className="home-section-header">
-            <span className="badge badge-brand">
-              Protocole Logistique
-            </span>
-            <h2 className="home-section-title">
-              Comment commander chez Pont Agricole ?
-            </h2>
-            <p className="home-section-subtitle">
-              Trois étapes rigoureuses pour fluidifier vos approvisionnements quotidiens.
-            </p>
-          </div>
-
-          <div className="home-steps-grid">
-            <div className="card step-card">
-              <div className="step-num">01</div>
-              <h3 className="step-title">Sélectionnez vos Produits</h3>
-              <p className="step-desc">
-                Choisissez vos caisses de légumes, cartons de fruits et bottes d'herbes au cours du jour.
-              </p>
-            </div>
-
-            <div className="card step-card">
-              <div className="step-num">02</div>
-              <h3 className="step-title">Validez votre Commande</h3>
-              <p className="step-desc">
-                Confirmez votre commande en toute autonomie sur la plateforme selon vos besoins.
-              </p>
-            </div>
-
-            <div className="card step-card">
-              <div className="step-num">03</div>
-              <h3 className="step-title">Réceptionnez en Cuisine</h3>
-              <p className="step-desc">
-                Nos tournées dédiées livrent directement dans vos chambres froides selon les modalités convenues.
-              </p>
             </div>
           </div>
         </div>
