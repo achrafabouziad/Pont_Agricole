@@ -6,6 +6,7 @@ import { OrderSuccessModal } from './components/OrderSuccessModal';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { HomePage } from './pages/HomePage';
 import { CatalogPage } from './pages/CatalogPage';
+import { CategoriesPage } from './pages/CategoriesPage';
 import { AuthPage } from './pages/AuthPage';
 import { ClientDashboardPage } from './pages/ClientDashboardPage';
 import { AdminDashboardPage } from './pages/AdminDashboardPage';
@@ -85,7 +86,7 @@ export function App() {
         return;
       }
 
-      if (['home', 'catalog', 'auth', 'client-dashboard'].includes(targetPage)) {
+      if (['home', 'catalog', 'categories', 'favorites', 'auth', 'client-dashboard'].includes(targetPage)) {
         setCurrentPage(targetPage);
       } else {
         // En ouvrant le lien du site par défaut : TOUJOURS la page d'accueil
@@ -166,6 +167,22 @@ export function App() {
           <CatalogPage
             initialCategoryId={selectedCatalogCategory}
             onOpenCart={() => setIsCartOpen(true)}
+            onNavigate={handleNavigate}
+          />
+        )}
+
+        {currentPage === 'categories' && (
+          <CategoriesPage
+            onSelectCategory={handleSelectCategory}
+            onNavigate={handleNavigate}
+          />
+        )}
+
+        {currentPage === 'favorites' && (
+          <CatalogPage
+            showOnlyFavorites={true}
+            onOpenCart={() => setIsCartOpen(true)}
+            onNavigate={handleNavigate}
           />
         )}
 

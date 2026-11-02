@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Home, Store, ShoppingCart, User, ShieldCheck } from 'lucide-react';
+import { Home, LayoutGrid, ShoppingBag, Heart, User } from 'lucide-react';
 import { store } from '../services/store';
 import { UserProfile } from '../types';
 
@@ -15,90 +15,117 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   onOpenCart,
 }) => {
   const [user, setUser] = useState<UserProfile | null>(store.getCurrentUser());
-  const [cartCount, setCartCount] = useState<number>(store.getCart().reduce((sum, i) => sum + i.quantity, 0));
+  const [cartCount, setCartCount] = useState<number>(
+    store.getCart().reduce((sum, i) => sum + i.quantity, 0)
+  );
+  const [favCount, setFavCount] = useState<number>(store.getFavorites().length);
 
   useEffect(() => {
     const unsub = store.subscribe(() => {
       setUser(store.getCurrentUser());
       setCartCount(store.getCart().reduce((sum, i) => sum + i.quantity, 0));
+      setFavCount(store.getFavorites().length);
     });
     return unsub;
   }, []);
 
   return (
-    <nav className="mobile-bottom-bar" aria-label="Navigation principale mobile">
-      <button
-        type="button"
-        onClick={() => onNavigate('home')}
-        className={`bottom-nav-item ${currentPage === 'home' ? 'active' : ''}`}
-      >
-        <div className="bottom-nav-icon-wrap">
-          <Home size={20} strokeWidth={currentPage === 'home' ? 2.5 : 1.8} />
-        </div>
-        <span className="bottom-nav-label">Accueil</span>
-      </button>
-
-      <button
-        type="button"
-        onClick={() => onNavigate('catalog')}
-        className={`bottom-nav-item ${currentPage === 'catalog' ? 'active' : ''}`}
-      >
-        <div className="bottom-nav-icon-wrap">
-          <Store size={20} strokeWidth={currentPage === 'catalog' ? 2.5 : 1.8} />
-        </div>
-        <span className="bottom-nav-label">Catalogue</span>
-      </button>
-
-      <button
-        type="button"
-        onClick={onOpenCart}
-        className="bottom-nav-item cart-bottom-item"
-      >
-        <div className="bottom-nav-icon-wrap cart-icon-wrap">
-          <ShoppingCart size={20} strokeWidth={cartCount > 0 ? 2.5 : 1.8} />
-          {cartCount > 0 && (
-            <span className="bottom-cart-badge">{cartCount}</span>
-          )}
-        </div>
-        <span className="bottom-nav-label">Panier</span>
-      </button>
-
-      {user ? (
+    <nav className="mobile-bottom-bar-wrapper" aria-label="Navigation principale mobile">
+      <div className="mobile-bottom-bar-pill">
+        {/* 1. Accueil */}
         <button
           type="button"
-          onClick={() => onNavigate('client-dashboard')}
-          className={`bottom-nav-item ${currentPage === 'client-dashboard' ? 'active' : ''}`}
+          onClick={() => onNavigate('home')}
+          className={`bottom-pill-item ${currentPage === 'home' ? 'active' : ''}`}
+          aria-label="Accueil"
         >
-          <div className="bottom-nav-icon-wrap">
-            <User size={20} strokeWidth={currentPage === 'client-dashboard' ? 2.5 : 1.8} />
+          <div className="bottom-pill-icon-wrap">
+            <Home size={22} strokeWidth={currentPage === 'home' ? 2.4 : 1.8} />
           </div>
-          <span className="bottom-nav-label">Espace Pro</span>
+          <span className="bottom-pill-label">Accueil</span>
         </button>
-      ) : (
-        <button
-          type="button"
-          onClick={() => onNavigate('auth')}
-          className={`bottom-nav-item ${currentPage === 'auth' ? 'active' : ''}`}
-        >
-          <div className="bottom-nav-icon-wrap">
-            <User size={20} strokeWidth={currentPage === 'auth' ? 2.5 : 1.8} />
-          </div>
-          <span className="bottom-nav-label">Connexion</span>
-        </button>
-      )}
 
-      {user?.role === 'admin' && (
+        {/* 2. Catégories */}
         <button
           type="button"
-          onClick={() => onNavigate('admin')}
-          className={`bottom-nav-item admin-bottom-item ${currentPage === 'admin' ? 'active' : ''}`}
+          onClick={() => onNavigate('categories')}
+          className={`bottom-pill-item ${currentPage === 'categories' ? 'active' : ''}`}
+          aria-label="Catégories"
         >
-          <div className="bottom-nav-icon-wrap">
-            <ShieldCheck size={20} strokeWidth={currentPage === 'admin' ? 2.5 : 1.8} />
+          <div className="bottom-pill-icon-wrap">
+            <LayoutGrid size={22} strokeWidth={currentPage === 'categories' ? 2.4 : 1.8} />
           </div>
-          <span className="bottom-nav-label">Admin</span>
+          <span className="bottom-pill-label">Catégories</span>
         </button>
-      )}
+
+        {/* 3. Panier */}
+        <button
+          type="button"
+          onClick={onOpenCart}
+          className="bottom-pill-item cart-pill-item"
+          aria-label="Panier"
+        >
+          <div className="bottom-pill-icon-wrap">
+            <ShoppingBag size={22} strokeWidth={cartCount > 0 ? 2.4 : 1.8} />
+            {cartCount > 0 && (
+              <span className="bottom-pill-badge">{cartCount}</span>
+            )}
+          </div>
+          <span className="bottom-pill-label">Panier</span>
+        </button>
+
+        {/* 4. Favoris */}
+        <button
+          type="button"
+          onClick={() => onNavigate('favorites')}
+          className={`bottom-pill-item ${currentPage === 'favorites' ? 'active' : ''}`}
+          aria-label="Favoris"
+        >
+          <div className="bottom-pill-icon-wrap">
+            <Heart
+              size={22}
+              strokeWidth={currentPage === 'favorites' ? 2.4 : 1.8}
+              fill={currentPage === 'favorites' ? 'currentColor' : 'none'}
+            />
+            {favCount > 0 && (
+              <span className="bottom-pill-fav-dot" />
+            )}
+          </div>
+          <span className="bottom-pill-label">Favoris</span>
+        </button>
+
+        {/* 5. Profil / Espace Pro */}
+        <button
+          type="button"
+          onClick={() => {
+            if (user?.role === 'admin') {
+              onNavigate('admin');
+            } else if (user) {
+              onNavigate('client-dashboard');
+            } else {
+              onNavigate('auth');
+            }
+          }}
+          className={`bottom-pill-item ${
+            currentPage === 'client-dashboard' || currentPage === 'auth' || currentPage === 'admin'
+              ? 'active'
+              : ''
+          }`}
+          aria-label="Profil"
+        >
+          <div className="bottom-pill-icon-wrap">
+            <User
+              size={22}
+              strokeWidth={
+                currentPage === 'client-dashboard' || currentPage === 'auth' || currentPage === 'admin'
+                  ? 2.4
+                  : 1.8
+              }
+            />
+          </div>
+          <span className="bottom-pill-label">Profil</span>
+        </button>
+      </div>
     </nav>
   );
 };

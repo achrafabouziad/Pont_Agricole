@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { Plus, Minus, ShoppingCart, Check, AlertCircle, MapPin } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ShoppingCart, Check, Heart, MapPin } from 'lucide-react';
 import { Product } from '../types';
+import { store } from '../services/store';
 
 interface ProductCardProps {
   product: Product;
@@ -8,163 +9,122 @@ interface ProductCardProps {
 }
 
 export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
-  const [quantity, setQuantity] = useState<number>(product.minimumQuantity || 1);
-  const [added, setAdded] = useState(false);
+  const [isFav, setIsFav] = useState<boolean>(store.isFavorite(product.id));
+  const [added, setAdded] = useState<boolean>(false);
 
-  const handleIncrement = () => setQuantity((prev) => prev + 1);
-  const handleDecrement = () => setQuantity((prev) => Math.max(product.minimumQuantity || 1, prev - 1));
+  useEffect(() => {
+    const unsub = store.subscribe(() => {
+      setIsFav(store.isFavorite(product.id));
+    });
+    return unsub;
+  }, [product.id]);
 
-  const handleAdd = () => {
+  const handleToggleFav = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const updated = store.toggleFavorite(product.id);
+    setIsFav(updated);
+  };
+
+  const handleQuickAdd = (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (!product.isAvailable) return;
-    onAddToCart(product, quantity);
+    onAddToCart(product, product.minimumQuantity || 1);
     setAdded(true);
-    setTimeout(() => setAdded(false), 1500);
+    setTimeout(() => setAdded(false), 1200);
   };
 
-  const getUnitLabel = (unit: string) => {
-    switch (unit) {
-      case 'kg':
-        return 'le kg';
-      case 'caisse':
-        return 'la caisse';
-      case 'carton':
-        return 'le carton';
-      case 'botte':
-        return 'la botte';
-      case 'piece':
-        return 'l’unité';
-      default:
-        return unit;
-    }
-  };
+  // Fake reference price for discount badge preview if product has badge
+  const hasDiscount = Boolean(product.badge && (product.badge.includes('%') || product.badge.toLowerCase().includes('promo')));
+  const referencePrice = hasDiscount ? (product.price * 1.2).toFixed(2) : null;
 
   return (
-    <div className="card product-card">
-      {/* Product Image Frame */}
-      <div className="product-img-wrap">
+    <div className="modern-product-card">
+      {/* Top Header Row: Discount Pill & Favorite Heart */}
+      <div className="modern-card-topbar">
+        <div className="modern-card-badge-wrap">
+          {product.badge ? (
+            <span className="modern-badge-pill discount">
+              {product.badge}
+            </span>
+          ) : !product.isAvailable ? (
+            <span className="modern-badge-pill out-of-stock">
+              Rupture
+            </span>
+          ) : (
+            <span className="modern-badge-pill fresh">
+              Frais
+            </span>
+          )}
+        </div>
+
+        <button
+          type="button"
+          onClick={handleToggleFav}
+          className={`modern-fav-btn ${isFav ? 'active' : ''}`}
+          aria-label={isFav ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+        >
+          <Heart
+            size={16}
+            fill={isFav ? '#ef4444' : 'none'}
+            color={isFav ? '#ef4444' : '#94a3b8'}
+            strokeWidth={isFav ? 2.5 : 2}
+          />
+        </button>
+      </div>
+
+      {/* Centered Product Image */}
+      <div className="modern-img-wrap">
         <img
           src={product.imageUrl}
           alt={product.name}
-          className="product-img"
+          className="modern-product-img"
+          loading="lazy"
           onError={(e) => {
             (e.target as HTMLImageElement).src =
               'https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=600&q=80';
           }}
         />
-
-        {/* Top Badges */}
-        <div className="product-badges">
-          {product.badge && (
-            <span className="badge badge-amber product-top-badge">
-              {product.badge}
-            </span>
-          )}
-          {!product.isAvailable && (
-            <span className="badge badge-status-cancelled product-top-badge">
-              Rupture
-            </span>
-          )}
-        </div>
-
-        {product.origin && (
-          <div className="product-origin-tag">
-            <MapPin size={10} color="var(--amber-400)" />
-            <span>{product.origin}</span>
-          </div>
-        )}
       </div>
 
-      {/* Product Content Body */}
-      <div className="product-body">
-        <h3 className="product-title" title={product.name}>
+      {/* Product Information */}
+      <div className="modern-product-info">
+        <h3 className="modern-product-title" title={product.name}>
           {product.name}
         </h3>
 
-        <p className="product-desc">
-          {product.description}
-        </p>
-
-        {/* Unit & Min Order Info */}
-        <div className="product-unit-info">
-          <span className="product-unit-chip">
-            Au {product.unit}
-          </span>
-          {product.minimumQuantity > 1 ? (
-            <span className="product-min-badge">
-              Min: {product.minimumQuantity}
-            </span>
-          ) : (
-            <span className="product-stock-dot">
-              <span className="dot-green" /> Disponible
-            </span>
-          )}
+        <div className="modern-product-sub">
+          <span>{product.origin ? `${product.origin}` : 'Maroc'}</span>
+          <span className="modern-sub-sep">•</span>
+          <span>Au {product.unit}</span>
         </div>
 
-        {/* Bottom Section Pinned to Bottom */}
-        <div className="product-card-footer">
-          {/* Price Tag in MAD */}
-          <div className="product-price-wrap">
-            <span className="product-price-num">
-              {product.price.toFixed(2)}
+        {/* Bottom Price & Circular Cart Button */}
+        <div className="modern-card-bottom">
+          <div className="modern-price-block">
+            <span className="modern-current-price">
+              {product.price.toFixed(2)} <span className="modern-currency">DH</span>
             </span>
-            <span className="product-currency">
-              DH
-            </span>
-            <span className="product-unit-label">
-              /{product.unit}
-            </span>
-          </div>
-
-          {/* Quantity Controls & Add to Cart in Single Cohesive Row */}
-          <div className="product-actions">
-            <div className="product-qty-stepper">
-              <button
-                onClick={handleDecrement}
-                disabled={!product.isAvailable || quantity <= product.minimumQuantity}
-                className="qty-btn"
-                title="Diminuer"
-                type="button"
-              >
-                <Minus size={12} />
-              </button>
-              <span className="qty-number">
-                {quantity}
+            {referencePrice && (
+              <span className="modern-old-price">
+                {referencePrice} DH
               </span>
-              <button
-                onClick={handleIncrement}
-                disabled={!product.isAvailable}
-                className="qty-btn"
-                title="Augmenter"
-                type="button"
-              >
-                <Plus size={12} />
-              </button>
-            </div>
-
-            <button
-              onClick={handleAdd}
-              disabled={!product.isAvailable}
-              className={`btn product-add-btn ${added ? 'btn-secondary' : 'btn-primary'}`}
-              type="button"
-            >
-              {added ? (
-                <>
-                  <Check size={14} color="var(--primary-600)" />
-                  <span className="btn-text">Ajouté</span>
-                </>
-              ) : product.isAvailable ? (
-                <>
-                  <ShoppingCart size={14} />
-                  <span className="btn-text">Ajouter</span>
-                </>
-              ) : (
-                <>
-                  <AlertCircle size={14} />
-                  <span className="btn-text">Rupture</span>
-                </>
-              )}
-            </button>
+            )}
           </div>
+
+          <button
+            type="button"
+            onClick={handleQuickAdd}
+            disabled={!product.isAvailable}
+            className={`modern-add-circle-btn ${added ? 'added' : ''}`}
+            title="Ajouter au panier"
+            aria-label={`Ajouter ${product.name} au panier`}
+          >
+            {added ? (
+              <Check size={17} strokeWidth={2.5} />
+            ) : (
+              <ShoppingCart size={16} strokeWidth={2.2} />
+            )}
+          </button>
         </div>
       </div>
     </div>

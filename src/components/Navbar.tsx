@@ -68,6 +68,12 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, onOpenC
             Accueil
           </button>
           <button
+            onClick={() => onNavigate('categories')}
+            className={`nav-link ${currentPage === 'categories' ? 'active' : ''}`}
+          >
+            Catégories
+          </button>
+          <button
             onClick={() => onNavigate('catalog')}
             className={`nav-link ${currentPage === 'catalog' ? 'active' : ''}`}
           >

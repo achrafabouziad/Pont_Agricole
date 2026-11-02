@@ -36,6 +36,7 @@ const KEY_USER_CREDS = `${STORAGE_PREFIX}user_creds`;
 const KEY_ZONES = `${STORAGE_PREFIX}zones`;
 const KEY_SETTINGS = `${STORAGE_PREFIX}settings`;
 const KEY_CART = `${STORAGE_PREFIX}cart`;
+const KEY_FAVORITES = `${STORAGE_PREFIX}favorites`;
 
 // Helper for local storage
 function getStored<T>(key: string, defaultValue: T): T {
@@ -1220,6 +1221,32 @@ class StoreService {
 
   public getCartSubtotal(): number {
     return this.cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+  }
+
+  // --- FAVORITES METHODS ---
+  private favorites: string[] = getStored<string[]>(KEY_FAVORITES, []);
+
+  public getFavorites(): string[] {
+    return [...this.favorites];
+  }
+
+  public isFavorite(productId: string): boolean {
+    return this.favorites.includes(productId);
+  }
+
+  public toggleFavorite(productId: string): boolean {
+    const idx = this.favorites.indexOf(productId);
+    let isFav = false;
+    if (idx >= 0) {
+      this.favorites.splice(idx, 1);
+      isFav = false;
+    } else {
+      this.favorites.push(productId);
+      isFav = true;
+    }
+    setStored(KEY_FAVORITES, this.favorites);
+    this.notify();
+    return isFav;
   }
 
   // --- ORDERS METHODS ---
