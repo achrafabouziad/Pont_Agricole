@@ -68,6 +68,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
   const [phoneNumber, setPhoneNumber] = useState('');
 
   const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [city, setCity] = useState('Casablanca');
   const [deliveryAddress, setDeliveryAddress] = useState('');
@@ -136,7 +137,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
     e.preventDefault();
     setErrorMsg(null);
     if (!loginIdentifier.trim() || !loginPassword.trim()) {
-      setErrorMsg('Veuillez renseigner votre identifiant (N° téléphone, nom ou email) et mot de passe.');
+      setErrorMsg("Veuillez renseigner votre identifiant (Nom d'utilisateur, téléphone ou email) et mot de passe.");
       return;
     }
 
@@ -167,14 +168,20 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
     const activeCode = countryCode === 'other' ? customCode.trim() : countryCode;
     const fullPhone = `${activeCode} ${phoneNumber.trim()}`.trim();
 
-    if (!fullName.trim() || !businessName.trim() || !phoneNumber.trim() || !password || !deliveryAddress.trim()) {
-      setErrorMsg('Veuillez remplir tous les champs obligatoires (Nom, Établissement, Téléphone, Adresse, Mot de passe).');
+    if (!fullName.trim() || !businessName.trim() || !phoneNumber.trim() || !username.trim() || !password || !deliveryAddress.trim()) {
+      setErrorMsg("Veuillez remplir tous les champs obligatoires (Nom, Établissement, Téléphone, Nom d'utilisateur, Adresse, Mot de passe).");
+      return;
+    }
+
+    const cleanUsername = username.trim().toLowerCase().replace(/[^a-z0-9_.-]/g, '');
+    if (cleanUsername.length < 3) {
+      setErrorMsg("Le nom d'utilisateur doit comporter au moins 3 caractères (lettres, chiffres, tirets).");
       return;
     }
 
     const phoneDigits = phoneNumber.replace(/\D/g, '');
     if (phoneDigits.length < 9) {
-      setErrorMsg('Veuillez saisir un numéro de téléphone valide (au moins 9 chiffres). Ce numéro servira pour vous connecter.');
+      setErrorMsg('Veuillez saisir un numéro de téléphone valide (au moins 9 chiffres). Ce numéro servira pour vous contacter.');
       return;
     }
 
@@ -199,6 +206,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
         businessType,
         phone: fullPhone,
         email: email.trim() || undefined,
+        username: cleanUsername,
         password,
         city,
         deliveryAddress: deliveryAddress.trim(),
@@ -355,13 +363,13 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
             <form onSubmit={handleLoginSubmit}>
               <div style={{ marginBottom: '1.2rem' }}>
                 <label className="auth-minimal-label">
-                  <span>Numéro de Téléphone ou Email *</span>
-                  <span style={{ fontSize: '0.7rem', color: '#166534', fontWeight: 600 }}>N° de téléphone recommandé</span>
+                  <span>Identifiant (Nom d'utilisateur, Téléphone ou Email) *</span>
+                  <span style={{ fontSize: '0.7rem', color: '#166534', fontWeight: 600 }}>Username, Tél ou Email</span>
                 </label>
                 <input
                   type="text"
                   className="auth-minimal-input"
-                  placeholder="Ex: 0661234567 ou email@restaurant.ma"
+                  placeholder="Ex: chef_karim, 0661234567 ou email@restaurant.ma"
                   value={loginIdentifier}
                   onChange={(e) => setLoginIdentifier(e.target.value)}
                   required
@@ -447,7 +455,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
                 </div>
               </div>
 
-              {/* ROW 2: Type d'Etablissement & Numero Mondial */}
+              {/* ROW 2: Type d'Etablissement & Ville */}
               <div className="auth-fields-grid">
                 <div className="auth-field-col">
                   <label className="auth-minimal-label">
@@ -469,8 +477,30 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
 
                 <div className="auth-field-col">
                   <label className="auth-minimal-label">
+                    <span>Ville de Livraison</span>
+                  </label>
+                  <select
+                    className="auth-minimal-input"
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <option value="Casablanca">Casablanca</option>
+                    <option value="Rabat - Salé">Rabat - Salé</option>
+                    <option value="Marrakech">Marrakech</option>
+                    <option value="Tanger">Tanger</option>
+                    <option value="Fès - Meknès">Fès - Meknès</option>
+                    <option value="Agadir">Agadir</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* ROW 3: Contacts (Téléphone & Email) */}
+              <div className="auth-fields-grid">
+                <div className="auth-field-col">
+                  <label className="auth-minimal-label">
                     <span style={{ fontWeight: 700, color: '#0f172a' }}>Numéro de Téléphone *</span>
-                    <span style={{ fontSize: '0.7rem', color: '#166534', fontWeight: 600 }}>Obligatoire (pour se connecter)</span>
+                    <span style={{ fontSize: '0.7rem', color: '#166534', fontWeight: 600 }}>Obligatoire</span>
                   </label>
                   <div className="auth-phone-container">
                     <select
@@ -507,13 +537,10 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
                     />
                   </div>
                   <div style={{ fontSize: '0.69rem', color: '#64748b', marginTop: '0.2rem' }}>
-                    Ce numéro sera votre identifiant unique pour vous connecter à votre compte.
+                    Pour le suivi des commandes & la livraison.
                   </div>
                 </div>
-              </div>
 
-              {/* ROW 3: Email Pro & Mot de passe */}
-              <div className="auth-fields-grid">
                 <div className="auth-field-col">
                   <label className="auth-minimal-label">
                     <span>Email Professionnel</span>
@@ -532,10 +559,31 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
                     Pas d'email ? Vous pouvez laisser ce champ vide.
                   </div>
                 </div>
+              </div>
+
+              {/* ROW 4: Identifiants de connexion (Nom d'utilisateur & Mot de passe) */}
+              <div className="auth-fields-grid">
+                <div className="auth-field-col">
+                  <label className="auth-minimal-label">
+                    <span style={{ fontWeight: 700, color: '#0f172a' }}>Nom d'utilisateur (Username) *</span>
+                    <span style={{ fontSize: '0.7rem', color: '#166534', fontWeight: 600 }}>Pour se connecter</span>
+                  </label>
+                  <input
+                    type="text"
+                    className="auth-minimal-input"
+                    placeholder="Ex: chef_karim ou bistrot_casa"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_.-]/g, ''))}
+                    required
+                  />
+                  <div style={{ fontSize: '0.69rem', color: '#64748b', marginTop: '0.2rem' }}>
+                    Votre identifiant unique pour vous connecter avec votre mot de passe.
+                  </div>
+                </div>
 
                 <div className="auth-field-col">
                   <label className="auth-minimal-label">
-                    <span>Mot de Passe *</span>
+                    <span style={{ fontWeight: 700, color: '#0f172a' }}>Mot de Passe *</span>
                     <span style={{ fontSize: '0.7rem', color: '#94a3b8', fontWeight: 400 }}>6+ car.</span>
                   </label>
                   <input
@@ -546,69 +594,51 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
                     onChange={(e) => setPassword(e.target.value)}
                     required
                   />
+                  <div style={{ fontSize: '0.69rem', color: '#64748b', marginTop: '0.2rem' }}>
+                    À mémoriser pour accéder à votre espace client B2B.
+                  </div>
                 </div>
               </div>
 
-              {/* ROW 4: Ville de Livraison & Adresse avec GPS */}
-              <div className="auth-fields-grid">
-                <div className="auth-field-col">
-                  <label className="auth-minimal-label">
-                    <span>Ville de Livraison</span>
-                  </label>
-                  <select
-                    className="auth-minimal-input"
-                    value={city}
-                    onChange={(e) => setCity(e.target.value)}
-                    style={{ cursor: 'pointer' }}
+              {/* ROW 5: Adresse complète de livraison avec Google Maps */}
+              <div style={{ marginBottom: '1rem' }} className="auth-field-col">
+                <label className="auth-minimal-label">
+                  <span style={{ fontWeight: 700, color: '#0f172a' }}>Adresse Complète de Livraison *</span>
+                  <button
+                    type="button"
+                    onClick={handleAutoLocate}
+                    disabled={locating}
+                    className="auth-maps-btn"
+                    title="Détecter automatiquement avec Google Maps"
                   >
-                    <option value="Casablanca">Casablanca</option>
-                    <option value="Rabat - Salé">Rabat - Salé</option>
-                    <option value="Marrakech">Marrakech</option>
-                    <option value="Tanger">Tanger</option>
-                    <option value="Fès - Meknès">Fès - Meknès</option>
-                    <option value="Agadir">Agadir</option>
-                  </select>
-                </div>
+                    <GoogleMapsIcon size={12} />
+                    <span>{locating ? 'GPS...' : 'Position Maps'}</span>
+                  </button>
+                </label>
 
-                <div className="auth-field-col">
-                  <label className="auth-minimal-label">
-                    <span>Adresse Complète *</span>
-                    <button
-                      type="button"
-                      onClick={handleAutoLocate}
-                      disabled={locating}
-                      className="auth-maps-btn"
-                      title="Détecter automatiquement avec Google Maps"
+                <input
+                  type="text"
+                  className="auth-minimal-input"
+                  placeholder="Quartier, rue, repère (ex: Bd d'Anfa, à côté de...)"
+                  value={deliveryAddress}
+                  onChange={(e) => setDeliveryAddress(e.target.value)}
+                  required
+                />
+
+                {gpsCoords && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', marginTop: '0.25rem', fontSize: '0.72rem', color: '#166534' }}>
+                    <GoogleMapsIcon size={11} />
+                    <span>GPS détecté :</span>
+                    <a
+                      href={gpsCoords.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ fontWeight: 700, color: '#15803d', textDecoration: 'underline', display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}
                     >
-                      <GoogleMapsIcon size={12} />
-                      <span>{locating ? 'GPS...' : 'Position Maps'}</span>
-                    </button>
-                  </label>
-
-                  <input
-                    type="text"
-                    className="auth-minimal-input"
-                    placeholder="Quartier, rue, repère"
-                    value={deliveryAddress}
-                    onChange={(e) => setDeliveryAddress(e.target.value)}
-                    required
-                  />
-
-                  {gpsCoords && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', marginTop: '0.25rem', fontSize: '0.72rem', color: '#166534' }}>
-                      <GoogleMapsIcon size={11} />
-                      <span>GPS détecté :</span>
-                      <a
-                        href={gpsCoords.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{ fontWeight: 700, color: '#15803d', textDecoration: 'underline', display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}
-                      >
-                        Vérifier sur Maps <ExternalLink size={10} />
-                      </a>
-                    </div>
-                  )}
-                </div>
+                      Vérifier sur Maps <ExternalLink size={10} />
+                    </a>
+                  </div>
+                )}
               </div>
 
               {/* Checkbox (Terms) */}

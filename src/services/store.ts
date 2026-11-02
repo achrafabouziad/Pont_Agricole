@@ -403,13 +403,14 @@ class StoreService {
             const bDigits = (b.phone || '').replace(/[^0-9]/g, '');
             const bContact = (b.contact_name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
             const bBiz = (b.business_name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-            const bUser = (b.username || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+            const bUser = (b.username || '').toLowerCase().trim();
             const bEmail = (b.email || '').toLowerCase().trim();
 
             if (cleanLower.includes('@') && bEmail === cleanLower) return true;
             if (normPhone && bNormPhone && (bNormPhone === normPhone || bNormPhone.endsWith(normPhone) || normPhone.endsWith(bNormPhone))) return true;
             if (digits.length >= 7 && bDigits.length >= 7 && (bDigits.endsWith(digits) || digits.endsWith(bDigits))) return true;
-            if (slug.length >= 3 && (bUser === slug || bContact.includes(slug) || slug.includes(bContact) || bBiz.includes(slug))) return true;
+            if (bUser && (bUser === cleanLower || bUser === slug || bUser.replace(/[^a-z0-9]/g, '') === slug)) return true;
+            if (slug.length >= 3 && (bContact.includes(slug) || slug.includes(bContact) || bBiz.includes(slug))) return true;
             return false;
           });
         }
@@ -444,13 +445,14 @@ class StoreService {
         const bDigits = (b.phone || '').replace(/[^0-9]/g, '');
         const bContact = (b.contactName || '').toLowerCase().replace(/[^a-z0-9]/g, '');
         const bBiz = (b.businessName || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-        const bUser = (b.username || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        const bUser = (b.username || '').toLowerCase().trim();
         const bEmail = (b.email || '').toLowerCase().trim();
 
         if (cleanLower.includes('@') && bEmail === cleanLower) return true;
         if (normPhone && bNormPhone && (bNormPhone === normPhone || bNormPhone.endsWith(normPhone) || normPhone.endsWith(bNormPhone))) return true;
         if (digits.length >= 7 && bDigits.length >= 7 && (bDigits.endsWith(digits) || digits.endsWith(bDigits))) return true;
-        if (slug.length >= 3 && (bUser === slug || bContact.includes(slug) || slug.includes(bContact) || bBiz.includes(slug))) return true;
+        if (bUser && (bUser === cleanLower || bUser === slug || bUser.replace(/[^a-z0-9]/g, '') === slug)) return true;
+        if (slug.length >= 3 && (bContact.includes(slug) || slug.includes(bContact) || bBiz.includes(slug))) return true;
         return false;
       });
     }
@@ -468,13 +470,14 @@ class StoreService {
                 const bDigits = (b.phone || '').replace(/[^0-9]/g, '');
                 const bContact = (b.contactName || b.contact_name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
                 const bBiz = (b.businessName || b.business_name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-                const bUser = (b.username || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+                const bUser = (b.username || '').toLowerCase().trim();
                 const bEmail = (b.email || '').toLowerCase().trim();
 
                 if (cleanLower.includes('@') && bEmail === cleanLower) return true;
                 if (normPhone && bNormPhone && (bNormPhone === normPhone || bNormPhone.endsWith(normPhone) || normPhone.endsWith(bNormPhone))) return true;
                 if (digits.length >= 7 && bDigits.length >= 7 && (bDigits.endsWith(digits) || digits.endsWith(bDigits))) return true;
-                if (slug.length >= 3 && (bUser === slug || bContact.includes(slug) || slug.includes(bContact) || bBiz.includes(slug))) return true;
+                if (bUser && (bUser === cleanLower || bUser === slug || bUser.replace(/[^a-z0-9]/g, '') === slug)) return true;
+                if (slug.length >= 3 && (bContact.includes(slug) || slug.includes(bContact) || bBiz.includes(slug))) return true;
                 return false;
               });
             }
@@ -589,6 +592,7 @@ class StoreService {
         (bNorm && creds[bNorm]) ||
         (bDigits && creds[bDigits]) ||
         (matchedBiz.email && creds[matchedBiz.email.toLowerCase().trim()]) ||
+        (matchedBiz.username && creds[matchedBiz.username.toLowerCase().trim()]) ||
         creds[cleanLower] ||
         (normPhone && creds[normPhone]);
 
@@ -639,11 +643,13 @@ class StoreService {
 
   public async checkAvailability(
     phone: string,
-    email?: string
+    email?: string,
+    username?: string
   ): Promise<{ available: boolean; error?: string }> {
     const normPhone = normalizePhone(phone);
     const cleanDigits = phone.replace(/[^0-9]/g, '');
     const userEmail = email ? email.trim().toLowerCase() : '';
+    const cleanUser = username ? username.trim().toLowerCase().replace(/[^a-z0-9_.-]/g, '') : '';
 
     if (!phone || cleanDigits.length < 9) {
       return {
@@ -658,6 +664,15 @@ class StoreService {
         return {
           available: false,
           error: "Veuillez saisir une adresse email valide (ex: contact@restaurant.ma) ou laisser le champ email vide.",
+        };
+      }
+    }
+
+    if (username !== undefined && username.trim() !== '') {
+      if (cleanUser.length < 3) {
+        return {
+          available: false,
+          error: "Le nom d'utilisateur doit comporter au moins 3 caractères (lettres, chiffres, tirets).",
         };
       }
     }
@@ -683,6 +698,18 @@ class StoreService {
         return {
           available: false,
           error: "Cette adresse email est déjà associée à un compte existant. Veuillez vous connecter ou utiliser un autre email.",
+        };
+      }
+    }
+
+    if (cleanUser) {
+      const userExistsLocal = localBusinesses.some(
+        (b) => b.username && b.username.toLowerCase().trim() === cleanUser
+      );
+      if (userExistsLocal) {
+        return {
+          available: false,
+          error: "Ce nom d'utilisateur est déjà utilisé par un autre établissement. Veuillez en choisir un autre.",
         };
       }
     }
@@ -715,6 +742,17 @@ class StoreService {
                 };
               }
             }
+            if (cleanUser) {
+              const userMatch = syncClients.some(
+                (c) => c.username && c.username.toLowerCase().trim() === cleanUser
+              );
+              if (userMatch) {
+                return {
+                  available: false,
+                  error: "Ce nom d'utilisateur est déjà utilisé par un autre établissement. Veuillez en choisir un autre.",
+                };
+              }
+            }
           }
         }
       }
@@ -723,7 +761,7 @@ class StoreService {
     // 3. Vérification dans Supabase (si configuré)
     if (isSupabaseConfigured && supabase) {
       try {
-        const { data: dbBizs } = await supabase.from('businesses').select('phone, email').limit(1000);
+        const { data: dbBizs } = await supabase.from('businesses').select('phone, email, username').limit(1000);
         if (dbBizs && dbBizs.length > 0) {
           const sbPhoneMatch = dbBizs.some((b: any) => {
             const bNorm = normalizePhone(b.phone || '');
@@ -744,6 +782,15 @@ class StoreService {
               };
             }
           }
+          if (cleanUser) {
+            const sbUserMatch = dbBizs.some((b: any) => b.username && b.username.toLowerCase().trim() === cleanUser);
+            if (sbUserMatch) {
+              return {
+                available: false,
+                error: "Ce nom d'utilisateur est déjà utilisé par un autre établissement. Veuillez en choisir un autre.",
+              };
+            }
+          }
         }
       } catch {}
     }
@@ -761,16 +808,18 @@ class StoreService {
     city: string;
     deliveryAddress: string;
     googleMapsUrl?: string;
+    username?: string;
     verificationChannel?: 'email' | 'phone';
   }): Promise<{ success: boolean; error?: string }> {
-    const avail = await this.checkAvailability(params.phone, params.email);
+    const avail = await this.checkAvailability(params.phone, params.email, params.username);
     if (!avail.available) {
       return { success: false, error: avail.error };
     }
 
     const normPhone = normalizePhone(params.phone);
     const cleanDigits = params.phone.replace(/[^0-9]/g, '');
-    const nameSlug = params.fullName.toLowerCase().trim().replace(/[^a-z0-9]/g, '');
+    const finalUsername = params.username?.trim().toLowerCase().replace(/[^a-z0-9_.-]/g, '') ||
+      params.fullName.toLowerCase().trim().replace(/[^a-z0-9]/g, '');
     const userEmail = params.email ? params.email.trim().toLowerCase() : '';
     const finalEmail = userEmail || `${cleanDigits}@phone.pontagricole.com`;
     const nowIso = new Date().toISOString();
@@ -790,7 +839,7 @@ class StoreService {
               city: params.city,
               delivery_address: params.deliveryAddress,
               google_maps_url: params.googleMapsUrl || '',
-              username: nameSlug,
+              username: finalUsername,
               email: finalEmail,
             },
           },
@@ -850,7 +899,7 @@ class StoreService {
               phone: params.phone,
               email: finalEmail,
               google_maps_url: params.googleMapsUrl || null,
-              username: nameSlug,
+              username: finalUsername,
               approval_status: 'approved',
               updated_at: new Date().toISOString(),
             }).eq('id', existingBiz.id);
@@ -865,7 +914,7 @@ class StoreService {
               phone: params.phone,
               email: finalEmail,
               google_maps_url: params.googleMapsUrl || null,
-              username: nameSlug,
+              username: finalUsername,
               approval_status: 'approved',
             }).select().single();
 
@@ -899,7 +948,7 @@ class StoreService {
           phone: params.phone,
           email: finalEmail,
           googleMapsUrl: params.googleMapsUrl,
-          username: nameSlug,
+          username: finalUsername,
           lastSeenAt: nowIso,
           password: params.password,
           verificationChannel,
@@ -911,6 +960,7 @@ class StoreService {
         creds[normPhone] = params.password;
         if (cleanDigits) creds[cleanDigits] = params.password;
         if (userEmail) creds[userEmail] = params.password;
+        if (finalUsername) creds[finalUsername] = params.password;
         setStored(KEY_USER_CREDS, creds);
 
         // Sauvegarder dans la liste pour consultation admin
@@ -965,7 +1015,7 @@ class StoreService {
       phone: params.phone,
       email: finalEmail,
       googleMapsUrl: params.googleMapsUrl,
-      username: nameSlug,
+      username: finalUsername,
       lastSeenAt: nowIso,
       password: params.password,
       verificationChannel,
@@ -977,6 +1027,7 @@ class StoreService {
     creds[normPhone] = params.password;
     if (cleanDigits) creds[cleanDigits] = params.password;
     if (userEmail) creds[userEmail] = params.password;
+    if (finalUsername) creds[finalUsername] = params.password;
     setStored(KEY_USER_CREDS, creds);
 
     // Save in all businesses list for admin
