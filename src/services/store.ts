@@ -825,7 +825,7 @@ class StoreService {
     const nowIso = new Date().toISOString();
     const verificationChannel = params.verificationChannel || (userEmail ? 'email' : 'phone');
 
-    if (isSupabaseConfigured && supabase) {
+    if (userEmail && isSupabaseConfigured && supabase) {
       try {
         const { data, error } = await supabase.auth.signUp({
           email: finalEmail,
@@ -1052,6 +1052,24 @@ class StoreService {
 
     // Synchroniser immédiatement avec le serveur local dev / réseau
     await this.syncBusinessToRemote(newBusiness);
+
+    // Tenter également une sauvegarde directe dans Supabase (si configuré)
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from('businesses').insert({
+          business_name: params.businessName,
+          business_type: params.businessType,
+          city: params.city,
+          delivery_address: params.deliveryAddress,
+          contact_name: params.fullName,
+          phone: params.phone,
+          email: finalEmail,
+          google_maps_url: params.googleMapsUrl || null,
+          username: finalUsername,
+          approval_status: 'approved',
+        });
+      } catch {}
+    }
 
     this.currentUser = newProfile;
     this.currentBusiness = newBusiness;
