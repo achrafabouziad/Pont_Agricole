@@ -852,142 +852,155 @@ class StoreService {
               error: 'Un compte existe déjà avec ce numéro de téléphone ou cet email. Connectez-vous directement.',
             };
           }
-          return { success: false, error: error.message };
-        }
 
-        // Vérifier si Supabase a renvoyé des identités vides (signe d'un email déjà existant avec confirmation d'email active)
-        if (data?.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+          const isRateLimit =
+            error.message.toLowerCase().includes('rate limit') ||
+            error.message.toLowerCase().includes('too many') ||
+            (error as any).status === 429;
+
+          if (!isRateLimit) {
+            return { success: false, error: error.message };
+          }
+          console.warn('Supabase auth rate limit exceeded, bascule sur la création directe et synchronisée:', error.message);
+        } else if (data?.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+          // Vérifier si Supabase a renvoyé des identités vides (signe d'un email déjà existant avec confirmation d'email active)
           return {
             success: false,
             error: "Cette adresse email ou ce numéro de téléphone est déjà enregistré. Veuillez vous connecter directement.",
           };
-        }
+        } else {
+          const userId = data?.user?.id || `usr-${Date.now()}`;
 
-        const userId = data?.user?.id || `usr-${Date.now()}`;
+          // 1. Sauvegarder explicitement dans la table profiles de Supabase
+          try {
+            await supabase.from('profiles').upsert({
+              id: userId,
+              full_name: params.fullName,
+              phone: params.phone,
+              role: 'customer',
+              email: finalEmail,
+              updated_at: new Date().toISOString(),
+            });
+          } catch (pe) {
+            console.warn('Profile direct save warning', pe);
+          }
 
-        // 1. Sauvegarder explicitement dans la table profiles de Supabase
-        try {
-          await supabase.from('profiles').upsert({
+          // 2. Sauvegarder explicitement dans la table businesses de Supabase
+          let newBizId = `biz-${Date.now()}`;
+          try {
+            const { data: existingBiz } = await supabase
+              .from('businesses')
+              .select('id')
+              .eq('owner_id', userId)
+              .maybeSingle();
+
+            if (existingBiz?.id) {
+              newBizId = existingBiz.id;
+              await supabase.from('businesses').update({
+                business_name: params.businessName,
+                business_type: params.businessType,
+                city: params.city,
+                delivery_address: params.deliveryAddress,
+                contact_name: params.fullName,
+                phone: params.phone,
+                email: finalEmail,
+                google_maps_url: params.googleMapsUrl || null,
+                username: finalUsername,
+                approval_status: 'approved',
+                updated_at: new Date().toISOString(),
+              }).eq('id', existingBiz.id);
+            } else {
+              const { data: createdBiz } = await supabase.from('businesses').insert({
+                owner_id: userId,
+                business_name: params.businessName,
+                business_type: params.businessType,
+                city: params.city,
+                delivery_address: params.deliveryAddress,
+                contact_name: params.fullName,
+                phone: params.phone,
+                email: finalEmail,
+                google_maps_url: params.googleMapsUrl || null,
+                username: finalUsername,
+                approval_status: 'approved',
+              }).select().single();
+
+              if (createdBiz?.id) {
+                newBizId = createdBiz.id;
+              }
+            }
+          } catch (be) {
+            console.warn('Business direct save warning', be);
+          }
+
+          this.currentUser = {
             id: userId,
-            full_name: params.fullName,
+            fullName: params.fullName,
             phone: params.phone,
             role: 'customer',
+            createdAt: data?.user?.created_at || nowIso,
+            lastSeenAt: nowIso,
+          };
+
+          this.currentBusiness = {
+            id: newBizId,
+            ownerId: userId,
+            businessName: params.businessName,
+            businessType: params.businessType,
+            city: params.city,
+            delivery_address: params.deliveryAddress,
+            approvalStatus: 'approved',
+            createdAt: nowIso,
+            contactName: params.fullName,
+            phone: params.phone,
             email: finalEmail,
-            updated_at: new Date().toISOString(),
-          });
-        } catch (pe) {
-          console.warn('Profile direct save warning', pe);
-        }
+            googleMapsUrl: params.googleMapsUrl,
+            username: finalUsername,
+            lastSeenAt: nowIso,
+            password: params.password,
+            verificationChannel,
+            isVerified: true,
+          };
 
-        // 2. Sauvegarder explicitement dans la table businesses de Supabase
-        let newBizId = `biz-${Date.now()}`;
-        try {
-          const { data: existingBiz } = await supabase
-            .from('businesses')
-            .select('id')
-            .eq('owner_id', userId)
-            .maybeSingle();
+          // Sauvegarder les identifiants en local
+          const creds = getStored<Record<string, string>>(KEY_USER_CREDS, {});
+          creds[normPhone] = params.password;
+          if (cleanDigits) creds[cleanDigits] = params.password;
+          if (userEmail) creds[userEmail] = params.password;
+          if (finalUsername) creds[finalUsername] = params.password;
+          setStored(KEY_USER_CREDS, creds);
 
-          if (existingBiz?.id) {
-            newBizId = existingBiz.id;
-            await supabase.from('businesses').update({
-              business_name: params.businessName,
-              business_type: params.businessType,
-              city: params.city,
-              delivery_address: params.deliveryAddress,
-              contact_name: params.fullName,
-              phone: params.phone,
-              email: finalEmail,
-              google_maps_url: params.googleMapsUrl || null,
-              username: finalUsername,
-              approval_status: 'approved',
-              updated_at: new Date().toISOString(),
-            }).eq('id', existingBiz.id);
-          } else {
-            const { data: createdBiz } = await supabase.from('businesses').insert({
-              owner_id: userId,
-              business_name: params.businessName,
-              business_type: params.businessType,
-              city: params.city,
-              delivery_address: params.deliveryAddress,
-              contact_name: params.fullName,
-              phone: params.phone,
-              email: finalEmail,
-              google_maps_url: params.googleMapsUrl || null,
-              username: finalUsername,
-              approval_status: 'approved',
-            }).select().single();
+          // Sauvegarder dans la liste pour consultation admin
+          const allBiz = getStored<Business[]>(KEY_BUSINESSES, []);
+          const existingIdx = allBiz.findIndex((b) => b.ownerId === userId || (normPhone && normalizePhone(b.phone || '') === normPhone));
+          if (existingIdx >= 0) allBiz[existingIdx] = this.currentBusiness;
+          else allBiz.unshift(this.currentBusiness);
+          setStored(KEY_BUSINESSES, allBiz);
 
-            if (createdBiz?.id) {
-              newBizId = createdBiz.id;
-            }
+          // Synchroniser immédiatement avec le serveur local dev / réseau
+          await this.syncBusinessToRemote(this.currentBusiness);
+
+          setSessionStored(KEY_SESSION_USER, this.currentUser);
+          setSessionStored(KEY_SESSION_BUSINESS, this.currentBusiness);
+          this.touchPresence(this.currentUser.id, this.currentBusiness?.id, this.currentUser.phone);
+
+          // Diffuser aux autres onglets (Admin Dashboard)
+          if (this.broadcastChannel) {
+            try {
+              this.broadcastChannel.postMessage({ type: 'STORE_UPDATED', action: 'NEW_CLIENT', client: this.currentBusiness, timestamp: Date.now() });
+            } catch {}
           }
-        } catch (be) {
-          console.warn('Business direct save warning', be);
+
+          this.notify();
+          return { success: true };
         }
-
-        this.currentUser = {
-          id: userId,
-          fullName: params.fullName,
-          phone: params.phone,
-          role: 'customer',
-          createdAt: data?.user?.created_at || nowIso,
-          lastSeenAt: nowIso,
-        };
-
-        this.currentBusiness = {
-          id: newBizId,
-          ownerId: userId,
-          businessName: params.businessName,
-          businessType: params.businessType,
-          city: params.city,
-          deliveryAddress: params.deliveryAddress,
-          approvalStatus: 'approved',
-          createdAt: nowIso,
-          contactName: params.fullName,
-          phone: params.phone,
-          email: finalEmail,
-          googleMapsUrl: params.googleMapsUrl,
-          username: finalUsername,
-          lastSeenAt: nowIso,
-          password: params.password,
-          verificationChannel,
-          isVerified: true,
-        };
-
-        // Sauvegarder les identifiants en local
-        const creds = getStored<Record<string, string>>(KEY_USER_CREDS, {});
-        creds[normPhone] = params.password;
-        if (cleanDigits) creds[cleanDigits] = params.password;
-        if (userEmail) creds[userEmail] = params.password;
-        if (finalUsername) creds[finalUsername] = params.password;
-        setStored(KEY_USER_CREDS, creds);
-
-        // Sauvegarder dans la liste pour consultation admin
-        const allBiz = getStored<Business[]>(KEY_BUSINESSES, []);
-        const existingIdx = allBiz.findIndex((b) => b.ownerId === userId || (normPhone && normalizePhone(b.phone || '') === normPhone));
-        if (existingIdx >= 0) allBiz[existingIdx] = this.currentBusiness;
-        else allBiz.unshift(this.currentBusiness);
-        setStored(KEY_BUSINESSES, allBiz);
-
-        // Synchroniser immédiatement avec le serveur local dev / réseau
-        await this.syncBusinessToRemote(this.currentBusiness);
-
-        setSessionStored(KEY_SESSION_USER, this.currentUser);
-        setSessionStored(KEY_SESSION_BUSINESS, this.currentBusiness);
-        this.touchPresence(this.currentUser.id, this.currentBusiness?.id, this.currentUser.phone);
-
-        // Diffuser aux autres onglets (Admin Dashboard)
-        if (this.broadcastChannel) {
-          try {
-            this.broadcastChannel.postMessage({ type: 'STORE_UPDATED', action: 'NEW_CLIENT', client: this.currentBusiness, timestamp: Date.now() });
-          } catch {}
-        }
-
-        this.notify();
-        return { success: true };
       } catch (err: any) {
-        return { success: false, error: err.message || "Erreur lors de l'inscription" };
+        const isRateLimit =
+          (err?.message && (err.message.toLowerCase().includes('rate limit') || err.message.toLowerCase().includes('too many'))) ||
+          err?.status === 429;
+        if (!isRateLimit) {
+          return { success: false, error: err.message || "Erreur lors de l'inscription" };
+        }
+        console.warn('Supabase exception with rate limit, bascule sur la création locale:', err);
       }
     }
 
