@@ -201,14 +201,6 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({
         {/* Desktop Header & Filters (Hidden on Mobile) */}
         <div className="catalog-desktop-header-area">
           <div className="catalog-header">
-            <div className="catalog-header-badges">
-              <span className="badge badge-brand">Tarifs Professionnels B2B</span>
-              <span className="catalog-live-badge">
-                <span className="catalog-live-dot" />
-                Cours du jour actualisés
-              </span>
-              <span className="catalog-currency-pill">Facturation MAD</span>
-            </div>
             <h1 className="catalog-title">
               {showOnlyFavorites
                 ? 'Mes Produits Favoris'

@@ -1678,7 +1678,7 @@ table.data-table td {
     flex-direction: column !important;
     gap: 0.5rem !important;
     width: 100% !important;
-    margin-bottom: 0.65rem !important;
+    margin-bottom: 0 !important;
   }
 
   .hero-actions .btn {
@@ -1690,17 +1690,6 @@ table.data-table td {
     min-height: 44px !important;
     border-radius: 10px !important;
     box-shadow: 0 2px 6px rgba(10, 38, 24, 0.1) !important;
-  }
-
-  .hero-trust-chips {
-    gap: 0.35rem !important;
-    margin-bottom: 0.35rem !important;
-  }
-
-  .hero-trust-chip {
-    padding: 0.22rem 0.55rem !important;
-    font-size: 0.74rem !important;
-    border-radius: 6px !important;
   }
 
 

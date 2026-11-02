@@ -46,11 +46,8 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onOpenCart }) =>
         <div className="container">
           <div className="home-popular-header">
             <div>
-              <span className="badge badge-amber" style={{ marginBottom: '0.4rem' }}>
-                Sélection du Jour
-              </span>
               <h2 className="home-section-title">
-                Produits Populaires chez les Chefs
+                Produits Populaires
               </h2>
             </div>
             <button

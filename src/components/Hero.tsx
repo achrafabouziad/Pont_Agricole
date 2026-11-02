@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowRight, CheckCircle2, ShieldCheck, Truck } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 
 interface HeroProps {
   onExploreCatalog: () => void;
@@ -11,11 +11,6 @@ export const Hero: React.FC<HeroProps> = ({ onExploreCatalog }) => {
     <section className="hero-section">
       <div className="container">
         <div className="hero-content-wrap">
-          <div className="hero-badge">
-            <ShieldCheck size={13} color="var(--primary-600)" />
-            <span>Centrale B2B CHR • Casablanca • Rabat • Marrakech • Tanger</span>
-          </div>
-
           <h1 className="hero-title">
             Fruits, Légumes & Herbes Fraîches{' '}
             <span style={{ color: 'var(--primary-700)', position: 'relative', display: 'inline-block' }}>
@@ -32,21 +27,6 @@ export const Hero: React.FC<HeroProps> = ({ onExploreCatalog }) => {
               <span>Consulter le Catalogue & Prix du Jour</span>
               <ArrowRight size={16} />
             </button>
-          </div>
-
-          <div className="hero-trust-chips">
-            <span className="hero-trust-chip">
-              <CheckCircle2 size={13} className="hero-trust-chip-icon" />
-              <span>Facturation MAD</span>
-            </span>
-            <span className="hero-trust-chip">
-              <Truck size={13} className="hero-trust-chip-icon" />
-              <span>Livraison Dédiée CHR</span>
-            </span>
-            <span className="hero-trust-chip">
-              <ShieldCheck size={13} className="hero-trust-chip-icon" />
-              <span>Calibrage Garanti</span>
-            </span>
           </div>
         </div>
       </div>
