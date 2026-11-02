@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ShoppingCart, Check, Heart, MapPin } from 'lucide-react';
+import { ShoppingCart, Check, Heart } from 'lucide-react';
 import { Product } from '../types';
 import { store } from '../services/store';
 
@@ -33,24 +33,16 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
     setTimeout(() => setAdded(false), 1200);
   };
 
-  // Fake reference price for discount badge preview if product has badge
-  const hasDiscount = Boolean(product.badge && (product.badge.includes('%') || product.badge.toLowerCase().includes('promo')));
-  const referencePrice = hasDiscount ? (product.price * 1.2).toFixed(2) : null;
-
   return (
     <div className="modern-product-card">
-      {/* Top Header Row: Badge (Discount/Rupture only) & Favorite Heart */}
+      {/* Top Header Row: Out-of-Stock Badge (if any) & Favorite Heart */}
       <div className="modern-card-topbar">
         <div className="modern-card-badge-wrap">
-          {product.badge ? (
-            <span className="modern-badge-pill discount">
-              {product.badge}
-            </span>
-          ) : !product.isAvailable ? (
+          {!product.isAvailable && (
             <span className="modern-badge-pill out-of-stock">
               Rupture
             </span>
-          ) : null}
+          )}
         </div>
 
         <button
@@ -94,11 +86,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
             <span className="modern-current-price">
               {product.price.toFixed(2)} <span className="modern-currency">DH</span>
             </span>
-            {referencePrice && (
-              <span className="modern-old-price">
-                {referencePrice} DH
-              </span>
-            )}
           </div>
 
           <button
