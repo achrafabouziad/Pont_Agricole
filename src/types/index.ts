@@ -39,6 +39,7 @@ export interface Business {
   username?: string;
   ice?: string;
   lastSeenAt?: string;
+  password?: string;
 }
 
 export interface Category {

@@ -215,6 +215,16 @@ function localSyncPlugin(): Plugin {
             });
             return;
           }
+          if (req.method === 'DELETE') {
+            const urlObj = new URL(url, 'http://localhost');
+            const targetId = urlObj.searchParams.get('id');
+            const orders = readJson(ordersFile, []);
+            const filtered = orders.filter((o: any) => o.id !== targetId);
+            writeJson(ordersFile, filtered);
+            res.statusCode = 200;
+            res.end(JSON.stringify({ success: true, count: filtered.length }));
+            return;
+          }
         }
 
         next();

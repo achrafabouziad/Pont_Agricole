@@ -284,6 +284,21 @@ class StoreService {
     }
   }
 
+  // Synchronisation distante des commandes pour connecter instantanément mobile et admin
+  private async syncOrderToRemote(order: Order): Promise<void> {
+    try {
+      if (typeof fetch !== 'undefined') {
+        await fetch('/api/sync/orders', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(order),
+        });
+      }
+    } catch {
+      // Offline ou fallback
+    }
+  }
+
   private async syncPresenceToRemote(userId?: string, businessId?: string, phone?: string): Promise<void> {
     try {
       if (typeof fetch !== 'undefined') {
@@ -440,7 +455,35 @@ class StoreService {
       });
     }
 
-    // C. Préparer les variantes d'emails candidats pour Supabase Auth
+    // C. Chercher sur le serveur local dev / réseau (/api/sync/clients) si non trouvé en local
+    if (!matchedBiz) {
+      try {
+        if (typeof fetch !== 'undefined') {
+          const syncRes = await fetch('/api/sync/clients', { cache: 'no-store' });
+          if (syncRes.ok) {
+            const syncClients = await syncRes.json();
+            if (Array.isArray(syncClients)) {
+              matchedBiz = syncClients.find((b: any) => {
+                const bNormPhone = normalizePhone(b.phone || '');
+                const bDigits = (b.phone || '').replace(/[^0-9]/g, '');
+                const bContact = (b.contactName || b.contact_name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+                const bBiz = (b.businessName || b.business_name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+                const bUser = (b.username || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+                const bEmail = (b.email || '').toLowerCase().trim();
+
+                if (cleanLower.includes('@') && bEmail === cleanLower) return true;
+                if (normPhone && bNormPhone && (bNormPhone === normPhone || bNormPhone.endsWith(normPhone) || normPhone.endsWith(bNormPhone))) return true;
+                if (digits.length >= 7 && bDigits.length >= 7 && (bDigits.endsWith(digits) || digits.endsWith(bDigits))) return true;
+                if (slug.length >= 3 && (bUser === slug || bContact.includes(slug) || slug.includes(bContact) || bBiz.includes(slug))) return true;
+                return false;
+              });
+            }
+          }
+        }
+      } catch {}
+    }
+
+    // D. Préparer les variantes d'emails candidats pour Supabase Auth
     const candidateEmails: string[] = [];
     if (cleanLower.includes('@')) {
       candidateEmails.push(cleanLower);
@@ -833,6 +876,7 @@ class StoreService {
           googleMapsUrl: params.googleMapsUrl,
           username: nameSlug,
           lastSeenAt: nowIso,
+          password: params.password,
         };
 
         // Sauvegarder les identifiants en local
@@ -896,6 +940,7 @@ class StoreService {
       googleMapsUrl: params.googleMapsUrl,
       username: nameSlug,
       lastSeenAt: nowIso,
+      password: params.password,
     };
 
     // Sauvegarder les identifiants
@@ -1251,50 +1296,111 @@ class StoreService {
 
   // --- ORDERS METHODS ---
   public async getOrders(): Promise<Order[]> {
-    if (isSupabaseConfigured && supabase) {
-      const { data, error } = await supabase
-        .from('orders')
-        .select('*, order_items(*)')
-        .order('created_at', { ascending: false });
+    const list: Order[] = [];
+    const seenIds = new Set<string>();
 
-      if (!error && data) {
-        return data.map((o: any) => ({
-          id: o.id,
-          orderNumber: o.order_number,
-          customerId: o.customer_id,
-          businessId: o.business_id,
-          status: o.status,
-          deliveryAddress: o.delivery_address,
-          deliveryCity: o.delivery_city,
-          requestedDeliveryDate: o.requested_delivery_date,
-          subtotal: Number(o.subtotal),
-          deliveryFee: Number(o.delivery_fee),
-          total: Number(o.total),
-          customerNotes: o.customer_notes,
-          rejectionReason: o.rejection_reason,
-          items: (o.order_items || []).map((i: any) => ({
-            id: i.id,
-            orderId: i.order_id,
-            productId: i.product_id,
-            productNameSnapshot: i.product_name_snapshot,
-            unitSnapshot: i.unit_snapshot,
-            unitPriceSnapshot: Number(i.unit_price_snapshot),
-            quantity: i.quantity,
-            lineTotal: Number(i.line_total),
-          })),
-          createdAt: o.created_at,
-          updatedAt: o.updated_at,
-        }));
+    const addOrUpdateOrder = (o: Order) => {
+      if (!o || !o.id) return;
+      const existingIdx = list.findIndex(
+        (x) => x.id === o.id || (x.orderNumber && o.orderNumber && x.orderNumber === o.orderNumber)
+      );
+      if (existingIdx >= 0) {
+        list[existingIdx] = { ...list[existingIdx], ...o };
+      } else {
+        list.push(o);
+        seenIds.add(o.id);
+        if (o.orderNumber) seenIds.add(o.orderNumber);
+      }
+    };
+
+    // 1. Charger depuis le serveur local dev / réseau (/api/sync/orders)
+    try {
+      if (typeof fetch !== 'undefined') {
+        const res = await fetch('/api/sync/orders', { cache: 'no-store' });
+        if (res.ok) {
+          const syncOrders = await res.json();
+          if (Array.isArray(syncOrders)) {
+            for (const ord of syncOrders) {
+              addOrUpdateOrder(ord);
+            }
+          }
+        }
+      }
+    } catch {
+      // Offline fallback
+    }
+
+    // 2. Charger depuis Supabase (si configuré)
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('orders')
+          .select('*, order_items(*)')
+          .order('created_at', { ascending: false });
+
+        if (!error && data) {
+          data.forEach((o: any) => {
+            addOrUpdateOrder({
+              id: o.id,
+              orderNumber: o.order_number,
+              customerId: o.customer_id,
+              businessId: o.business_id,
+              status: o.status,
+              deliveryAddress: o.delivery_address,
+              deliveryCity: o.delivery_city,
+              requestedDeliveryDate: o.requested_delivery_date,
+              subtotal: Number(o.subtotal),
+              deliveryFee: Number(o.delivery_fee),
+              total: Number(o.total),
+              customerNotes: o.customer_notes,
+              rejectionReason: o.rejection_reason,
+              items: (o.order_items || []).map((i: any) => ({
+                id: i.id,
+                orderId: i.order_id,
+                productId: i.product_id,
+                productNameSnapshot: i.product_name_snapshot,
+                unitSnapshot: i.unit_snapshot,
+                unitPriceSnapshot: Number(i.unit_price_snapshot),
+                quantity: i.quantity,
+                lineTotal: Number(i.line_total),
+              })),
+              createdAt: o.created_at,
+              updatedAt: o.updated_at,
+            });
+          });
+        }
+      } catch (err) {
+        console.warn('Erreur lecture Supabase orders', err);
       }
     }
 
-    const allOrders = getStored<Order[]>(KEY_ORDERS, []);
-    // If client, filter to their orders
-    if (this.currentUser && this.currentUser.role === 'customer') {
-      return allOrders.filter((o) => o.customerId === this.currentUser?.id);
+    // 3. Charger depuis le stockage local (cache)
+    const storedOrders = getStored<Order[]>(KEY_ORDERS, []);
+    for (const ord of storedOrders) {
+      addOrUpdateOrder(ord);
     }
-    // Admin sees all
-    return allOrders;
+
+    // Trier par date décroissante
+    list.sort(
+      (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+    );
+
+    // Mettre à jour le cache local
+    setStored(KEY_ORDERS, list);
+
+    // Si client connecté, filtrer ses commandes
+    if (this.currentUser && this.currentUser.role === 'customer') {
+      const userPhoneNorm = normalizePhone(this.currentUser.phone || '');
+      return list.filter(
+        (o) =>
+          o.customerId === this.currentUser?.id ||
+          (this.currentBusiness && o.businessId === this.currentBusiness.id) ||
+          (userPhoneNorm && o.customerPhone && normalizePhone(o.customerPhone) === userPhoneNorm)
+      );
+    }
+
+    // L'administrateur voit l'ensemble des commandes
+    return list;
   }
 
   public async placeOrder(params: {
@@ -1396,10 +1502,30 @@ class StoreService {
       }
     }
 
+    // Synchroniser immédiatement avec le serveur local dev / réseau
+    await this.syncOrderToRemote(newOrder);
+
     // Persist locally
     const orders = getStored<Order[]>(KEY_ORDERS, []);
-    orders.unshift(newOrder);
+    const existingIdx = orders.findIndex((o) => o.id === newOrder.id);
+    if (existingIdx >= 0) {
+      orders[existingIdx] = newOrder;
+    } else {
+      orders.unshift(newOrder);
+    }
     setStored(KEY_ORDERS, orders);
+
+    // Diffuser aux autres onglets (Admin Dashboard)
+    if (this.broadcastChannel) {
+      try {
+        this.broadcastChannel.postMessage({
+          type: 'STORE_UPDATED',
+          action: 'NEW_ORDER',
+          order: newOrder,
+          timestamp: Date.now(),
+        });
+      } catch {}
+    }
 
     // Empty cart upon successful order
     this.clearCart();
@@ -1427,6 +1553,19 @@ class StoreService {
       if (reason) order.rejectionReason = reason;
       order.updatedAt = new Date().toISOString();
       setStored(KEY_ORDERS, orders);
+
+      await this.syncOrderToRemote(order);
+
+      if (this.broadcastChannel) {
+        try {
+          this.broadcastChannel.postMessage({
+            type: 'STORE_UPDATED',
+            action: 'UPDATE_ORDER_STATUS',
+            order,
+            timestamp: Date.now(),
+          });
+        } catch {}
+      }
       this.notify();
     }
   }
@@ -1455,8 +1594,49 @@ class StoreService {
     if (idx >= 0) {
       orders[idx] = { ...orders[idx], ...updatedOrder, updatedAt: new Date().toISOString() };
       setStored(KEY_ORDERS, orders);
+
+      await this.syncOrderToRemote(orders[idx]);
+
+      if (this.broadcastChannel) {
+        try {
+          this.broadcastChannel.postMessage({
+            type: 'STORE_UPDATED',
+            action: 'UPDATE_ORDER',
+            order: orders[idx],
+            timestamp: Date.now(),
+          });
+        } catch {}
+      }
       this.notify();
     }
+  }
+
+  public async deleteOrder(orderId: string): Promise<void> {
+    try {
+      fetch(`/api/sync/orders?id=${orderId}`, { method: 'DELETE' }).catch(() => {});
+    } catch {}
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from('orders').delete().eq('id', orderId);
+      } catch (e) {
+        console.warn('Error deleting order from Supabase', e);
+      }
+    }
+    const orders = getStored<Order[]>(KEY_ORDERS, []);
+    const filtered = orders.filter((o) => o.id !== orderId);
+    setStored(KEY_ORDERS, filtered);
+    if (this.broadcastChannel) {
+      try {
+        this.broadcastChannel.postMessage({
+          type: 'STORE_UPDATED',
+          action: 'DELETE_ORDER',
+          orderId,
+          timestamp: Date.now(),
+        });
+      } catch {}
+    }
+    this.notify();
   }
 
   // --- CLIENTS & BUSINESSES (ADMIN) ---
