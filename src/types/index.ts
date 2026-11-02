@@ -20,6 +20,7 @@ export interface UserProfile {
   phone: string;
   role: UserRole;
   createdAt: string;
+  lastSeenAt?: string;
 }
 
 export interface Business {
@@ -37,6 +38,7 @@ export interface Business {
   googleMapsUrl?: string;
   username?: string;
   ice?: string;
+  lastSeenAt?: string;
 }
 
 export interface Category {

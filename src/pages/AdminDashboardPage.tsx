@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { store } from '../services/store';
+import { store, isClientOnline, formatClientPresence } from '../services/store';
 import {
   Order,
   Product,
@@ -104,7 +104,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
 
   // Clients Tab search & filter state
   const [clientSearchQuery, setClientSearchQuery] = useState<string>('');
-  const [clientStatusFilter, setClientStatusFilter] = useState<'all' | 'approved' | 'pending' | 'suspended'>('all');
+  const [clientStatusFilter, setClientStatusFilter] = useState<'all' | 'approved' | 'pending' | 'suspended' | 'online' | 'offline'>('all');
   const [isRefreshingClients, setIsRefreshingClients] = useState<boolean>(false);
 
   // Daily Mercuriale / Price edits state
@@ -273,6 +273,15 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
     return unsub;
   }, []);
 
+  // Rafraîchissement automatique en temps réel de l'état de présence des clients
+  useEffect(() => {
+    if (activeTab !== 'clients') return;
+    const interval = setInterval(() => {
+      store.getBusinesses().then((bizs) => setBusinesses(bizs));
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [activeTab]);
+
   // Stats calculation
   const totalOrdersCount = orders.length;
   const pendingOrdersCount = orders.filter((o) => o.status === 'pending').length;
@@ -304,13 +313,23 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
     setTimeout(() => setIsRefreshingClients(false), 500);
   };
 
-  // Clients calculation & filtering
+  // Clients calculation & filtering (avec détection de présence en ligne)
   const pendingBusinessesCount = businesses.filter((b) => b.approvalStatus === 'pending').length;
   const approvedBusinessesCount = businesses.filter((b) => b.approvalStatus === 'approved').length;
   const suspendedBusinessesCount = businesses.filter((b) => b.approvalStatus === 'suspended').length;
+  const onlineBusinessesCount = businesses.filter((b) => isClientOnline(b.lastSeenAt)).length;
+  const offlineBusinessesCount = businesses.length - onlineBusinessesCount;
 
   const filteredBusinesses = businesses.filter((biz) => {
-    if (clientStatusFilter !== 'all' && biz.approvalStatus !== clientStatusFilter) return false;
+    if (clientStatusFilter === 'online' && !isClientOnline(biz.lastSeenAt)) return false;
+    if (clientStatusFilter === 'offline' && isClientOnline(biz.lastSeenAt)) return false;
+    if (
+      clientStatusFilter !== 'all' &&
+      clientStatusFilter !== 'online' &&
+      clientStatusFilter !== 'offline' &&
+      biz.approvalStatus !== clientStatusFilter
+    )
+      return false;
     if (clientSearchQuery.trim()) {
       const q = clientSearchQuery.toLowerCase().trim();
       const matchName = (biz.businessName || '').toLowerCase().includes(q);
@@ -1468,6 +1487,72 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
                 <span style={{ fontSize: '0.75rem', opacity: 0.85 }}>({businesses.length})</span>
               </button>
 
+              {/* Filtre En Ligne (avec point vert pulsant) */}
+              <button
+                onClick={() => setClientStatusFilter('online')}
+                style={{
+                  padding: '0.4rem 0.85rem',
+                  borderRadius: '20px',
+                  border: clientStatusFilter === 'online' ? '2px solid #16a34a' : '1px solid var(--border-light)',
+                  backgroundColor: clientStatusFilter === 'online' ? '#ecfdf5' : '#ffffff',
+                  color: clientStatusFilter === 'online' ? '#15803d' : 'var(--text-main)',
+                  fontWeight: clientStatusFilter === 'online' ? 700 : 500,
+                  fontSize: '0.82rem',
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.45rem',
+                }}
+              >
+                <span className="presence-dot online" />
+                <span>En Ligne</span>
+                <span
+                  style={{
+                    fontSize: '0.72rem',
+                    backgroundColor: clientStatusFilter === 'online' ? '#16a34a' : '#dcfce7',
+                    color: clientStatusFilter === 'online' ? '#ffffff' : '#166534',
+                    borderRadius: '10px',
+                    padding: '0.05rem 0.45rem',
+                    fontWeight: 700,
+                  }}
+                >
+                  {onlineBusinessesCount}
+                </span>
+              </button>
+
+              {/* Filtre Hors Ligne */}
+              <button
+                onClick={() => setClientStatusFilter('offline')}
+                style={{
+                  padding: '0.4rem 0.85rem',
+                  borderRadius: '20px',
+                  border: clientStatusFilter === 'offline' ? '2px solid #64748b' : '1px solid var(--border-light)',
+                  backgroundColor: clientStatusFilter === 'offline' ? '#f1f5f9' : '#ffffff',
+                  color: clientStatusFilter === 'offline' ? '#334155' : 'var(--text-main)',
+                  fontWeight: clientStatusFilter === 'offline' ? 700 : 500,
+                  fontSize: '0.82rem',
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.45rem',
+                }}
+              >
+                <span className="presence-dot offline" />
+                <span>Hors Ligne</span>
+                <span
+                  style={{
+                    fontSize: '0.72rem',
+                    backgroundColor: clientStatusFilter === 'offline' ? '#64748b' : '#f1f5f9',
+                    color: clientStatusFilter === 'offline' ? '#ffffff' : '#475569',
+                    borderRadius: '10px',
+                    padding: '0.05rem 0.45rem',
+                    fontWeight: 700,
+                  }}
+                >
+                  {offlineBusinessesCount}
+                </span>
+              </button>
+
               <button
                 onClick={() => setClientStatusFilter('pending')}
                 style={{
@@ -1669,6 +1754,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
                         <th>Responsable & Contact</th>
                         <th>Téléphone & WhatsApp</th>
                         <th>Ville & Localisation</th>
+                        <th>Présence / Dernière visite</th>
                         <th>Date Inscription</th>
                         <th>Statut</th>
                         <th>Actions</th>
@@ -1845,6 +1931,50 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
                               </a>
                             </td>
 
+                            {/* Présence & Dernière visite en ligne */}
+                            <td>
+                              {(() => {
+                                const presence = formatClientPresence(biz.lastSeenAt);
+                                return (
+                                  <div>
+                                    <div
+                                      style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '0.45rem',
+                                        padding: '0.22rem 0.65rem',
+                                        borderRadius: '12px',
+                                        backgroundColor: presence.isOnline ? '#ecfdf5' : '#f8fafc',
+                                        border: `1px solid ${presence.isOnline ? '#a7f3d0' : '#e2e8f0'}`,
+                                      }}
+                                    >
+                                      <span className={`presence-dot ${presence.isOnline ? 'online' : 'offline'}`} />
+                                      <span
+                                        style={{
+                                          fontSize: '0.76rem',
+                                          fontWeight: 700,
+                                          color: presence.isOnline ? '#065f46' : '#475569',
+                                        }}
+                                      >
+                                        {presence.statusText}
+                                      </span>
+                                    </div>
+                                    <div
+                                      style={{
+                                        fontSize: '0.72rem',
+                                        color: presence.isOnline ? '#047857' : '#64748b',
+                                        marginTop: '0.25rem',
+                                        fontWeight: presence.isOnline ? 600 : 400,
+                                        whiteSpace: 'nowrap',
+                                      }}
+                                    >
+                                      {presence.detailText}
+                                    </div>
+                                  </div>
+                                );
+                              })()}
+                            </td>
+
                             {/* Date & Heure Inscription */}
                             <td>
                               <div style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--primary-900)' }}>
@@ -1986,6 +2116,47 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
                             </span>
                           )}
                         </div>
+
+                        {/* Mobile Presence Status Banner (En Ligne / Hors Ligne) */}
+                        {(() => {
+                          const presence = formatClientPresence(biz.lastSeenAt);
+                          return (
+                            <div
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                padding: '0.42rem 0.7rem',
+                                backgroundColor: presence.isOnline ? '#f0fdf4' : '#f8fafc',
+                                border: `1px solid ${presence.isOnline ? '#bbf7d0' : '#e2e8f0'}`,
+                                borderRadius: '8px',
+                                margin: '0.6rem 0',
+                              }}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                                <span className={`presence-dot ${presence.isOnline ? 'online' : 'offline'}`} />
+                                <span
+                                  style={{
+                                    fontSize: '0.78rem',
+                                    fontWeight: 700,
+                                    color: presence.isOnline ? '#15803d' : '#475569',
+                                  }}
+                                >
+                                  {presence.statusText}
+                                </span>
+                              </div>
+                              <span
+                                style={{
+                                  fontSize: '0.73rem',
+                                  color: presence.isOnline ? '#166534' : '#64748b',
+                                  fontWeight: presence.isOnline ? 700 : 500,
+                                }}
+                              >
+                                {presence.detailText}
+                              </span>
+                            </div>
+                          );
+                        })()}
 
                         {/* Details Box */}
                         <div

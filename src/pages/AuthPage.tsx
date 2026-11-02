@@ -264,22 +264,22 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
             <button
               type="button"
               onClick={() => {
-                setIsLoginMode(false);
-                setErrorMsg(null);
-              }}
-              className={`auth-switcher-tab ${!isLoginMode ? 'active' : ''}`}
-            >
-              Inscription (Sign up)
-            </button>
-            <button
-              type="button"
-              onClick={() => {
                 setIsLoginMode(true);
                 setErrorMsg(null);
               }}
               className={`auth-switcher-tab ${isLoginMode ? 'active' : ''}`}
             >
-              Connexion (Sign in)
+              Se connecter
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setIsLoginMode(false);
+                setErrorMsg(null);
+              }}
+              className={`auth-switcher-tab ${!isLoginMode ? 'active' : ''}`}
+            >
+              S'inscrire (Sign up)
             </button>
           </div>
 

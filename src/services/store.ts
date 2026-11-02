@@ -21,10 +21,13 @@ import {
 } from '../data/mockData';
 import { supabase, isSupabaseConfigured } from './supabase';
 
-// Local storage keys
+// Storage keys
 const STORAGE_PREFIX = 'pont_agricole_';
-const KEY_USER = `${STORAGE_PREFIX}current_user`;
-const KEY_BUSINESS = `${STORAGE_PREFIX}current_business`;
+const KEY_USER = `${STORAGE_PREFIX}current_user`; // kept for legacy cleanup
+const KEY_BUSINESS = `${STORAGE_PREFIX}current_business`; // kept for legacy cleanup
+const KEY_SESSION_USER = `${STORAGE_PREFIX}session_user`;
+const KEY_SESSION_BUSINESS = `${STORAGE_PREFIX}session_business`;
+const KEY_PRESENCE = `${STORAGE_PREFIX}client_presence`;
 const KEY_PRODUCTS = `${STORAGE_PREFIX}products`;
 const KEY_CATEGORIES = `${STORAGE_PREFIX}categories`;
 const KEY_ORDERS = `${STORAGE_PREFIX}orders`;
@@ -49,6 +52,28 @@ function setStored<T>(key: string, value: T): void {
     localStorage.setItem(key, JSON.stringify(value));
   } catch (e) {
     console.error(`Error saving ${key}`, e);
+  }
+}
+
+// Helper for session storage (lives ONLY during the active browser tab session, no auto-login on new links)
+function getSessionStored<T>(key: string, defaultValue: T): T {
+  try {
+    const item = sessionStorage.getItem(key);
+    return item ? JSON.parse(item) : defaultValue;
+  } catch (e) {
+    return defaultValue;
+  }
+}
+
+function setSessionStored<T>(key: string, value: T): void {
+  try {
+    if (value === null || value === undefined) {
+      sessionStorage.removeItem(key);
+    } else {
+      sessionStorage.setItem(key, JSON.stringify(value));
+    }
+  } catch (e) {
+    console.error(`Error saving to sessionStorage ${key}`, e);
   }
 }
 
@@ -147,10 +172,15 @@ class StoreService {
       setStored(KEY_SETTINGS, st);
     }
 
-    // Authentification obligatoire : Visiteur non connecté par défaut
-    this.currentUser = getStored<UserProfile | null>(KEY_USER, null);
+    // Sécurité & Confidentialité B2B : Nettoyage impératif de toute persistance locale d'anciens comptes
+    // afin que l'ouverture du lien ne connecte JAMAIS automatiquement un utilisateur au compte précédent.
+    localStorage.removeItem(KEY_USER);
+    localStorage.removeItem(KEY_BUSINESS);
 
-    // Nettoyage impératif de toute ancienne session démo résiduelle (admin démo, Bennani, El Fassi)
+    // Authentification liée exclusivement à la session du navigateur (sessionStorage)
+    this.currentUser = getSessionStored<UserProfile | null>(KEY_SESSION_USER, null);
+
+    // Nettoyage impératif de toute ancienne session démo résiduelle
     const isMockUser =
       this.currentUser?.id === 'admin-001' ||
       this.currentUser?.id === 'user-resto-001' ||
@@ -163,7 +193,7 @@ class StoreService {
 
     if (isMockUser) {
       this.currentUser = null;
-      localStorage.removeItem(KEY_USER);
+      sessionStorage.removeItem(KEY_SESSION_USER);
     }
 
     // Sécurité stricte : Aucun utilisateur n'a le rôle admin sauf Achraf Abouziad
@@ -175,11 +205,11 @@ class StoreService {
 
       if (!isAchraf) {
         this.currentUser.role = 'customer';
-        setStored(KEY_USER, this.currentUser);
+        setSessionStored(KEY_SESSION_USER, this.currentUser);
       }
     }
 
-    this.currentBusiness = getStored<Business | null>(KEY_BUSINESS, null);
+    this.currentBusiness = getSessionStored<Business | null>(KEY_SESSION_BUSINESS, null);
     if (
       this.currentBusiness?.id === 'biz-client-001' ||
       this.currentBusiness?.id === 'biz-client-002' ||
@@ -189,7 +219,7 @@ class StoreService {
       this.currentBusiness?.businessName?.includes('Bistrot du Port')
     ) {
       this.currentBusiness = null;
-      localStorage.removeItem(KEY_BUSINESS);
+      sessionStorage.removeItem(KEY_SESSION_BUSINESS);
     }
     this.cart = getStored<CartItem[]>(KEY_CART, []);
   }
@@ -239,16 +269,19 @@ class StoreService {
             password: pass,
           });
           if (data?.user) {
+            const nowIso = new Date().toISOString();
             this.currentUser = {
               id: data.user.id,
               fullName: 'Achraf Abouziad (Directeur Fondateur)',
               phone: '+212 6 61 98 76 54',
               role: 'admin',
               createdAt: data.user.created_at,
+              lastSeenAt: nowIso,
             };
             this.currentBusiness = null;
-            setStored(KEY_USER, this.currentUser);
-            setStored(KEY_BUSINESS, this.currentBusiness);
+            setSessionStored(KEY_SESSION_USER, this.currentUser);
+            setSessionStored(KEY_SESSION_BUSINESS, this.currentBusiness);
+            this.touchPresence(this.currentUser.id, undefined, this.currentUser.phone);
             this.notify();
             return { success: true };
           }
@@ -258,16 +291,19 @@ class StoreService {
       }
 
       // Session Administrateur Autorisée
+      const nowIso = new Date().toISOString();
       this.currentUser = {
         id: 'usr-achraf-master-admin',
         fullName: 'Achraf Abouziad (Directeur Fondateur)',
         phone: '+212 6 61 98 76 54',
         role: 'admin',
-        createdAt: new Date().toISOString(),
+        createdAt: nowIso,
+        lastSeenAt: nowIso,
       };
       this.currentBusiness = null;
-      setStored(KEY_USER, this.currentUser);
-      setStored(KEY_BUSINESS, this.currentBusiness);
+      setSessionStored(KEY_SESSION_USER, this.currentUser);
+      setSessionStored(KEY_SESSION_BUSINESS, this.currentBusiness);
+      this.touchPresence(this.currentUser.id, undefined, this.currentUser.phone);
       this.notify();
       return { success: true };
     }
@@ -379,12 +415,14 @@ class StoreService {
             const { data: prof } = await supabase.from('profiles').select('*').eq('id', data.user.id).maybeSingle();
             const { data: biz } = await supabase.from('businesses').select('*').eq('owner_id', data.user.id).maybeSingle();
 
+            const nowIso = new Date().toISOString();
             this.currentUser = {
               id: data.user.id,
               fullName: prof?.full_name || data.user.user_metadata?.full_name || matchedBiz?.contact_name || matchedBiz?.contactName || 'Client Professionnel',
               phone: prof?.phone || data.user.user_metadata?.phone || matchedBiz?.phone || '',
               role: 'customer',
               createdAt: data.user.created_at,
+              lastSeenAt: nowIso,
             };
 
             this.currentBusiness = {
@@ -401,10 +439,12 @@ class StoreService {
               email: emailTry,
               googleMapsUrl: biz?.google_maps_url || data.user.user_metadata?.google_maps_url || matchedBiz?.google_maps_url || matchedBiz?.googleMapsUrl,
               username: biz?.username || data.user.user_metadata?.username || matchedBiz?.username,
+              lastSeenAt: nowIso,
             };
 
-            setStored(KEY_USER, this.currentUser);
-            setStored(KEY_BUSINESS, this.currentBusiness);
+            setSessionStored(KEY_SESSION_USER, this.currentUser);
+            setSessionStored(KEY_SESSION_BUSINESS, this.currentBusiness);
+            this.touchPresence(this.currentUser.id, this.currentBusiness?.id, this.currentUser.phone);
             this.notify();
             return { success: true };
           }
@@ -427,12 +467,14 @@ class StoreService {
 
     // E. Fallback local pour utilisateurs enregistrés localement
     if (matchedBiz) {
+      const nowIso = new Date().toISOString();
       this.currentUser = {
         id: matchedBiz.ownerId || matchedBiz.owner_id || `usr-${Date.now()}`,
         fullName: matchedBiz.contactName || matchedBiz.contact_name || matchedBiz.businessName || matchedBiz.business_name,
         phone: matchedBiz.phone || '+212 6 00 00 00 00',
         role: 'customer',
         createdAt: matchedBiz.createdAt || matchedBiz.created_at || new Date().toISOString(),
+        lastSeenAt: nowIso,
       };
       this.currentBusiness = {
         id: matchedBiz.id,
@@ -448,9 +490,11 @@ class StoreService {
         email: matchedBiz.email || uniqueCandidates[0],
         googleMapsUrl: matchedBiz.googleMapsUrl || matchedBiz.google_maps_url,
         username: matchedBiz.username,
+        lastSeenAt: nowIso,
       };
-      setStored(KEY_USER, this.currentUser);
-      setStored(KEY_BUSINESS, this.currentBusiness);
+      setSessionStored(KEY_SESSION_USER, this.currentUser);
+      setSessionStored(KEY_SESSION_BUSINESS, this.currentBusiness);
+      this.touchPresence(this.currentUser.id, this.currentBusiness?.id, this.currentUser.phone);
       this.notify();
       return { success: true };
     }
@@ -570,12 +614,14 @@ class StoreService {
           console.warn('Business direct save warning', be);
         }
 
+        const nowIso = new Date().toISOString();
         this.currentUser = {
           id: userId,
           fullName: params.fullName,
           phone: params.phone,
           role: 'customer',
-          createdAt: data.user?.created_at || new Date().toISOString(),
+          createdAt: data.user?.created_at || nowIso,
+          lastSeenAt: nowIso,
         };
 
         this.currentBusiness = {
@@ -586,12 +632,13 @@ class StoreService {
           city: params.city,
           deliveryAddress: params.deliveryAddress,
           approvalStatus: 'approved',
-          createdAt: new Date().toISOString(),
+          createdAt: nowIso,
           contactName: params.fullName,
           phone: params.phone,
           email: finalEmail,
           googleMapsUrl: params.googleMapsUrl,
           username: nameSlug,
+          lastSeenAt: nowIso,
         };
 
         // Sauvegarder dans la liste pour consultation admin
@@ -601,8 +648,9 @@ class StoreService {
         else allBiz.unshift(this.currentBusiness);
         setStored(KEY_BUSINESSES, allBiz);
 
-        setStored(KEY_USER, this.currentUser);
-        setStored(KEY_BUSINESS, this.currentBusiness);
+        setSessionStored(KEY_SESSION_USER, this.currentUser);
+        setSessionStored(KEY_SESSION_BUSINESS, this.currentBusiness);
+        this.touchPresence(this.currentUser.id, this.currentBusiness?.id, this.currentUser.phone);
         this.notify();
         return { success: true };
       } catch (err: any) {
@@ -611,6 +659,7 @@ class StoreService {
     }
 
     // Fallback registration with local persistence
+    const nowIso = new Date().toISOString();
     const newUserId = `usr-${Date.now()}`;
     const newBizId = `biz-${Date.now()}`;
     const newProfile: UserProfile = {
@@ -618,7 +667,8 @@ class StoreService {
       fullName: params.fullName,
       phone: params.phone,
       role: 'customer',
-      createdAt: new Date().toISOString(),
+      createdAt: nowIso,
+      lastSeenAt: nowIso,
     };
     const newBusiness: Business = {
       id: newBizId,
@@ -628,12 +678,13 @@ class StoreService {
       city: params.city,
       deliveryAddress: params.deliveryAddress,
       approvalStatus: 'approved',
-      createdAt: new Date().toISOString(),
+      createdAt: nowIso,
       contactName: params.fullName,
       phone: params.phone,
       email: finalEmail,
       googleMapsUrl: params.googleMapsUrl,
       username: nameSlug,
+      lastSeenAt: nowIso,
     };
 
     // Save in all businesses list for admin
@@ -643,21 +694,102 @@ class StoreService {
 
     this.currentUser = newProfile;
     this.currentBusiness = newBusiness;
-    setStored(KEY_USER, this.currentUser);
-    setStored(KEY_BUSINESS, this.currentBusiness);
+    setSessionStored(KEY_SESSION_USER, this.currentUser);
+    setSessionStored(KEY_SESSION_BUSINESS, this.currentBusiness);
+    this.touchPresence(newUserId, newBizId, params.phone);
     this.notify();
     return { success: true };
   }
 
   public async logout(): Promise<void> {
+    if (this.currentUser) {
+      this.touchPresence(this.currentUser.id, this.currentBusiness?.id, this.currentUser.phone);
+    }
     if (isSupabaseConfigured && supabase) {
-      await supabase.auth.signOut();
+      try {
+        await supabase.auth.signOut();
+      } catch {
+        // ignorer
+      }
     }
     this.currentUser = null;
     this.currentBusiness = null;
+    sessionStorage.removeItem(KEY_SESSION_USER);
+    sessionStorage.removeItem(KEY_SESSION_BUSINESS);
     localStorage.removeItem(KEY_USER);
     localStorage.removeItem(KEY_BUSINESS);
     this.notify();
+  }
+
+  // --- PRESENCE & ACTIVITÉ EN LIGNE ---
+  public touchPresence(userId?: string, businessId?: string, phone?: string): void {
+    try {
+      const presenceMap = getStored<Record<string, string>>(KEY_PRESENCE, {});
+      const nowIso = new Date().toISOString();
+
+      if (userId) presenceMap[userId] = nowIso;
+      if (businessId) presenceMap[businessId] = nowIso;
+      if (phone) {
+        const norm = normalizePhone(phone);
+        if (norm) presenceMap[norm] = nowIso;
+      }
+      setStored(KEY_PRESENCE, presenceMap);
+
+      // Mettre à jour la date d'activité dans le cache local des entreprises
+      const allBiz = getStored<Business[]>(KEY_BUSINESSES, []);
+      let modified = false;
+      for (const b of allBiz) {
+        const bNorm = normalizePhone(b.phone || '');
+        const pNorm = phone ? normalizePhone(phone) : '';
+        if (
+          (businessId && b.id === businessId) ||
+          (userId && b.ownerId === userId) ||
+          (pNorm && bNorm && (bNorm === pNorm || bNorm.endsWith(pNorm) || pNorm.endsWith(bNorm)))
+        ) {
+          b.lastSeenAt = nowIso;
+          modified = true;
+        }
+      }
+      if (modified) {
+        setStored(KEY_BUSINESSES, allBiz);
+      }
+
+      // Synchroniser avec Supabase en arrière-plan si disponible
+      if (isSupabaseConfigured && supabase) {
+        if (businessId) {
+          supabase
+            .from('businesses')
+            .update({ last_seen_at: nowIso } as any)
+            .eq('id', businessId)
+            .then(() => {})
+            .catch(() => {});
+        }
+        if (userId) {
+          supabase
+            .from('profiles')
+            .update({ last_seen_at: nowIso } as any)
+            .eq('id', userId)
+            .then(() => {})
+            .catch(() => {});
+        }
+      }
+    } catch (e) {
+      console.warn('Could not record presence', e);
+    }
+  }
+
+  public updateLastSeen(): void {
+    if (!this.currentUser) return;
+    const nowIso = new Date().toISOString();
+    this.currentUser.lastSeenAt = nowIso;
+    if (this.currentBusiness) {
+      this.currentBusiness.lastSeenAt = nowIso;
+    }
+    setSessionStored(KEY_SESSION_USER, this.currentUser);
+    if (this.currentBusiness) {
+      setSessionStored(KEY_SESSION_BUSINESS, this.currentBusiness);
+    }
+    this.touchPresence(this.currentUser.id, this.currentBusiness?.id, this.currentUser.phone);
   }
 
   // Quick switch for client testing (Admin is strictly locked to achrafabouziad credentials)
@@ -1092,6 +1224,7 @@ class StoreService {
           profMap = new Map(profData.map((p: any) => [p.id, p]));
         }
 
+        const presenceMap = getStored<Record<string, string>>(KEY_PRESENCE, {});
         const bOwnerIds = new Set<string>();
 
         if (!bizError && bizData && bizData.length > 0) {
@@ -1099,6 +1232,13 @@ class StoreService {
             const prof = profMap.get(b.owner_id);
             const bPhone = b.phone || prof?.phone || '';
             const normPhone = normalizePhone(bPhone);
+
+            const lastSeen =
+              presenceMap[b.id] ||
+              (b.owner_id && presenceMap[b.owner_id]) ||
+              (normPhone && presenceMap[normPhone]) ||
+              b.last_seen_at ||
+              prof?.last_seen_at;
 
             const bizObj: Business = {
               id: b.id,
@@ -1114,6 +1254,7 @@ class StoreService {
               email: b.email || prof?.email || '',
               googleMapsUrl: b.google_maps_url || undefined,
               username: b.username || undefined,
+              lastSeenAt: lastSeen || undefined,
             };
 
             list.push(bizObj);
@@ -1131,6 +1272,12 @@ class StoreService {
               const pPhone = prof.phone || '';
               const pNorm = normalizePhone(pPhone);
               if (!pNorm || !seenPhones.has(pNorm)) {
+                const pLastSeen =
+                  presenceMap[`biz-${prof.id}`] ||
+                  presenceMap[prof.id] ||
+                  (pNorm && presenceMap[pNorm]) ||
+                  prof.last_seen_at;
+
                 const syntheticBiz: Business = {
                   id: `biz-${prof.id}`,
                   ownerId: prof.id,
@@ -1143,6 +1290,7 @@ class StoreService {
                   contactName: prof.full_name,
                   phone: pPhone,
                   email: prof.email || '',
+                  lastSeenAt: pLastSeen || undefined,
                 };
                 list.push(syntheticBiz);
                 seenIds.add(syntheticBiz.id);
@@ -1158,6 +1306,7 @@ class StoreService {
 
     // 4. Merge with local businesses saved from registrations
     const localBusinesses = getStored<Business[]>(KEY_BUSINESSES, []);
+    const presenceMap = getStored<Record<string, string>>(KEY_PRESENCE, {});
 
     for (const lb of localBusinesses) {
       const lbNorm = normalizePhone(lb.phone || '');
@@ -1165,6 +1314,14 @@ class StoreService {
         seenIds.has(lb.id) ||
         (lb.ownerId && seenIds.has(lb.ownerId)) ||
         (lbNorm && seenPhones.has(lbNorm));
+
+      const lbLastSeen =
+        presenceMap[lb.id] ||
+        (lb.ownerId && presenceMap[lb.ownerId]) ||
+        (lbNorm && presenceMap[lbNorm]) ||
+        lb.lastSeenAt;
+
+      lb.lastSeenAt = lbLastSeen || undefined;
 
       if (!isAlreadyIncluded) {
         list.push(lb);
@@ -1192,7 +1349,7 @@ class StoreService {
       // If current business was updated, sync it
       if (this.currentBusiness && this.currentBusiness.id === businessId) {
         this.currentBusiness.approvalStatus = status;
-        setStored(KEY_BUSINESS, this.currentBusiness);
+        setSessionStored(KEY_SESSION_BUSINESS, this.currentBusiness);
       }
       this.notify();
     }
@@ -1321,3 +1478,96 @@ class StoreService {
 }
 
 export const store = new StoreService();
+
+// Helper to determine whether a client is currently active online (within 3 minutes)
+export function isClientOnline(lastSeenAt?: string): boolean {
+  if (!lastSeenAt) return false;
+  const time = new Date(lastSeenAt).getTime();
+  if (isNaN(time)) return false;
+  const diffMs = Date.now() - time;
+  return diffMs >= 0 && diffMs < 3 * 60 * 1000;
+}
+
+// Helper to format presence status text and relative last seen timestamp
+export function formatClientPresence(lastSeenAt?: string): {
+  isOnline: boolean;
+  statusText: string;
+  detailText: string;
+} {
+  if (!lastSeenAt) {
+    return {
+      isOnline: false,
+      statusText: 'Hors ligne',
+      detailText: 'Aucune visite enregistrée',
+    };
+  }
+  const date = new Date(lastSeenAt);
+  const time = date.getTime();
+  if (isNaN(time)) {
+    return {
+      isOnline: false,
+      statusText: 'Hors ligne',
+      detailText: 'Date inconnue',
+    };
+  }
+
+  const diffMs = Date.now() - time;
+  // If active in the last 3 minutes
+  if (diffMs >= 0 && diffMs < 3 * 60 * 1000) {
+    return {
+      isOnline: true,
+      statusText: 'En ligne',
+      detailText: 'Actif en ce moment',
+    };
+  }
+
+  const diffMins = Math.floor(diffMs / (60 * 1000));
+  const hours = String(date.getHours()).padStart(2, '0');
+  const mins = String(date.getMinutes()).padStart(2, '0');
+  const timeStr = `${hours}:${mins}`;
+
+  if (diffMins < 60) {
+    return {
+      isOnline: false,
+      statusText: 'Hors ligne',
+      detailText: `Vu il y a ${Math.max(1, diffMins)} min`,
+    };
+  }
+
+  const now = new Date();
+  const isToday =
+    now.getFullYear() === date.getFullYear() &&
+    now.getMonth() === date.getMonth() &&
+    now.getDate() === date.getDate();
+
+  if (isToday) {
+    return {
+      isOnline: false,
+      statusText: 'Hors ligne',
+      detailText: `Aujourd'hui à ${timeStr}`,
+    };
+  }
+
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const isYesterday =
+    yesterday.getFullYear() === date.getFullYear() &&
+    yesterday.getMonth() === date.getMonth() &&
+    yesterday.getDate() === date.getDate();
+
+  if (isYesterday) {
+    return {
+      isOnline: false,
+      statusText: 'Hors ligne',
+      detailText: `Hier à ${timeStr}`,
+    };
+  }
+
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  return {
+    isOnline: false,
+    statusText: 'Hors ligne',
+    detailText: `Le ${day}/${month} à ${timeStr}`,
+  };
+}

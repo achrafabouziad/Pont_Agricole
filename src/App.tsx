@@ -27,6 +27,38 @@ export function App() {
     return unsub;
   }, []);
 
+  // Heartbeat de présence : signale régulièrement l'état en ligne tant que l'utilisateur est actif
+  useEffect(() => {
+    if (!currentUser) return;
+
+    // Ping immédiat à la connexion ou au focus
+    store.updateLastSeen();
+
+    // Envoi régulier toutes les 30 secondes
+    const interval = setInterval(() => {
+      store.updateLastSeen();
+    }, 30000);
+
+    const handleFocus = () => {
+      store.updateLastSeen();
+    };
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        store.updateLastSeen();
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [currentUser]);
+
   useEffect(() => {
     // Synchroniser la route depuis l'URL en protégeant strictement l'accès admin
     const syncRouteFromUrl = () => {
@@ -90,12 +122,13 @@ export function App() {
   };
 
   // VERROUILLAGE B2B STRICT : Le visiteur ne peut pas voir l'accueil sans être inscrit / connecté
+  // Dès l'ouverture du lien, affiche la page de Connexion (Se connecter) ou Inscription (Sign up)
   if (!currentUser) {
     return (
       <div style={{ minHeight: '100vh', backgroundColor: '#f6f7f6', display: 'flex', flexDirection: 'column' }}>
         <main style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <AuthPage
-            initialMode="register"
+            initialMode="login"
             onSuccess={() => {
               const u = store.getCurrentUser();
               if (u?.role === 'admin') {
