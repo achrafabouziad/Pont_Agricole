@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, Sparkles, CheckCircle2 } from 'lucide-react';
+import { Search, Filter, Sparkles, CheckCircle2, X } from 'lucide-react';
 import { ProductCard } from '../components/ProductCard';
 import { store } from '../services/store';
 import { Category, Product } from '../types';
@@ -67,64 +67,61 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({ initialCategoryId, onO
     <div className="catalog-page-wrapper">
       <div className="container">
         {/* Header & Title */}
+        {/* Header & Title */}
         <div className="catalog-header">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
+          <div className="catalog-header-badges">
             <span className="badge badge-brand">Tarifs Professionnels B2B</span>
-            <span
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.45rem',
-                backgroundColor: 'var(--primary-50)',
-                color: 'var(--primary-800)',
-                border: '1px solid var(--primary-200)',
-                borderRadius: 'var(--radius-xs)',
-                padding: '0.35rem 0.75rem',
-                fontSize: '0.82rem',
-                fontWeight: 700,
-              }}
-            >
-              <span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: 'var(--primary-600)', display: 'inline-block' }} />
+            <span className="catalog-live-badge">
+              <span className="catalog-live-dot" />
               Cours du jour actualisés
             </span>
-            <span style={{ fontSize: '0.88rem', color: 'var(--text-muted)' }}>Facturation en Dirham Marocain (MAD)</span>
+            <span className="catalog-currency-pill">Facturation MAD</span>
           </div>
-          <h1 style={{ fontSize: 'clamp(1.75rem, 5vw, 2.4rem)', fontWeight: 800, color: 'var(--primary-950)', marginBottom: '0.5rem', letterSpacing: '-0.02em' }}>
+          <h1 className="catalog-title">
             Catalogue Produits Frais
           </h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.98rem', maxWidth: '680px', lineHeight: 1.5 }}>
+          <p className="catalog-subtitle">
             Approvisionnement direct pour Cafés, Restaurants et Hôtels au Maroc.
           </p>
         </div>
 
         {/* Filters and Search Bar Container */}
-        <div className="card catalog-filter-card">
+        <div className="catalog-filter-card">
           {/* Top Row: Search and Quick Toggles */}
           <div className="catalog-filter-top">
             {/* Search Input */}
             <div className="catalog-search-wrap">
               <Search
-                size={19}
-                style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-light)' }}
+                size={18}
+                className="catalog-search-icon"
               />
               <input
                 type="text"
-                className="form-input"
+                className="catalog-search-input"
                 placeholder="Rechercher tomates, menthe, citrons..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                style={{ paddingLeft: '2.5rem', minHeight: '44px', fontSize: '16px' }}
               />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="catalog-search-clear"
+                  aria-label="Effacer la recherche"
+                >
+                  <X size={15} />
+                </button>
+              )}
             </div>
 
             {/* Quick row for unit & in-stock */}
             <div className="catalog-filter-subrow">
-              <div style={{ flex: 1, minWidth: '130px' }}>
+              <div className="catalog-unit-select-wrap">
                 <select
-                  className="form-select"
+                  className="catalog-unit-select"
                   value={selectedUnit}
                   onChange={(e) => setSelectedUnit(e.target.value)}
-                  style={{ padding: '0.65rem 0.85rem', fontSize: '16px', minHeight: '44px' }}
+                  aria-label="Filtrer par unité"
                 >
                   <option value="all">Toutes unités</option>
                   <option value="caisse">Caisse</option>
@@ -136,12 +133,11 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({ initialCategoryId, onO
               </div>
 
               {/* In stock only toggle */}
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', fontSize: '0.92rem', fontWeight: 600, cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
+              <label className={`catalog-stock-toggle ${onlyAvailable ? 'active' : ''}`}>
                 <input
                   type="checkbox"
                   checked={onlyAvailable}
                   onChange={(e) => setOnlyAvailable(e.target.checked)}
-                  style={{ width: '18px', height: '18px', accentColor: 'var(--primary-600)', cursor: 'pointer' }}
                 />
                 <span>En stock</span>
               </label>
@@ -149,12 +145,13 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({ initialCategoryId, onO
           </div>
 
           {/* Category Tabs */}
-          <div className="mobile-scroll-pills catalog-pills-bar" style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '0.85rem' }}>
+          <div className="catalog-category-rail">
             <button
               onClick={() => setSelectedCategory('all')}
-              className={`btn btn-sm ${selectedCategory === 'all' ? 'btn-primary' : 'btn-secondary'}`}
+              className={`catalog-cat-pill ${selectedCategory === 'all' ? 'active' : ''}`}
             >
-              Tous les produits ({products.length})
+              <span>Tous les produits</span>
+              <span className="catalog-cat-count">{products.length}</span>
             </button>
             {categories.map((cat) => {
               const count = products.filter((p) => p.categoryId === cat.id).length;
@@ -163,9 +160,10 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({ initialCategoryId, onO
                 <button
                   key={cat.id}
                   onClick={() => setSelectedCategory(cat.id)}
-                  className={`btn btn-sm ${isSelected ? 'btn-primary' : 'btn-secondary'}`}
+                  className={`catalog-cat-pill ${isSelected ? 'active' : ''}`}
                 >
-                  {cat.name} ({count})
+                  <span>{cat.name}</span>
+                  <span className="catalog-cat-count">{count}</span>
                 </button>
               );
             })}
