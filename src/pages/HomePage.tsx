@@ -3,7 +3,7 @@ import { Hero } from '../components/Hero';
 import { ProductCard } from '../components/ProductCard';
 import { store } from '../services/store';
 import { Category, Product } from '../types';
-import { Utensils, Coffee, Hotel, ArrowRight } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 
 interface HomePageProps {
   onNavigate: (page: string) => void;
@@ -132,75 +132,6 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectCategory
                 onAddToCart={handleAddToCart}
               />
             ))}
-          </div>
-        </div>
-      </section>
-
-      {/* 4. Destiné aux CHR */}
-      <section id="solutions" className="home-solutions-section">
-        <div className="container">
-          <div className="home-solutions-grid">
-            <div className="home-solutions-content">
-              <span className="badge badge-brand" style={{ marginBottom: '0.5rem' }}>
-                Solutions CHR
-              </span>
-              <h2 className="home-section-title">
-                Cafés, Restaurants, Hôtels & Traiteurs
-              </h2>
-              <p className="home-section-subtitle" style={{ marginBottom: '1.25rem' }}>
-                Pont Agricole adapte ses volumes et ses fréquences de livraison à votre rythme quotidien.
-              </p>
-
-              <div className="home-solutions-list">
-                <div className="solution-item">
-                  <div className="solution-icon">
-                    <Utensils size={17} />
-                  </div>
-                  <div>
-                    <strong className="solution-name">Restaurants & Brasseries</strong>
-                    <span className="solution-sub">Herbes fraîches cueillies le matin, primeurs calibrés au millimètre.</span>
-                  </div>
-                </div>
-
-                <div className="solution-item">
-                  <div className="solution-icon">
-                    <Hotel size={17} />
-                  </div>
-                  <div>
-                    <strong className="solution-name">Hôtels & Resorts</strong>
-                    <span className="solution-sub">Volumes réguliers pour buffets et petits-déjeuners d'hôtels.</span>
-                  </div>
-                </div>
-
-                <div className="solution-item">
-                  <div className="solution-icon">
-                    <Coffee size={17} />
-                  </div>
-                  <div>
-                    <strong className="solution-name">Cafés & Salons de Thé</strong>
-                    <span className="solution-sub">Menthe fraîche marocaine, citrons et agrumes pour jus pressés minute.</span>
-                  </div>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => onNavigate('catalog')}
-                className="btn btn-primary"
-                style={{ marginTop: '1.25rem' }}
-              >
-                <span>Commander sur le Catalogue</span>
-                <ArrowRight size={16} />
-              </button>
-            </div>
-
-            <div className="home-solutions-img-wrap">
-              <img
-                src="https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=900&q=80"
-                alt="Cuisine professionnelle"
-                className="home-solutions-img"
-              />
-            </div>
           </div>
         </div>
       </section>

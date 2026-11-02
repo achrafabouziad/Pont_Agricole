@@ -55,15 +55,6 @@ export const Hero: React.FC<HeroProps> = ({ onExploreCatalog, onCreateAccount })
                 <span>Consulter le Catalogue & Prix du Jour</span>
                 <ArrowRight size={16} />
               </button>
-              <button
-                type="button"
-                onClick={() => {
-                  document.getElementById('solutions')?.scrollIntoView({ behavior: 'smooth' });
-                }}
-                className="btn btn-secondary btn-lg hero-secondary-btn"
-              >
-                <span>Solutions CHR</span>
-              </button>
             </div>
 
             {/* Trust Points */}
