@@ -40,6 +40,8 @@ export interface Business {
   ice?: string;
   lastSeenAt?: string;
   password?: string;
+  verificationChannel?: 'email' | 'phone';
+  isVerified?: boolean;
 }
 
 export interface Category {

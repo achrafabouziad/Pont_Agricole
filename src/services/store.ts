@@ -637,42 +637,32 @@ class StoreService {
     };
   }
 
-  public async register(params: {
-    fullName: string;
-    phone: string;
-    email?: string;
-    password: string;
-    businessName: string;
-    businessType: BusinessType;
-    city: string;
-    deliveryAddress: string;
-    googleMapsUrl?: string;
-  }): Promise<{ success: boolean; error?: string }> {
-    const normPhone = normalizePhone(params.phone);
-    const cleanDigits = params.phone.replace(/[^0-9]/g, '');
-    const nameSlug = params.fullName.toLowerCase().trim().replace(/[^a-z0-9]/g, '');
-    const userEmail = params.email ? params.email.trim().toLowerCase() : '';
+  public async checkAvailability(
+    phone: string,
+    email?: string
+  ): Promise<{ available: boolean; error?: string }> {
+    const normPhone = normalizePhone(phone);
+    const cleanDigits = phone.replace(/[^0-9]/g, '');
+    const userEmail = email ? email.trim().toLowerCase() : '';
 
-    // 1. Validation stricte du numéro de téléphone (MANDATAIRE pour la connexion)
-    if (!params.phone || cleanDigits.length < 9) {
+    if (!phone || cleanDigits.length < 9) {
       return {
-        success: false,
-        error: "Veuillez renseigner un numéro de téléphone valide d'au moins 9 à 10 chiffres (ex: 06 61 23 45 67). Ce numéro est obligatoire pour vous connecter à votre compte.",
+        available: false,
+        error: "Veuillez renseigner un numéro de téléphone valide d'au moins 9 chiffres. Ce numéro est obligatoire pour vous connecter à votre compte.",
       };
     }
 
-    // 2. Validation de l'email SI renseigné (Email est OPTIONNEL)
     if (userEmail) {
       const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
       if (!emailRegex.test(userEmail)) {
         return {
-          success: false,
+          available: false,
           error: "Veuillez saisir une adresse email valide (ex: contact@restaurant.ma) ou laisser le champ email vide.",
         };
       }
     }
 
-    // 3. VÉRIFICATION STRICTE DES DOUBLONS DANS LE CACHE LOCAL
+    // 1. Vérification dans le cache local
     const localBusinesses = getStored<Business[]>(KEY_BUSINESSES, []);
     const phoneExistsLocal = localBusinesses.some((b) => {
       const bNorm = normalizePhone(b.phone || '');
@@ -680,7 +670,7 @@ class StoreService {
     });
     if (phoneExistsLocal) {
       return {
-        success: false,
+        available: false,
         error: "Ce numéro de téléphone est déjà associé à un compte existant. Veuillez vous connecter.",
       };
     }
@@ -691,13 +681,13 @@ class StoreService {
       );
       if (emailExistsLocal) {
         return {
-          success: false,
+          available: false,
           error: "Cette adresse email est déjà associée à un compte existant. Veuillez vous connecter ou utiliser un autre email.",
         };
       }
     }
 
-    // 4. VÉRIFICATION DES DOUBLONS SUR LE SERVEUR SYNC (RÉSEAU LOCAL / MULTI-APPAREILS)
+    // 2. Vérification sur le serveur sync (réseau local / multi-appareils)
     try {
       if (typeof fetch !== 'undefined') {
         const syncRes = await fetch('/api/sync/clients', { cache: 'no-store' });
@@ -710,7 +700,7 @@ class StoreService {
             });
             if (phoneMatch) {
               return {
-                success: false,
+                available: false,
                 error: "Ce numéro de téléphone est déjà enregistré sur la plateforme. Veuillez vous connecter.",
               };
             }
@@ -720,7 +710,7 @@ class StoreService {
               );
               if (emailMatch) {
                 return {
-                  success: false,
+                  available: false,
                   error: "Cette adresse email est déjà associée à un compte existant. Veuillez vous connecter.",
                 };
               }
@@ -730,7 +720,7 @@ class StoreService {
       }
     } catch {}
 
-    // 5. VÉRIFICATION DES DOUBLONS DANS SUPABASE (SI CONFIGURÉ)
+    // 3. Vérification dans Supabase (si configuré)
     if (isSupabaseConfigured && supabase) {
       try {
         const { data: dbBizs } = await supabase.from('businesses').select('phone, email').limit(1000);
@@ -741,7 +731,7 @@ class StoreService {
           });
           if (sbPhoneMatch) {
             return {
-              success: false,
+              available: false,
               error: "Ce numéro de téléphone est déjà enregistré dans notre base de données. Veuillez vous connecter.",
             };
           }
@@ -749,7 +739,7 @@ class StoreService {
             const sbEmailMatch = dbBizs.some((b: any) => b.email && b.email.toLowerCase().trim() === userEmail);
             if (sbEmailMatch) {
               return {
-                success: false,
+                available: false,
                 error: "Cette adresse email est déjà associée à un compte existant. Veuillez vous connecter.",
               };
             }
@@ -758,8 +748,33 @@ class StoreService {
       } catch {}
     }
 
+    return { available: true };
+  }
+
+  public async register(params: {
+    fullName: string;
+    phone: string;
+    email?: string;
+    password: string;
+    businessName: string;
+    businessType: BusinessType;
+    city: string;
+    deliveryAddress: string;
+    googleMapsUrl?: string;
+    verificationChannel?: 'email' | 'phone';
+  }): Promise<{ success: boolean; error?: string }> {
+    const avail = await this.checkAvailability(params.phone, params.email);
+    if (!avail.available) {
+      return { success: false, error: avail.error };
+    }
+
+    const normPhone = normalizePhone(params.phone);
+    const cleanDigits = params.phone.replace(/[^0-9]/g, '');
+    const nameSlug = params.fullName.toLowerCase().trim().replace(/[^a-z0-9]/g, '');
+    const userEmail = params.email ? params.email.trim().toLowerCase() : '';
     const finalEmail = userEmail || `${cleanDigits}@phone.pontagricole.com`;
     const nowIso = new Date().toISOString();
+    const verificationChannel = params.verificationChannel || (userEmail ? 'email' : 'phone');
 
     if (isSupabaseConfigured && supabase) {
       try {
@@ -887,6 +902,8 @@ class StoreService {
           username: nameSlug,
           lastSeenAt: nowIso,
           password: params.password,
+          verificationChannel,
+          isVerified: true,
         };
 
         // Sauvegarder les identifiants en local
@@ -951,6 +968,8 @@ class StoreService {
       username: nameSlug,
       lastSeenAt: nowIso,
       password: params.password,
+      verificationChannel,
+      isVerified: true,
     };
 
     // Sauvegarder les identifiants
