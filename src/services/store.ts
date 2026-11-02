@@ -589,6 +589,7 @@ class StoreService {
       const bNorm = normalizePhone(matchedBiz.phone || '');
       const bDigits = (matchedBiz.phone || '').replace(/[^0-9]/g, '');
       const storedPass =
+        matchedBiz.password ||
         (bNorm && creds[bNorm]) ||
         (bDigits && creds[bDigits]) ||
         (matchedBiz.email && creds[matchedBiz.email.toLowerCase().trim()]) ||
@@ -825,7 +826,7 @@ class StoreService {
     const nowIso = new Date().toISOString();
     const verificationChannel = params.verificationChannel || (userEmail ? 'email' : 'phone');
 
-    if (userEmail && isSupabaseConfigured && supabase) {
+    if (isSupabaseConfigured && supabase) {
       try {
         const { data, error } = await supabase.auth.signUp({
           email: finalEmail,
@@ -849,7 +850,7 @@ class StoreService {
           if (error.message.toLowerCase().includes('already registered')) {
             return {
               success: false,
-              error: 'Un compte existe déjà avec ce numéro de téléphone ou cet email. Connectez-vous directement.',
+              error: 'Un compte existe déjà avec ce numéro de téléphone ou cet identifiant. Connectez-vous directement.',
             };
           }
 
@@ -906,6 +907,7 @@ class StoreService {
                 email: finalEmail,
                 google_maps_url: params.googleMapsUrl || null,
                 username: finalUsername,
+                password: params.password,
                 approval_status: 'approved',
                 updated_at: new Date().toISOString(),
               }).eq('id', existingBiz.id);
@@ -921,6 +923,7 @@ class StoreService {
                 email: finalEmail,
                 google_maps_url: params.googleMapsUrl || null,
                 username: finalUsername,
+                password: params.password,
                 approval_status: 'approved',
               }).select().single();
 

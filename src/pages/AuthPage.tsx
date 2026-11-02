@@ -385,6 +385,9 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
                   placeholder="Ex: reda_ab ou 0694350619"
                   value={loginIdentifier}
                   onChange={(e) => setLoginIdentifier(e.target.value)}
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
                   required
                 />
               </div>
@@ -399,6 +402,9 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
                   placeholder="••••••••"
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
                   required
                 />
                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.45rem' }}>
@@ -660,6 +666,9 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
                     placeholder="Ex: reda_ab ou bistrot_casa"
                     value={username}
                     onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_.-]/g, ''))}
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
                     required
                   />
                   <div style={{ fontSize: '0.69rem', color: '#64748b', marginTop: '0.2rem' }}>
