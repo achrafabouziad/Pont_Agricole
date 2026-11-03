@@ -382,7 +382,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
                 <input
                   type="text"
                   className="auth-minimal-input"
-                  placeholder="Ex: reda_ab ou 0694350619"
+                  placeholder="Ex: bistrot_casa ou 0661234567"
                   value={loginIdentifier}
                   onChange={(e) => setLoginIdentifier(e.target.value)}
                   autoCapitalize="none"
@@ -663,7 +663,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
                   <input
                     type="text"
                     className="auth-minimal-input"
-                    placeholder="Ex: reda_ab ou bistrot_casa"
+                    placeholder="Ex: chef_karim ou bistrot_casa"
                     value={username}
                     onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_.-]/g, ''))}
                     autoCapitalize="none"
