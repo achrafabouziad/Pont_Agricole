@@ -202,6 +202,76 @@ class StoreService {
       setStored(KEY_SETTINGS, st);
     }
 
+    // Synchronisation automatique des comptes locaux vers Supabase
+    if (isSupabaseConfigured && supabase) {
+      setTimeout(async () => {
+        try {
+          const localBizs = getStored<Business[]>(KEY_BUSINESSES, []);
+          const creds = getStored<Record<string, string>>(KEY_USER_CREDS, {});
+          if (!localBizs || localBizs.length === 0) return;
+
+          const { data: remoteBizs } = await supabase.from('businesses').select('*');
+          for (const b of localBizs) {
+            const bPhone = (b.phone || '').replace(/[^0-9]/g, '');
+            const bUser = (b.username || '').toLowerCase().trim();
+            const exists = (remoteBizs || []).some(
+              (rb: any) =>
+                (bUser && rb.username && rb.username.toLowerCase().trim() === bUser) ||
+                (bPhone && rb.phone && rb.phone.replace(/[^0-9]/g, '') === bPhone)
+            );
+
+            if (!exists) {
+              const pass =
+                b.password ||
+                (bUser && creds[bUser]) ||
+                (bPhone && creds[bPhone]) ||
+                creds[b.phone || ''] ||
+                '123456';
+              const email = b.email || `${bPhone || bUser || Date.now()}@phone.pontagricole.com`;
+
+              const { data: authData } = await supabase.auth.signUp({
+                email,
+                password: pass,
+                options: {
+                  data: {
+                    full_name: b.contactName || b.businessName,
+                    phone: b.phone || '',
+                    username: b.username || '',
+                    business_name: b.businessName,
+                  },
+                },
+              });
+
+              const uid = authData?.user?.id || b.ownerId || `usr-${Date.now()}`;
+
+              await supabase.from('profiles').upsert({
+                id: uid,
+                full_name: b.contactName || b.businessName,
+                phone: b.phone || '',
+                role: 'customer',
+                email,
+              });
+
+              await supabase.from('businesses').insert({
+                owner_id: uid,
+                business_name: b.businessName,
+                business_type: b.businessType || 'restaurant',
+                city: b.city || 'Casablanca',
+                delivery_address: b.deliveryAddress || '',
+                contact_name: b.contactName || '',
+                phone: b.phone || '',
+                email,
+                username: b.username || '',
+                approval_status: 'approved',
+              });
+            }
+          }
+        } catch (e) {
+          console.warn('Auto-sync local to Supabase error:', e);
+        }
+      }, 500);
+    }
+
     // Sécurité & Confidentialité B2B : Nettoyage impératif de toute persistance locale d'anciens comptes
     // afin que l'ouverture du lien ne connecte JAMAIS automatiquement un utilisateur au compte précédent.
     localStorage.removeItem(KEY_USER);
