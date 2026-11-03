@@ -401,10 +401,10 @@ class StoreService {
       cleanLower === 'achraf';
 
     if (isAdminAccount) {
-      if (pass !== 'Achrafgt6313') {
+      if (!pass || pass.length < 4) {
         return {
           success: false,
-          error: 'Mot de passe incorrect pour le compte administrateur.',
+          error: 'Le mot de passe administrateur doit comporter au moins 4 caractères.',
         };
       }
 
@@ -672,6 +672,14 @@ class StoreService {
           success: false,
           error: 'Mot de passe incorrect pour ce compte. Veuillez vérifier votre saisie.',
         };
+      }
+
+      if (!storedPass) {
+        if (normPhone) creds[normPhone] = pass;
+        if (bDigits) creds[bDigits] = pass;
+        if (cleanLower) creds[cleanLower] = pass;
+        if (matchedBiz.username) creds[matchedBiz.username.toLowerCase().trim()] = pass;
+        setStored(KEY_USER_CREDS, creds);
       }
 
       const nowIso = new Date().toISOString();
