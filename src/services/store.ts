@@ -907,7 +907,6 @@ class StoreService {
                 email: finalEmail,
                 google_maps_url: params.googleMapsUrl || null,
                 username: finalUsername,
-                password: params.password,
                 approval_status: 'approved',
                 updated_at: new Date().toISOString(),
               }).eq('id', existingBiz.id);
@@ -923,7 +922,6 @@ class StoreService {
                 email: finalEmail,
                 google_maps_url: params.googleMapsUrl || null,
                 username: finalUsername,
-                password: params.password,
                 approval_status: 'approved',
               }).select().single();
 
