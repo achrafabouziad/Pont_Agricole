@@ -198,40 +198,48 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
   const [cancelReason, setCancelReason] = useState<string>('');
 
   const loadData = async () => {
-    const [ords, prods, bizs, zns, stgs] = await Promise.all([
-      store.getOrders(),
-      store.getProducts(),
-      store.getBusinesses(),
-      store.getDeliveryZones(),
-      store.getCompanySettings(),
-    ]);
-    setOrders(ords);
-    setProducts(prods);
-    setBusinesses(bizs);
-    setZones(zns);
-    setSettings(stgs);
-    setSettingsForm(stgs);
+    try {
+      const [ordsRes, prodsRes, bizsRes, znsRes, stgsRes] = await Promise.allSettled([
+        store.getOrders(),
+        store.getProducts(),
+        store.getBusinesses(),
+        store.getDeliveryZones(),
+        store.getCompanySettings(),
+      ]);
 
-    // Initialize daily price state
-    setPriceEdits((prev) => {
-      const next = { ...prev };
-      prods.forEach((p) => {
-        if (!next[p.id]) {
-          next[p.id] = { price: p.price, isAvailable: p.isAvailable };
-        }
-      });
-      return next;
-    });
+      if (ordsRes.status === 'fulfilled') setOrders(ordsRes.value);
+      if (prodsRes.status === 'fulfilled') {
+        const prods = prodsRes.value;
+        setProducts(prods);
+        setPriceEdits((prev) => {
+          const next = { ...prev };
+          prods.forEach((p) => {
+            if (!next[p.id]) {
+              next[p.id] = { price: p.price, isAvailable: p.isAvailable };
+            }
+          });
+          return next;
+        });
 
-    setInitialPrices((prev) => {
-      const initials = { ...prev };
-      prods.forEach((p) => {
-        if (initials[p.id] === undefined) {
-          initials[p.id] = p.price;
-        }
-      });
-      return initials;
-    });
+        setInitialPrices((prev) => {
+          const initials = { ...prev };
+          prods.forEach((p) => {
+            if (initials[p.id] === undefined) {
+              initials[p.id] = p.price;
+            }
+          });
+          return initials;
+        });
+      }
+      if (bizsRes.status === 'fulfilled') setBusinesses(bizsRes.value);
+      if (znsRes.status === 'fulfilled') setZones(znsRes.value);
+      if (stgsRes.status === 'fulfilled') {
+        setSettings(stgsRes.value);
+        setSettingsForm(stgsRes.value);
+      }
+    } catch (e) {
+      console.error('loadData error', e);
+    }
   };
 
   const handleDailyPriceInput = (productId: string, val: number) => {
