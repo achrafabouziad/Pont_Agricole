@@ -823,6 +823,14 @@ class StoreService {
               error: 'Ce compte ou identifiant existe déjà. Veuillez vous connecter directement.',
             };
           }
+
+          if (authErr.message.toLowerCase().includes('rate limit')) {
+            return {
+              success: false,
+              error: "Limite temporaire d'inscriptions atteinte. Désactivez 'Confirm email' dans Supabase Auth Providers pour permettre des inscriptions illimitées sans confirmation email.",
+            };
+          }
+
           return { success: false, error: authErr.message };
         }
 
