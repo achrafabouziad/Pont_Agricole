@@ -1547,20 +1547,18 @@ class StoreService {
     const list: Business[] = [];
     const seenIds = new Set<string>();
     const seenPhones = new Set<string>();
+    const seenUsers = new Set<string>();
 
     const addOrUpdateClient = (bizObj: Business) => {
       if (!bizObj || !bizObj.businessName) return;
-      const bNormPhone = normalizePhone(bizObj.phone || '');
-      const bNormEmail = (bizObj.email || '').trim().toLowerCase();
+      const bDigits = (bizObj.phone || '').replace(/[^0-9]/g, '');
+      const bUser = (bizObj.username || '').toLowerCase().trim();
+
       const existingIdx = list.findIndex((c) => {
         if (bizObj.id && c.id && c.id === bizObj.id) return true;
-        if (bizObj.ownerId && c.ownerId && c.ownerId === bizObj.ownerId) return true;
-        const cNormPhone = normalizePhone(c.phone || '');
-        if (bNormPhone && cNormPhone && bNormPhone.length >= 9 && cNormPhone.length >= 9 && bNormPhone === cNormPhone) {
-          return true;
-        }
-        const cNormEmail = (c.email || '').trim().toLowerCase();
-        if (bNormEmail && cNormEmail && bNormEmail === cNormEmail) {
+        if (bUser && c.username && c.username.toLowerCase().trim() === bUser) return true;
+        const cDigits = (c.phone || '').replace(/[^0-9]/g, '');
+        if (bDigits.length >= 9 && cDigits.length >= 9 && (bDigits.endsWith(cDigits.slice(-9)) || cDigits.endsWith(bDigits.slice(-9)))) {
           return true;
         }
         return false;
@@ -1571,18 +1569,61 @@ class StoreService {
         list[existingIdx] = {
           ...cur,
           ...bizObj,
+          businessName: bizObj.businessName || cur.businessName,
+          contactName: bizObj.contactName || cur.contactName,
+          phone: bizObj.phone || cur.phone,
           lastSeenAt: bizObj.lastSeenAt || cur.lastSeenAt,
           approvalStatus: bizObj.approvalStatus || cur.approvalStatus,
         };
       } else {
         list.push(bizObj);
         if (bizObj.id) seenIds.add(bizObj.id);
-        if (bizObj.ownerId) seenIds.add(bizObj.ownerId);
-        if (bNormPhone) seenPhones.add(bNormPhone);
+        if (bDigits.length >= 9) seenPhones.add(bDigits.slice(-9));
+        if (bUser) seenUsers.add(bUser);
       }
     };
 
-    // 1. Charger depuis le serveur local dev / réseau (/api/sync/clients)
+    // 1. Charger en priorité absolue depuis Supabase (Base centrale pour tous les appareils)
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { data: bizData, error: bizError } = await supabase
+          .from('businesses')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (!bizError && bizData && bizData.length > 0) {
+          for (const b of bizData) {
+            const bizObj: Business = {
+              id: b.id,
+              ownerId: b.owner_id,
+              businessName: b.business_name || 'Établissement Pro',
+              businessType: b.business_type || 'restaurant',
+              city: b.city || 'Casablanca',
+              deliveryAddress: b.delivery_address || 'Adresse à préciser',
+              approvalStatus: b.approval_status || 'approved',
+              createdAt: b.created_at || new Date().toISOString(),
+              contactName: b.contact_name || b.business_name || 'Client Professionnel',
+              phone: b.phone || '',
+              email: b.email || '',
+              googleMapsUrl: cleanMapsUrl(b.google_maps_url) || undefined,
+              username: b.username || undefined,
+              lastSeenAt: b.last_seen_at || undefined,
+            };
+            addOrUpdateClient(bizObj);
+          }
+        }
+      } catch (e) {
+        console.warn('Error fetching businesses from Supabase', e);
+      }
+    }
+
+    // 2. Charger depuis le cache local (si hors ligne)
+    const localBusinesses = getStored<Business[]>(KEY_BUSINESSES, []);
+    for (const lb of localBusinesses) {
+      addOrUpdateClient(lb);
+    }
+
+    // 3. Charger depuis le serveur sync (si dev / réseau local)
     try {
       if (typeof fetch !== 'undefined') {
         const res = await fetch('/api/sync/clients', { cache: 'no-store' });
@@ -1595,84 +1636,7 @@ class StoreService {
           }
         }
       }
-    } catch {
-      // Dev sync endpoint non disponible en hébergement statique
-    }
-
-    // 2. Charger depuis Supabase (si configuré)
-    if (isSupabaseConfigured && supabase) {
-      try {
-        const { data: bizData, error: bizError } = await supabase
-          .from('businesses')
-          .select('*')
-          .order('created_at', { ascending: false });
-
-        const { data: profData } = await supabase
-          .from('profiles')
-          .select('*')
-          .order('created_at', { ascending: false });
-
-        let profMap = new Map<string, any>();
-        if (profData) {
-          profMap = new Map(profData.map((p: any) => [p.id, p]));
-        }
-
-        if (!bizError && bizData && bizData.length > 0) {
-          for (const b of bizData) {
-            const prof = profMap.get(b.owner_id);
-            const bPhone = b.phone || prof?.phone || '';
-            const bizObj: Business = {
-              id: b.id,
-              ownerId: b.owner_id,
-              businessName: b.business_name || prof?.business_name || 'Établissement Pro',
-              businessType: b.business_type || 'restaurant',
-              city: b.city || 'Casablanca',
-              deliveryAddress: b.delivery_address || 'Adresse à préciser',
-              approvalStatus: b.approval_status || 'approved',
-              createdAt: b.created_at || new Date().toISOString(),
-              contactName: b.contact_name || prof?.full_name || 'Client Professionnel',
-              phone: bPhone,
-              email: b.email || prof?.email || '',
-              googleMapsUrl: cleanMapsUrl(b.google_maps_url) || undefined,
-              username: b.username || undefined,
-              lastSeenAt: b.last_seen_at || prof?.last_seen_at || undefined,
-            };
-            addOrUpdateClient(bizObj);
-          }
-        }
-
-        if (profData && profData.length > 0) {
-          for (const prof of profData) {
-            if (prof.role !== 'admin') {
-              const pPhone = prof.phone || '';
-              const syntheticBiz: Business = {
-                id: `biz-${prof.id}`,
-                ownerId: prof.id,
-                businessName: prof.business_name || prof.full_name || 'Client Inscrit',
-                businessType: prof.business_type || 'restaurant',
-                city: prof.city || 'Maroc',
-                deliveryAddress: prof.delivery_address || 'Adresse non renseignée',
-                approvalStatus: 'approved',
-                createdAt: prof.created_at || new Date().toISOString(),
-                contactName: prof.full_name,
-                phone: pPhone,
-                email: prof.email || '',
-                lastSeenAt: prof.last_seen_at || undefined,
-              };
-              addOrUpdateClient(syntheticBiz);
-            }
-          }
-        }
-      } catch (e) {
-        console.warn('Error fetching businesses from Supabase', e);
-      }
-    }
-
-    // 3. Fusionner avec le cache local de l'appareil
-    const localBusinesses = getStored<Business[]>(KEY_BUSINESSES, []);
-    for (const lb of localBusinesses) {
-      addOrUpdateClient(lb);
-    }
+    } catch {}
 
     // 4. Récupérer l'état de présence (dev sync + cache local)
     let presenceMap = getStored<Record<string, string>>(KEY_PRESENCE, {});

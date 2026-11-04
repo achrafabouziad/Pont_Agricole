@@ -76,7 +76,7 @@ interface AdminDashboardPageProps {
 }
 
 export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNavigate }) => {
-  const [activeTab, setActiveTab] = useState<'daily-prices' | 'overview' | 'orders' | 'clients' | 'products' | 'settings'>('daily-prices');
+  const [activeTab, setActiveTab] = useState<'daily-prices' | 'overview' | 'orders' | 'clients' | 'products' | 'settings'>('clients');
   const [orders, setOrders] = useState<Order[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [businesses, setBusinesses] = useState<Business[]>([]);
@@ -665,24 +665,74 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
           </button>
         </div>
 
-        {/* Modern Segmented Navigation Tabs */}
-        <div className="admin-segmented-tabs">
+        {/* Quick KPI Overview Bar for instant mobile and desktop visibility */}
+        <div className="admin-quick-summary-bar">
           <button
             type="button"
-            onClick={() => setActiveTab('daily-prices')}
-            className={`admin-tab-btn ${activeTab === 'daily-prices' ? 'active' : ''}`}
+            onClick={() => setActiveTab('clients')}
+            className={`admin-quick-stat-card ${activeTab === 'clients' ? 'active' : ''}`}
           >
-            <Calendar size={14} />
-            <span>Mercuriale Quotidienne</span>
+            <div className="admin-quick-stat-icon clients">
+              <Users size={20} />
+            </div>
+            <div className="admin-quick-stat-info">
+              <span className="admin-quick-stat-num">{businesses.length}</span>
+              <span className="admin-quick-stat-label">Clients Inscrits</span>
+            </div>
+            {pendingBusinessesCount > 0 ? (
+              <span className="admin-quick-stat-badge alert">{pendingBusinessesCount} en attente</span>
+            ) : (
+              <span className="admin-quick-stat-badge">Actifs</span>
+            )}
           </button>
 
           <button
             type="button"
-            onClick={() => setActiveTab('overview')}
-            className={`admin-tab-btn ${activeTab === 'overview' ? 'active' : ''}`}
+            onClick={() => setActiveTab('orders')}
+            className={`admin-quick-stat-card ${activeTab === 'orders' ? 'active' : ''}`}
           >
-            <BarChart3 size={14} />
-            <span>Vue d'ensemble</span>
+            <div className="admin-quick-stat-icon orders">
+              <ShoppingBag size={20} />
+            </div>
+            <div className="admin-quick-stat-info">
+              <span className="admin-quick-stat-num">{orders.length}</span>
+              <span className="admin-quick-stat-label">Commandes</span>
+            </div>
+            {pendingOrdersCount > 0 ? (
+              <span className="admin-quick-stat-badge alert">{pendingOrdersCount} en attente</span>
+            ) : (
+              <span className="admin-quick-stat-badge">Total</span>
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('daily-prices')}
+            className={`admin-quick-stat-card ${activeTab === 'daily-prices' ? 'active' : ''}`}
+          >
+            <div className="admin-quick-stat-icon prices">
+              <Calendar size={20} />
+            </div>
+            <div className="admin-quick-stat-info">
+              <span className="admin-quick-stat-num">{products.length}</span>
+              <span className="admin-quick-stat-label">Mercuriale & Prix</span>
+            </div>
+            <span className="admin-quick-stat-badge">Cours du jour</span>
+          </button>
+        </div>
+
+        {/* Modern Segmented Navigation Tabs */}
+        <div className="admin-segmented-tabs">
+          <button
+            type="button"
+            onClick={() => setActiveTab('clients')}
+            className={`admin-tab-btn ${activeTab === 'clients' ? 'active' : ''}`}
+          >
+            <Users size={14} />
+            <span>Clients Inscrits</span>
+            <span className={`admin-tab-count ${pendingBusinessesCount > 0 ? 'alert' : ''}`}>
+              {pendingBusinessesCount > 0 ? `${pendingBusinessesCount} en attente` : businesses.length}
+            </span>
           </button>
 
           <button
@@ -699,14 +749,20 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
 
           <button
             type="button"
-            onClick={() => setActiveTab('clients')}
-            className={`admin-tab-btn ${activeTab === 'clients' ? 'active' : ''}`}
+            onClick={() => setActiveTab('daily-prices')}
+            className={`admin-tab-btn ${activeTab === 'daily-prices' ? 'active' : ''}`}
           >
-            <Users size={14} />
-            <span>Clients Inscrits</span>
-            <span className={`admin-tab-count ${pendingBusinessesCount > 0 ? 'alert' : ''}`}>
-              {pendingBusinessesCount > 0 ? `${pendingBusinessesCount} en attente` : businesses.length}
-            </span>
+            <Calendar size={14} />
+            <span>Mercuriale Quotidienne</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('overview')}
+            className={`admin-tab-btn ${activeTab === 'overview' ? 'active' : ''}`}
+          >
+            <BarChart3 size={14} />
+            <span>Vue d'ensemble</span>
           </button>
 
           <button
