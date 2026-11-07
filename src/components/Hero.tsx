@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Truck, CheckCircle2, Clock } from 'lucide-react';
 
 interface HeroProps {
   onExploreCatalog: () => void;
@@ -8,25 +8,58 @@ interface HeroProps {
 
 export const Hero: React.FC<HeroProps> = ({ onExploreCatalog }) => {
   return (
-    <section className="hero-section">
+    <section className="hero-banner-section">
       <div className="container">
-        <div className="hero-content-wrap">
-          <h1 className="hero-title">
-            Fruits, Légumes & Herbes Fraîches{' '}
-            <span style={{ color: 'var(--primary-700)', position: 'relative', display: 'inline-block' }}>
-              pour les Professionnels
-            </span>
-          </h1>
+        <div className="hero-banner-card">
+          {/* Authentic Produce Photography Layer */}
+          <div className="hero-banner-bg" />
+          <div className="hero-banner-overlay" />
 
-          <p className="hero-desc">
-            Approvisionnement direct et mercuriale du jour pour Cafés, Restaurants et Hôtels au Maroc.
-          </p>
+          <div className="hero-banner-content">
+            {/* Live Wholesale Badge */}
+            <div className="hero-live-badge">
+              <span className="hero-pulse-dot" />
+              <span>Arrivages du jour • Marché de Gros Casablanca</span>
+            </div>
 
-          <div className="hero-actions">
-            <button onClick={onExploreCatalog} className="btn btn-primary hero-cta-btn">
-              <span>Consulter le Catalogue & Prix du Jour</span>
-              <ArrowRight size={16} />
-            </button>
+            {/* Editorial Main Title */}
+            <h1 className="hero-banner-title">
+              Fruits, Légumes & Herbes Fraîches pour la Restauration
+            </h1>
+
+            {/* Authentic B2B Subtitle */}
+            <p className="hero-banner-sub">
+              Approvisionnement direct de la Halle aux Primeurs pour Cafés, Restaurants et Hôtels au Maroc.
+              Sélectionné chaque nuit au carreau, livré dès l'aube à vos cuisines.
+            </p>
+
+            {/* Practical Service Badges */}
+            <div className="hero-feature-pills">
+              <span className="hero-feat-chip">
+                <Truck size={14} className="hero-feat-icon" />
+                Livraison dès 06h00
+              </span>
+              <span className="hero-feat-chip">
+                <CheckCircle2 size={14} className="hero-feat-icon" />
+                Calibres & Triés Pro
+              </span>
+              <span className="hero-feat-chip">
+                <Clock size={14} className="hero-feat-icon" />
+                Commande jusqu'à 22h
+              </span>
+            </div>
+
+            {/* Human Crafted Action Button */}
+            <div className="hero-banner-cta-wrap">
+              <button
+                type="button"
+                onClick={onExploreCatalog}
+                className="hero-banner-btn"
+              >
+                <span>Consulter le Catalogue & Prix du Jour</span>
+                <ArrowRight size={17} />
+              </button>
+            </div>
           </div>
         </div>
       </div>
