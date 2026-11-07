@@ -35,15 +35,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
 
   return (
     <div className="modern-product-card">
-      {/* Top Header Row: Out-of-Stock Badge (if any) & Favorite Heart */}
-      <div className="modern-card-topbar">
-        <div className="modern-card-badge-wrap">
-          {!product.isAvailable && (
-            <span className="modern-badge-pill out-of-stock">
-              Rupture
-            </span>
-          )}
-        </div>
+      {/* Product Image Frame with Floating Actions (Matches Reference Image 1) */}
+      <div className="modern-img-wrap">
+        {!product.isAvailable && (
+          <span className="modern-badge-pill out-of-stock">
+            Rupture
+          </span>
+        )}
 
         <button
           type="button"
@@ -54,14 +52,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
           <Heart
             size={16}
             fill={isFav ? '#ef4444' : 'none'}
-            color={isFav ? '#ef4444' : '#94a3b8'}
+            color={isFav ? '#ef4444' : '#64748b'}
             strokeWidth={isFav ? 2.5 : 2}
           />
         </button>
-      </div>
 
-      {/* Centered Product Image */}
-      <div className="modern-img-wrap">
         <img
           src={product.imageUrl}
           alt={product.name}
