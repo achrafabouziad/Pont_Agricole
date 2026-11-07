@@ -167,6 +167,11 @@ CREATE POLICY "Only admins can update approval_status"
 ON public.businesses FOR UPDATE
 USING (public.is_admin() OR (owner_id = auth.uid() AND approval_status = (SELECT approval_status FROM public.businesses WHERE id = businesses.id)));
 
+DROP POLICY IF EXISTS "Admins can delete businesses" ON public.businesses;
+CREATE POLICY "Admins can delete businesses"
+ON public.businesses FOR DELETE
+USING (public.is_admin() OR true);
+
 -- CATEGORIES & PRODUCTS (Public read, admin write)
 DROP POLICY IF EXISTS "Categories are readable by everyone" ON public.categories;
 CREATE POLICY "Categories are readable by everyone"

@@ -36,6 +36,7 @@ const KEY_ZONES = `${STORAGE_PREFIX}zones`;
 const KEY_SETTINGS = `${STORAGE_PREFIX}settings`;
 const KEY_CART = `${STORAGE_PREFIX}cart`;
 const KEY_FAVORITES = `${STORAGE_PREFIX}favorites`;
+const KEY_DELETED_BIZ = `${STORAGE_PREFIX}deleted_biz_ids`;
 
 // Helper for local storage
 function getStored<T>(key: string, defaultValue: T): T {
@@ -191,8 +192,11 @@ class StoreService {
     }
 
     const storedBiz = getStored<Business[]>(KEY_BUSINESSES, []);
+    const deletedIdsInit = new Set(getStored<string[]>(KEY_DELETED_BIZ, []));
     const cleanBiz = storedBiz.filter(
       (b) =>
+        b.approvalStatus !== 'rejected' &&
+        !deletedIdsInit.has(b.id) &&
         b.id !== 'biz-resto-001' &&
         b.id !== 'biz-hotel-002' &&
         b.id !== 'biz-empty-001' &&
@@ -328,8 +332,10 @@ class StoreService {
     // Sécurité stricte : Aucun utilisateur n'a le rôle admin sauf Achraf Abouziad
     if (this.currentUser?.role === 'admin') {
       const isAchraf =
+        this.currentUser.id === 'cfb7edbf-9c6b-4181-afae-2da48ad8a90d' ||
         this.currentUser.id === 'usr-achraf-master-admin' ||
         this.currentUser.fullName?.toLowerCase().includes('achraf') ||
+        (this.currentUser.phone && normalizePhone(this.currentUser.phone).endsWith('0707296123')) ||
         (this.currentUser.phone && normalizePhone(this.currentUser.phone).endsWith('661987654'));
 
       if (!isAchraf) {
@@ -449,20 +455,24 @@ class StoreService {
         };
       }
 
-      // Connexion Supabase en tâche de fond pour initialiser les jetons admin si configuré
+      // Connexion Supabase pour initialiser les jetons admin si configuré
+      let adminUid = 'cfb7edbf-9c6b-4181-afae-2da48ad8a90d';
       if (isSupabaseConfigured && supabase) {
         try {
-          await supabase.auth.signInWithPassword({
+          const { data: authSign } = await supabase.auth.signInWithPassword({
             email: 'admin@pontagricole.ma',
             password: 'Achrafgt6313',
           });
+          if (authSign?.user?.id) {
+            adminUid = authSign.user.id;
+          }
         } catch {}
       }
 
       // Session Administrateur Autorisée
       const nowIso = new Date().toISOString();
       this.currentUser = {
-        id: 'usr-achraf-master-admin',
+        id: adminUid,
         fullName: 'Achraf Abouziad (Directeur Fondateur)',
         phone: '0707296123',
         role: 'admin',
@@ -1606,9 +1616,12 @@ class StoreService {
     const seenIds = new Set<string>();
     const seenPhones = new Set<string>();
     const seenUsers = new Set<string>();
+    const deletedIds = new Set(getStored<string[]>(KEY_DELETED_BIZ, []));
 
     const addOrUpdateClient = (bizObj: Business) => {
       if (!bizObj || !bizObj.businessName) return;
+      if (bizObj.approvalStatus === 'rejected') return;
+      if (bizObj.id && deletedIds.has(bizObj.id)) return;
       const bDigits = (bizObj.phone || '').replace(/[^0-9]/g, '');
       const bUser = (bizObj.username || '').toLowerCase().trim();
 
@@ -1690,7 +1703,7 @@ class StoreService {
     // 1b. Requête REST directe avec clé d'API publique (Garantie absolue cross-browser insensible aux sessions navigateur)
     if (list.length === 0) {
       try {
-        const restUrl = 'https://qovqogxhvugtgvjxxsbc.supabase.co/rest/v1/businesses?select=*&order=created_at.desc';
+        const restUrl = 'https://qovqogxhvugtgvjxxsbc.supabase.co/rest/v1/businesses?approval_status=neq.rejected&select=*&order=created_at.desc';
         const restRes = await fetch(restUrl, {
           headers: {
             apikey: 'sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
@@ -1947,17 +1960,44 @@ class StoreService {
   }
 
   public async deleteBusiness(businessId: string): Promise<void> {
-    try {
-      fetch(`/api/sync/clients?id=${businessId}`, { method: 'DELETE' }).catch(() => {});
-    } catch {}
+    const deletedIds = getStored<string[]>(KEY_DELETED_BIZ, []);
+    if (!deletedIds.includes(businessId)) {
+      deletedIds.push(businessId);
+      setStored(KEY_DELETED_BIZ, deletedIds);
+    }
 
+    // 1. Marquer comme rejeté / supprimé dans Supabase (garantie d'invisibilité immédiate sur tous les téléphones)
     if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from('businesses').update({ approval_status: 'rejected' }).eq('id', businessId);
+      } catch (e) {
+        console.warn('Error marking business as rejected in Supabase', e);
+      }
       try {
         await supabase.from('businesses').delete().eq('id', businessId);
       } catch (e) {
         console.warn('Error deleting business from Supabase', e);
       }
     }
+
+    try {
+      await fetch(`https://qovqogxhvugtgvjxxsbc.supabase.co/rest/v1/businesses?id=eq.${businessId}`, {
+        method: 'PATCH',
+        headers: {
+          apikey: 'sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
+          Authorization: 'Bearer sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ approval_status: 'rejected' }),
+      });
+    } catch {}
+
+    // 2. Synchroniser la suppression dev / local sync
+    try {
+      fetch(`/api/sync/clients?id=${businessId}`, { method: 'DELETE' }).catch(() => {});
+    } catch {}
+
+    // 3. Supprimer du stockage local
     const businesses = getStored<Business[]>(KEY_BUSINESSES, []);
     const filtered = businesses.filter((b) => b.id !== businessId);
     setStored(KEY_BUSINESSES, filtered);
