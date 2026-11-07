@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowRight, Truck, CheckCircle2, Clock } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 
 interface HeroProps {
   onExploreCatalog: () => void;
@@ -32,22 +32,6 @@ export const Hero: React.FC<HeroProps> = ({ onExploreCatalog }) => {
               Approvisionnement direct de la Halle aux Primeurs pour Cafés, Restaurants et Hôtels au Maroc.
               Sélectionné chaque nuit au carreau, livré dès l'aube à vos cuisines.
             </p>
-
-            {/* Practical Service Badges */}
-            <div className="hero-feature-pills">
-              <span className="hero-feat-chip">
-                <Truck size={14} className="hero-feat-icon" />
-                Livraison dès 06h00
-              </span>
-              <span className="hero-feat-chip">
-                <CheckCircle2 size={14} className="hero-feat-icon" />
-                Calibres & Triés Pro
-              </span>
-              <span className="hero-feat-chip">
-                <Clock size={14} className="hero-feat-icon" />
-                Commande jusqu'à 22h
-              </span>
-            </div>
 
             {/* Human Crafted Action Button */}
             <div className="hero-banner-cta-wrap">
