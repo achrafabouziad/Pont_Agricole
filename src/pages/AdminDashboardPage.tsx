@@ -53,6 +53,7 @@ import {
   Eye,
   EyeOff,
   X,
+  Sparkles,
 } from 'lucide-react';
 import { InvoiceModal } from '../components/InvoiceModal';
 
@@ -3149,6 +3150,24 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
                   </p>
                 </div>
               </div>
+              <button
+                type="button"
+                onClick={() => setIsProductModalOpen(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: 'var(--text-muted)',
+                  padding: '4px',
+                  borderRadius: '6px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+                aria-label="Fermer"
+              >
+                <X size={20} />
+              </button>
             </div>
 
             <form onSubmit={handleSaveProduct}>
