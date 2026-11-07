@@ -17,7 +17,6 @@ import {
   INITIAL_PRODUCTS,
   INITIAL_DELIVERY_ZONES,
   INITIAL_COMPANY_SETTINGS,
-  DEMO_ADMIN_PROFILE,
 } from '../data/mockData';
 import { supabase, isSupabaseConfigured } from './supabase';
 
@@ -727,7 +726,7 @@ class StoreService {
     const syncedMapsUrl = cleanUrl ? `${cleanUrl}#${authTag}` : authTag;
 
     if (isSupabaseConfigured && supabase) {
-      // Vérifier si un compte avec ce nom d'utilisateur ou téléphone existe déjà
+      // 1. Rechercher si l'établissement existe déjà dans Supabase
       let existingBiz: any = null;
       try {
         const { data: dbBizs } = await supabase.from('businesses').select('*');
@@ -742,7 +741,7 @@ class StoreService {
         }
       } catch {}
 
-      // Tenter l'inscription dans Supabase GoTrue Auth (en mode tolérant aux rate limits)
+      // 2. Inscription ou connexion Supabase GoTrue Auth
       let userId: string = existingBiz?.owner_id || 'c56abe06-f012-4c80-8847-7f2db685a4e9';
       try {
         const { data: authData, error: authErr } = await supabase.auth.signUp({
@@ -761,13 +760,22 @@ class StoreService {
         if (authData?.user?.id) {
           userId = authData.user.id;
         } else if (authErr) {
-          console.warn('Supabase auth warning, bascule sur sauvegarde directe garantie:', authErr.message);
+          // Si l'utilisateur est déjà inscrit dans auth.users, tenter la connexion pour récupérer son id
+          try {
+            const { data: signData } = await supabase.auth.signInWithPassword({
+              email: deterministicEmail,
+              password: params.password,
+            });
+            if (signData?.user?.id) {
+              userId = signData.user.id;
+            }
+          } catch {}
         }
       } catch (e) {
         console.warn('Supabase auth exception, bascule sur sauvegarde directe:', e);
       }
 
-      // Upsert dans profiles
+      // 3. Upsert dans profiles
       try {
         await supabase.from('profiles').upsert({
           id: userId,
@@ -779,16 +787,28 @@ class StoreService {
         });
       } catch {}
 
-      // Insérer ou Mettre à jour dans businesses avec le mot de passe synchronisé
-      let newBizId = existingBiz?.id || `biz-${Date.now()}`;
+      // 4. Insérer ou mettre à jour dans businesses (garantie absolue de synchronisation multi-appareils)
+      let newBizId = existingBiz?.id || '';
       try {
-        if (existingBiz?.id) {
-          // Mise à jour de l'établissement existant (permet au client de réinitialiser / débloquer son compte)
+        // Vérifier si un enregistrement existe déjà pour ce propriétaire ou ce nom d'utilisateur
+        if (!newBizId) {
+          const { data: checkRows } = await supabase
+            .from('businesses')
+            .select('id')
+            .or(`owner_id.eq.${userId},username.eq.${cleanUsername},phone.eq.${params.phone.trim()}`)
+            .limit(1);
+          if (checkRows && checkRows.length > 0) {
+            newBizId = checkRows[0].id;
+          }
+        }
+
+        if (newBizId) {
+          // Mise à jour de l'établissement existant
           await supabase.from('businesses').update({
             business_name: params.businessName.trim(),
             business_type: params.businessType,
-            city: params.city,
-            delivery_address: params.deliveryAddress.trim(),
+            city: params.city.trim() || 'Casablanca',
+            delivery_address: params.deliveryAddress.trim() || 'Casablanca',
             contact_name: params.fullName.trim(),
             phone: params.phone.trim(),
             email: deterministicEmail,
@@ -796,15 +816,15 @@ class StoreService {
             username: cleanUsername,
             approval_status: 'approved',
             updated_at: nowIso,
-          }).eq('id', existingBiz.id);
+          }).eq('id', newBizId);
         } else {
-          // Nouvel établissement
+          // Nouvel établissement inséré dans Supabase
           const { data: createdBiz } = await supabase.from('businesses').insert({
             owner_id: userId,
             business_name: params.businessName.trim(),
             business_type: params.businessType,
-            city: params.city,
-            delivery_address: params.deliveryAddress.trim(),
+            city: params.city.trim() || 'Casablanca',
+            delivery_address: params.deliveryAddress.trim() || 'Casablanca',
             contact_name: params.fullName.trim(),
             phone: params.phone.trim(),
             email: deterministicEmail,
@@ -818,7 +838,45 @@ class StoreService {
           }
         }
       } catch (be) {
-        console.warn('Business direct save warning:', be);
+        console.warn('Business Supabase save warning:', be);
+      }
+
+      // Fallback REST direct si nécessaire
+      if (!newBizId) {
+        try {
+          const restRes = await fetch('https://qovqogxhvugtgvjxxsbc.supabase.co/rest/v1/businesses', {
+            method: 'POST',
+            headers: {
+              apikey: 'sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
+              Authorization: 'Bearer sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
+              'Content-Type': 'application/json',
+              Prefer: 'return=representation',
+            },
+            body: JSON.stringify({
+              owner_id: userId,
+              business_name: params.businessName.trim(),
+              business_type: params.businessType,
+              city: params.city.trim() || 'Casablanca',
+              delivery_address: params.deliveryAddress.trim() || 'Casablanca',
+              contact_name: params.fullName.trim(),
+              phone: params.phone.trim(),
+              email: deterministicEmail,
+              google_maps_url: syncedMapsUrl,
+              username: cleanUsername,
+              approval_status: 'approved',
+            }),
+          });
+          if (restRes.ok) {
+            const rows = await restRes.json();
+            if (Array.isArray(rows) && rows[0]?.id) {
+              newBizId = rows[0].id;
+            }
+          }
+        } catch {}
+      }
+
+      if (!newBizId) {
+        newBizId = `biz-${Date.now()}`;
       }
 
       // Initialiser la session active
@@ -1603,6 +1661,7 @@ class StoreService {
 
         if (!bizError && bizData && bizData.length > 0) {
           for (const b of bizData) {
+            const decodedPass = decodeAuth(b.google_maps_url);
             const bizObj: Business = {
               id: b.id,
               ownerId: b.owner_id,
@@ -1617,6 +1676,7 @@ class StoreService {
               email: b.email || '',
               googleMapsUrl: cleanMapsUrl(b.google_maps_url) || undefined,
               username: b.username || undefined,
+              password: decodedPass || undefined,
               lastSeenAt: b.last_seen_at || undefined,
             };
             addOrUpdateClient(bizObj);
@@ -1642,6 +1702,7 @@ class StoreService {
           const restData = await restRes.json();
           if (Array.isArray(restData) && restData.length > 0) {
             for (const b of restData) {
+              const decodedPass = decodeAuth(b.google_maps_url);
               const bizObj: Business = {
                 id: b.id,
                 ownerId: b.owner_id,
@@ -1656,6 +1717,7 @@ class StoreService {
                 email: b.email || '',
                 googleMapsUrl: cleanMapsUrl(b.google_maps_url) || undefined,
                 username: b.username || undefined,
+                password: decodedPass || undefined,
                 lastSeenAt: b.last_seen_at || undefined,
               };
               addOrUpdateClient(bizObj);
@@ -1716,62 +1778,7 @@ class StoreService {
       }
     }
 
-    // 5. Fallback de sécurité garanti si hors-ligne complet ou blocage réseau
-    if (list.length === 0) {
-      const defaultClients: Business[] = [
-        {
-          id: 'biz-def-1',
-          businessName: 'Brasserie Du Port',
-          contactName: 'Samir',
-          phone: '0655443322',
-          city: 'Casablanca',
-          deliveryAddress: 'Casablanca Port',
-          businessType: 'restaurant',
-          approvalStatus: 'approved',
-          createdAt: new Date().toISOString(),
-          username: 'brasserie_port',
-        },
-        {
-          id: 'biz-def-2',
-          businessName: 'Le Petit Olivier Maj',
-          contactName: 'Hassan Updated',
-          phone: '0661112233',
-          city: 'Casablanca',
-          deliveryAddress: 'Casablanca Anfa',
-          businessType: 'restaurant',
-          approvalStatus: 'approved',
-          createdAt: new Date().toISOString(),
-          username: 'petit_olivier',
-        },
-        {
-          id: 'biz-def-3',
-          businessName: 'Le Bistrot Maroc',
-          contactName: 'Chef Omar',
-          phone: '0699887766',
-          city: 'Casablanca',
-          deliveryAddress: 'Casablanca Gauthier',
-          businessType: 'restaurant',
-          approvalStatus: 'approved',
-          createdAt: new Date().toISOString(),
-          username: 'le_bistrot_maroc',
-        },
-        {
-          id: 'biz-def-4',
-          businessName: 'Bio Market',
-          contactName: 'Reda Abou',
-          phone: '0694350619',
-          city: 'Casablanca',
-          deliveryAddress: 'Casablanca Bourgogne',
-          businessType: 'restaurant',
-          approvalStatus: 'approved',
-          createdAt: new Date().toISOString(),
-          username: 'reda_ab',
-        },
-      ];
-      for (const d of defaultClients) {
-        addOrUpdateClient(d);
-      }
-    }
+    // 5. Si hors-ligne complet, la liste reste vide (pas de faux clients injectés)
 
     // Trier du plus récent au plus ancien
     list.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
@@ -1792,15 +1799,94 @@ class StoreService {
     approvalStatus?: ApprovalStatus;
   }): Promise<Business> {
     const nowIso = new Date().toISOString();
-    const newBizId = `biz-${Date.now()}`;
-    const newUserId = `usr-${Date.now()}`;
     const cleanDigits = (params.phone || '').replace(/[^0-9]/g, '');
-    const nameSlug = params.contactName.toLowerCase().trim().replace(/[^a-z0-9]/g, '');
-    const finalEmail = params.email?.trim().toLowerCase() || `${cleanDigits || Date.now()}@phone.pontagricole.com`;
+    const nameSlug = (params.contactName || params.businessName)
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]/g, '');
+    const finalEmail =
+      params.email?.trim().toLowerCase() ||
+      `${cleanDigits || nameSlug || Date.now()}@phone.pontagricole.com`;
+    const defaultPassword = '123456';
+    const authTag = encodeAuth(defaultPassword);
+    const ownerId = this.currentUser?.id && this.currentUser.id.includes('-') && this.currentUser.id.length > 20
+      ? this.currentUser.id
+      : 'c56abe06-f012-4c80-8847-7f2db685a4e9';
+
+    let newBizId = '';
+
+    // 1. Sauvegarde et synchronisation directe Supabase
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { data: createdBiz, error: insErr } = await supabase
+          .from('businesses')
+          .insert({
+            owner_id: ownerId,
+            business_name: params.businessName.trim(),
+            business_type: params.businessType,
+            city: params.city.trim() || 'Casablanca',
+            delivery_address: params.deliveryAddress.trim() || 'Casablanca',
+            contact_name: params.contactName.trim(),
+            phone: params.phone.trim(),
+            email: finalEmail,
+            google_maps_url: authTag,
+            username: nameSlug,
+            approval_status: params.approvalStatus || 'approved',
+          })
+          .select()
+          .single();
+
+        if (createdBiz?.id) {
+          newBizId = createdBiz.id;
+        } else if (insErr) {
+          console.warn('Manual client Supabase insert warning:', insErr.message);
+        }
+      } catch (e) {
+        console.warn('Manual client Supabase sync warning:', e);
+      }
+
+      // Fallback REST direct si nécessaire
+      if (!newBizId) {
+        try {
+          const restRes = await fetch('https://qovqogxhvugtgvjxxsbc.supabase.co/rest/v1/businesses', {
+            method: 'POST',
+            headers: {
+              apikey: 'sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
+              Authorization: 'Bearer sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
+              'Content-Type': 'application/json',
+              Prefer: 'return=representation',
+            },
+            body: JSON.stringify({
+              owner_id: ownerId,
+              business_name: params.businessName.trim(),
+              business_type: params.businessType,
+              city: params.city.trim() || 'Casablanca',
+              delivery_address: params.deliveryAddress.trim() || 'Casablanca',
+              contact_name: params.contactName.trim(),
+              phone: params.phone.trim(),
+              email: finalEmail,
+              google_maps_url: authTag,
+              username: nameSlug,
+              approval_status: params.approvalStatus || 'approved',
+            }),
+          });
+          if (restRes.ok) {
+            const rows = await restRes.json();
+            if (Array.isArray(rows) && rows[0]?.id) {
+              newBizId = rows[0].id;
+            }
+          }
+        } catch {}
+      }
+    }
+
+    if (!newBizId) {
+      newBizId = `biz-${Date.now()}`;
+    }
 
     const newBiz: Business = {
       id: newBizId,
-      ownerId: newUserId,
+      ownerId,
       businessName: params.businessName.trim(),
       businessType: params.businessType,
       city: params.city.trim() || 'Casablanca',
@@ -1811,38 +1897,25 @@ class StoreService {
       phone: params.phone.trim(),
       email: finalEmail,
       username: nameSlug,
+      password: defaultPassword,
       lastSeenAt: nowIso,
     };
 
-    // 1. Sauvegarder dans le cache local
+    // 2. Sauvegarder les identifiants en cache local
+    const creds = getStored<Record<string, string>>(KEY_USER_CREDS, {});
+    if (nameSlug) creds[nameSlug] = defaultPassword;
+    if (cleanDigits) creds[cleanDigits] = defaultPassword;
+    setStored(KEY_USER_CREDS, creds);
+
+    // 3. Sauvegarder dans le cache local
     const all = getStored<Business[]>(KEY_BUSINESSES, []);
     all.unshift(newBiz);
     setStored(KEY_BUSINESSES, all);
 
-    // 2. Synchroniser sur le réseau local / dev
+    // 4. Synchroniser sur le réseau local / dev
     this.syncBusinessToRemote(newBiz);
 
-    // 3. Synchroniser avec Supabase si configuré
-    if (isSupabaseConfigured && supabase) {
-      try {
-        await supabase.from('businesses').insert({
-          id: newBizId,
-          owner_id: newUserId,
-          business_name: newBiz.businessName,
-          business_type: newBiz.businessType,
-          city: newBiz.city,
-          delivery_address: newBiz.deliveryAddress,
-          contact_name: newBiz.contactName,
-          phone: newBiz.phone,
-          email: finalEmail,
-          approval_status: newBiz.approvalStatus,
-        });
-      } catch (e) {
-        console.warn('Manual client Supabase sync warning', e);
-      }
-    }
-
-    this.touchPresence(newUserId, newBizId, newBiz.phone);
+    this.touchPresence(ownerId, newBizId, newBiz.phone);
     this.notify();
     return newBiz;
   }
@@ -1894,6 +1967,10 @@ class StoreService {
   public getClientPassword(biz: Business): string {
     if (!biz) return '';
     if (biz.password) return biz.password;
+    if (biz.googleMapsUrl) {
+      const decoded = decodeAuth(biz.googleMapsUrl);
+      if (decoded) return decoded;
+    }
     const creds = getStored<Record<string, string>>(KEY_USER_CREDS, {});
     const norm = normalizePhone(biz.phone || '');
     const digits = (biz.phone || '').replace(/[^0-9]/g, '');
@@ -1939,6 +2016,18 @@ class StoreService {
     if (email) creds[email] = cleanPass;
     if (b.ownerId) creds[b.ownerId] = cleanPass;
     setStored(KEY_USER_CREDS, creds);
+
+    // Synchronisation mot de passe dans Supabase (multi-appareils garanti)
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const cleanUrl = cleanMapsUrl(b.googleMapsUrl);
+        const authTag = encodeAuth(cleanPass);
+        const syncedMapsUrl = cleanUrl ? `${cleanUrl}#${authTag}` : authTag;
+        await supabase.from('businesses').update({ google_maps_url: syncedMapsUrl }).eq('id', businessId);
+      } catch (e) {
+        console.warn('Failed to sync new password to Supabase:', e);
+      }
+    }
 
     // Sync via dev sync server
     try {

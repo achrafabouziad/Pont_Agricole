@@ -1,4 +1,4 @@
-import { Category, Product, DeliveryZone, CompanySettings, Order, Business, UserProfile } from '../types';
+import { Category, Product, DeliveryZone, CompanySettings } from '../types';
 
 export const INITIAL_CATEGORIES: Category[] = [
   {
@@ -295,14 +295,5 @@ export const INITIAL_COMPANY_SETTINGS: CompanySettings = {
   cnss: '',
   capital: '',
   rib: '',
-};
-
-// Admin profile
-export const DEMO_ADMIN_PROFILE: UserProfile = {
-  id: 'admin-001',
-  fullName: 'Achraf Abouziad',
-  phone: '',
-  role: 'admin',
-  createdAt: '2026-01-15T08:00:00Z',
 };
 
