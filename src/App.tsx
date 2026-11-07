@@ -23,30 +23,49 @@ export function App() {
 
   useEffect(() => {
     const unsub = store.subscribe(() => {
-      setCurrentUser(store.getCurrentUser());
+      const u = store.getCurrentUser();
+      setCurrentUser(u);
+      if (!u && (currentPage === 'client-dashboard' || currentPage === 'admin')) {
+        handleNavigate('auth');
+      }
     });
     return unsub;
-  }, []);
+  }, [currentPage]);
 
-  // Heartbeat de présence : signale régulièrement l'état en ligne tant que l'utilisateur est actif
+  // Heartbeat de présence & validation de session en direct (expulsion immédiate dès suppression par l'admin)
   useEffect(() => {
     if (!currentUser) return;
 
-    // Ping immédiat à la connexion ou au focus
-    store.updateLastSeen();
-
-    // Envoi régulier toutes les 30 secondes
-    const interval = setInterval(() => {
+    if (currentUser.role === 'customer') {
+      store.validateSession();
+    } else {
       store.updateLastSeen();
-    }, 30000);
+    }
+
+    // Validation rapide toutes les 3 secondes pour les clients (multi-appareils / mobile)
+    const interval = setInterval(() => {
+      if (currentUser.role === 'customer') {
+        store.validateSession();
+      } else {
+        store.updateLastSeen();
+      }
+    }, currentUser.role === 'customer' ? 3000 : 30000);
 
     const handleFocus = () => {
-      store.updateLastSeen();
+      if (currentUser.role === 'customer') {
+        store.validateSession();
+      } else {
+        store.updateLastSeen();
+      }
     };
 
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') {
-        store.updateLastSeen();
+        if (currentUser.role === 'customer') {
+          store.validateSession();
+        } else {
+          store.updateLastSeen();
+        }
       }
     };
 
@@ -100,6 +119,9 @@ export function App() {
   }, []);
 
   const handleNavigate = (page: string) => {
+    if (currentUser?.role === 'customer') {
+      store.validateSession();
+    }
     setCurrentPage(page);
     // Nettoyer l'URL pour ne pas polluer l'adresse avec #admin ou #home
     // Cela garantit que lorsque l'administrateur copie le lien pour un client,

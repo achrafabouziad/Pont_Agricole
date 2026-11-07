@@ -8,6 +8,7 @@ import path from 'path';
 function localSyncPlugin(): Plugin {
   const syncDir = path.resolve(process.cwd(), '.sync_data');
   const clientsFile = path.join(syncDir, 'clients.json');
+  const deletedFile = path.join(syncDir, 'deleted_clients.json');
   const presenceFile = path.join(syncDir, 'presence.json');
   const ordersFile = path.join(syncDir, 'orders.json');
 
@@ -159,8 +160,40 @@ function localSyncPlugin(): Plugin {
             const existingClients = readJson(clientsFile, []);
             const filtered = existingClients.filter((c: any) => c.id !== targetId && c.ownerId !== targetId);
             writeJson(clientsFile, filtered);
+
+            if (targetId) {
+              const deleted = readJson(deletedFile, []);
+              if (!deleted.includes(targetId)) {
+                deleted.push(targetId);
+                writeJson(deletedFile, deleted);
+              }
+            }
+
             res.statusCode = 200;
             res.end(JSON.stringify({ success: true, count: filtered.length }));
+            return;
+          }
+        }
+
+        // 1b. ENDPOINT COMPTES CLIENTS SUPPRIMÉS (EXPULSION INSTANTANÉE MULTI-APPAREILS)
+        if (url.startsWith('/api/sync/deleted-clients')) {
+          if (req.method === 'GET') {
+            const deleted = readJson(deletedFile, []);
+            res.statusCode = 200;
+            res.end(JSON.stringify(deleted));
+            return;
+          }
+          if (req.method === 'POST') {
+            readBody((body) => {
+              const deleted = readJson(deletedFile, []);
+              const id = body.id || body.clientId;
+              const ownerId = body.ownerId;
+              if (id && !deleted.includes(id)) deleted.push(id);
+              if (ownerId && !deleted.includes(ownerId)) deleted.push(ownerId);
+              writeJson(deletedFile, deleted);
+              res.statusCode = 200;
+              res.end(JSON.stringify({ success: true, count: deleted.length }));
+            });
             return;
           }
         }

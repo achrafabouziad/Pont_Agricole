@@ -54,6 +54,19 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
   const [successNotice, setSuccessNotice] = useState<string | null>(null);
   const [showForgotPassword, setShowForgotPassword] = useState<boolean>(false);
 
+  // Message d'alerte immédiat si le compte a été supprimé par l'administrateur
+  React.useEffect(() => {
+    const deletedNotice =
+      sessionStorage.getItem('pont_account_deleted_notice') ||
+      localStorage.getItem('pont_account_deleted_notice');
+    if (deletedNotice) {
+      sessionStorage.removeItem('pont_account_deleted_notice');
+      localStorage.removeItem('pont_account_deleted_notice');
+      setErrorMsg("Votre compte a été supprimé ou désactivé par l'administrateur. Votre session a été fermée.");
+      setIsLoginMode(true);
+    }
+  }, []);
+
   // Login form state (universal: Email, Phone, or Name ID)
   const [loginIdentifier, setLoginIdentifier] = useState('');
   const [loginPassword, setLoginPassword] = useState('');

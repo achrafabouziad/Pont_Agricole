@@ -34,6 +34,7 @@ export const ClientDashboardPage: React.FC<ClientDashboardPageProps> = ({ onNavi
   const [reorderNotice, setReorderNotice] = useState<string | null>(null);
 
   useEffect(() => {
+    store.validateSession();
     store.getOrders().then(setOrders);
     const unsub = store.subscribe(() => {
       setUser(store.getCurrentUser());

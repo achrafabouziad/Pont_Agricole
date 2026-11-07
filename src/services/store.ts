@@ -145,6 +145,18 @@ class StoreService {
         this.broadcastChannel = new BroadcastChannel('pont_agricole_channel');
         this.broadcastChannel.onmessage = (ev) => {
           if (ev.data?.type === 'STORE_UPDATED') {
+            if (ev.data?.action === 'CLIENT_DELETED') {
+              const targetBizId = ev.data?.clientId;
+              const targetOwnerId = ev.data?.ownerId;
+              if (
+                (targetBizId && this.currentBusiness?.id === targetBizId) ||
+                (targetBizId && this.currentUser?.id === targetBizId) ||
+                (targetOwnerId && this.currentUser?.id === targetOwnerId)
+              ) {
+                this.forceLogoutDeletedClient(targetBizId);
+                return;
+              }
+            }
             this.notify(false);
           }
         };
@@ -154,6 +166,13 @@ class StoreService {
     // Cross-tab synchronization via storage events
     if (typeof window !== 'undefined') {
       window.addEventListener('storage', (e) => {
+        if (e.key === KEY_DELETED_BIZ) {
+          const deleted = new Set(getStored<string[]>(KEY_DELETED_BIZ, []));
+          if (this.currentBusiness?.id && deleted.has(this.currentBusiness.id)) {
+            this.forceLogoutDeletedClient(this.currentBusiness.id);
+            return;
+          }
+        }
         if (e.key && e.key.startsWith(STORAGE_PREFIX)) {
           this.notify(false);
         }
@@ -345,7 +364,10 @@ class StoreService {
     }
 
     this.currentBusiness = getSessionStored<Business | null>(KEY_SESSION_BUSINESS, null);
+    const deletedBizOnStart = new Set(getStored<string[]>(KEY_DELETED_BIZ, []));
     if (
+      (this.currentBusiness?.id && deletedBizOnStart.has(this.currentBusiness.id)) ||
+      this.currentBusiness?.approvalStatus === 'rejected' ||
       this.currentBusiness?.id === 'biz-client-001' ||
       this.currentBusiness?.id === 'biz-client-002' ||
       this.currentBusiness?.id === 'biz-resto-001' ||
@@ -354,6 +376,10 @@ class StoreService {
       this.currentBusiness?.businessName?.includes('Bistrot du Port')
     ) {
       this.currentBusiness = null;
+      if (this.currentUser?.role === 'customer') {
+        this.currentUser = null;
+        sessionStorage.removeItem(KEY_SESSION_USER);
+      }
       sessionStorage.removeItem(KEY_SESSION_BUSINESS);
     }
     this.cart = getStored<CartItem[]>(KEY_CART, []);
@@ -491,15 +517,17 @@ class StoreService {
     const normPhone = normalizePhone(rawInput);
     const slug = cleanLower.replace(/[^a-z0-9_.-]/g, '');
     const isPureDigits = cleanDigits.length >= 8 && !rawInput.includes('@');
+    const deletedBizIds = new Set(getStored<string[]>(KEY_DELETED_BIZ, []));
 
     let matchedBiz: any = null;
+    let rejectedBizFound: any = null;
 
     // A. Rechercher l'établissement dans la base Supabase
     if (isSupabaseConfigured && supabase) {
       try {
         const { data: dbBizs } = await supabase.from('businesses').select('*');
         if (dbBizs && dbBizs.length > 0) {
-          matchedBiz = dbBizs.find((b: any) => {
+          const found = dbBizs.find((b: any) => {
             const bUser = (b.username || '').toLowerCase().trim();
             const bPhone = (b.phone || '').trim();
             const bPhoneDigits = bPhone.replace(/[^0-9]/g, '');
@@ -526,6 +554,14 @@ class StoreService {
 
             return false;
           });
+
+          if (found) {
+            if (found.approval_status === 'rejected' || deletedBizIds.has(found.id)) {
+              rejectedBizFound = found;
+            } else {
+              matchedBiz = found;
+            }
+          }
         }
       } catch (e) {
         console.warn('Erreur recherche client Supabase:', e);
@@ -535,7 +571,7 @@ class StoreService {
     // B. Fallback local / cache businesses
     if (!matchedBiz) {
       const allLocalBiz = getStored<Business[]>(KEY_BUSINESSES, []);
-      matchedBiz = allLocalBiz.find((b) => {
+      const found = allLocalBiz.find((b) => {
         const bUser = (b.username || '').toLowerCase().trim();
         const bPhoneDigits = (b.phone || '').replace(/[^0-9]/g, '');
         if (slug && bUser && bUser === slug) return true;
@@ -543,6 +579,22 @@ class StoreService {
         if (cleanLower.includes('@') && b.email && b.email.toLowerCase().trim() === cleanLower) return true;
         return false;
       });
+
+      if (found) {
+        if (found.approvalStatus === 'rejected' || deletedBizIds.has(found.id)) {
+          rejectedBizFound = found;
+        } else {
+          matchedBiz = found;
+        }
+      }
+    }
+
+    // Si le compte a été supprimé ou rejeté par l'administrateur : blocage total et immédiat
+    if (rejectedBizFound && !matchedBiz) {
+      return {
+        success: false,
+        error: "Ce compte a été supprimé ou désactivé par l'administrateur. Veuillez contacter l'administration Pont Agricole.",
+      };
     }
 
     // C. VÉRIFICATION DU MOT DE PASSE SYNCHRONISÉ (MULTI-APPAREILS)
@@ -599,6 +651,16 @@ class StoreService {
 
     // F. SI LE MOT DE PASSE EST CONFIRMÉ (DEPUIS N'IMPORTE QUEL TÉLÉPHONE OU PC)
     if (passwordMatches && matchedBiz) {
+      if (
+        matchedBiz.approval_status === 'rejected' ||
+        matchedBiz.approvalStatus === 'rejected' ||
+        deletedBizIds.has(matchedBiz.id)
+      ) {
+        return {
+          success: false,
+          error: "Ce compte a été supprimé ou désactivé par l'administrateur. Veuillez contacter l'administration Pont Agricole.",
+        };
+      }
       // Si la base n'avait pas encore le token de synchro, l'enregistrer discrètement pour les autres appareils
       if (isSupabaseConfigured && supabase && !decodeAuth(matchedBiz.google_maps_url)) {
         try {
@@ -966,6 +1028,120 @@ class StoreService {
     localStorage.removeItem(KEY_USER);
     localStorage.removeItem(KEY_BUSINESS);
     this.notify();
+  }
+
+  // Déconnexion et expulsion immédiate d'un client supprimé par l'administrateur
+  public async forceLogoutDeletedClient(bizId?: string): Promise<void> {
+    const targetBizId = bizId || this.currentBusiness?.id;
+    if (targetBizId) {
+      const deleted = getStored<string[]>(KEY_DELETED_BIZ, []);
+      if (!deleted.includes(targetBizId)) {
+        deleted.push(targetBizId);
+        setStored(KEY_DELETED_BIZ, deleted);
+      }
+    }
+
+    // Effacer les identifiants enregistrés pour ce client
+    const creds = getStored<Record<string, string>>(KEY_USER_CREDS, {});
+    if (this.currentBusiness?.username) delete creds[this.currentBusiness.username.toLowerCase().trim()];
+    if (this.currentUser?.phone) {
+      delete creds[this.currentUser.phone.replace(/[^0-9]/g, '')];
+      delete creds[normalizePhone(this.currentUser.phone)];
+    }
+    setStored(KEY_USER_CREDS, creds);
+
+    if (targetBizId) {
+      const allBiz = getStored<Business[]>(KEY_BUSINESSES, []);
+      const filtered = allBiz.filter((b) => b.id !== targetBizId);
+      setStored(KEY_BUSINESSES, filtered);
+    }
+
+    try {
+      sessionStorage.setItem('pont_account_deleted_notice', 'true');
+      localStorage.setItem('pont_account_deleted_notice', 'true');
+    } catch {}
+
+    await this.logout();
+  }
+
+  // Validation en direct du statut du compte client (détecte la suppression par l'administrateur)
+  public async validateSession(): Promise<boolean> {
+    if (!this.currentUser) return true;
+    if (this.currentUser.role === 'admin') return true;
+
+    const bizId = this.currentBusiness?.id;
+    const ownerId = this.currentUser.id;
+
+    // 1. Vérification dans la liste locale des comptes supprimés
+    const deletedIds = new Set(getStored<string[]>(KEY_DELETED_BIZ, []));
+    if (bizId && deletedIds.has(bizId)) {
+      await this.forceLogoutDeletedClient(bizId);
+      return false;
+    }
+
+    // 2. Vérification sur le serveur local sync (dev / réseau local WiFi)
+    try {
+      if (typeof fetch !== 'undefined') {
+        const delRes = await fetch('/api/sync/deleted-clients', { cache: 'no-store' });
+        if (delRes.ok) {
+          const remoteDeleted = await delRes.json();
+          if (Array.isArray(remoteDeleted)) {
+            if ((bizId && remoteDeleted.includes(bizId)) || (ownerId && remoteDeleted.includes(ownerId))) {
+              await this.forceLogoutDeletedClient(bizId);
+              return false;
+            }
+          }
+        }
+      }
+    } catch {}
+
+    // 3. Vérification centrale sur Supabase (Statut en temps réel)
+    if (isSupabaseConfigured && supabase) {
+      try {
+        let query = supabase.from('businesses').select('id, approval_status, owner_id');
+        if (bizId) {
+          query = query.eq('id', bizId);
+        } else if (ownerId) {
+          query = query.eq('owner_id', ownerId);
+        }
+
+        const { data, error } = await query;
+        if (!error && data) {
+          // Si le compte a été supprimé de la table OU marqué 'rejected'
+          if (data.length === 0 || data[0].approval_status === 'rejected') {
+            await this.forceLogoutDeletedClient(bizId);
+            return false;
+          }
+        }
+      } catch (e) {
+        console.warn('Erreur validation session client Supabase:', e);
+      }
+
+      // 3b. Requête REST directe de secours
+      if (bizId) {
+        try {
+          const restRes = await fetch(
+            `https://qovqogxhvugtgvjxxsbc.supabase.co/rest/v1/businesses?id=eq.${bizId}&select=id,approval_status`,
+            {
+              headers: {
+                apikey: 'sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
+                Authorization: 'Bearer sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
+              },
+              cache: 'no-store',
+            }
+          );
+          if (restRes.ok) {
+            const rows = await restRes.json();
+            if (Array.isArray(rows) && (rows.length === 0 || rows[0].approval_status === 'rejected')) {
+              await this.forceLogoutDeletedClient(bizId);
+              return false;
+            }
+          }
+        } catch {}
+      }
+    }
+
+    return true;
   }
 
   // --- PRESENCE & ACTIVITÉ EN LIGNE ---
@@ -1380,9 +1556,21 @@ class StoreService {
     requestedDeliveryDate: string;
     customerNotes?: string;
   }): Promise<{ success: boolean; order?: Order; error?: string }> {
-    // 1. Check user login
-    if (!this.currentUser) {
-      return { success: false, error: 'Veuillez vous connecter pour envoyer une commande.' };
+    // 1. Validation de la session en direct (si le compte a été supprimé ou rejeté par l'admin)
+    const isSessionValid = await this.validateSession();
+    if (!isSessionValid || !this.currentUser) {
+      return {
+        success: false,
+        error: "Votre compte a été supprimé ou désactivé par l'administrateur. La commande ne peut pas être transmise.",
+      };
+    }
+
+    if (this.currentBusiness?.approvalStatus === 'rejected') {
+      await this.forceLogoutDeletedClient(this.currentBusiness.id);
+      return {
+        success: false,
+        error: "Votre compte a été supprimé ou désactivé par l'administrateur.",
+      };
     }
 
     // 3. Check cart contents
@@ -1966,12 +2154,32 @@ class StoreService {
       setStored(KEY_DELETED_BIZ, deletedIds);
     }
 
-    // 1. Marquer comme rejeté / supprimé dans Supabase (garantie d'invisibilité immédiate sur tous les téléphones)
+    // Récupérer le client pour nettoyer ses accès
+    const businesses = getStored<Business[]>(KEY_BUSINESSES, []);
+    const targetBiz = businesses.find((b) => b.id === businessId);
+    const ownerId = targetBiz?.ownerId;
+
+    // Supprimer les identifiants en cache
+    const creds = getStored<Record<string, string>>(KEY_USER_CREDS, {});
+    if (targetBiz?.username) delete creds[targetBiz.username.toLowerCase().trim()];
+    if (targetBiz?.phone) {
+      delete creds[targetBiz.phone.replace(/[^0-9]/g, '')];
+      delete creds[normalizePhone(targetBiz.phone)];
+    }
+    if (ownerId) delete creds[ownerId];
+    setStored(KEY_USER_CREDS, creds);
+
+    // 1. Marquer comme rejeté / supprimé dans Supabase (garantie d'expulsion immédiate sur tous les téléphones)
     if (isSupabaseConfigured && supabase) {
       try {
         await supabase.from('businesses').update({ approval_status: 'rejected' }).eq('id', businessId);
       } catch (e) {
         console.warn('Error marking business as rejected in Supabase', e);
+      }
+      if (ownerId) {
+        try {
+          await supabase.from('businesses').update({ approval_status: 'rejected' }).eq('owner_id', ownerId);
+        } catch {}
       }
       try {
         await supabase.from('businesses').delete().eq('id', businessId);
@@ -1995,12 +2203,40 @@ class StoreService {
     // 2. Synchroniser la suppression dev / local sync
     try {
       fetch(`/api/sync/clients?id=${businessId}`, { method: 'DELETE' }).catch(() => {});
+      fetch('/api/sync/deleted-clients', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: businessId, ownerId }),
+      }).catch(() => {});
     } catch {}
 
     // 3. Supprimer du stockage local
-    const businesses = getStored<Business[]>(KEY_BUSINESSES, []);
     const filtered = businesses.filter((b) => b.id !== businessId);
     setStored(KEY_BUSINESSES, filtered);
+
+    // 4. Diffuser l'expulsion immédiate vers les autres onglets ouverts
+    if (this.broadcastChannel) {
+      try {
+        this.broadcastChannel.postMessage({
+          type: 'STORE_UPDATED',
+          action: 'CLIENT_DELETED',
+          clientId: businessId,
+          ownerId,
+          timestamp: Date.now(),
+        });
+      } catch {}
+    }
+
+    // 5. Si la session actuelle correspond au client supprimé, déconnexion immédiate
+    if (
+      this.currentBusiness?.id === businessId ||
+      this.currentUser?.id === businessId ||
+      (ownerId && this.currentUser?.id === ownerId)
+    ) {
+      await this.forceLogoutDeletedClient(businessId);
+      return;
+    }
+
     this.notify();
   }
 
