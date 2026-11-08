@@ -31,6 +31,7 @@ export const ClientDashboardPage: React.FC<ClientDashboardPageProps> = ({ onNavi
   const [orders, setOrders] = useState<Order[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [invoiceOrder, setInvoiceOrder] = useState<Order | null>(null);
+  const [isGlobalInvoiceOpen, setIsGlobalInvoiceOpen] = useState<boolean>(false);
   const [reorderNotice, setReorderNotice] = useState<string | null>(null);
 
   useEffect(() => {
@@ -164,8 +165,97 @@ export const ClientDashboardPage: React.FC<ClientDashboardPageProps> = ({ onNavi
               </button>
             </div>
           ) : (
-            <div className="client-orders-list">
-              {orders.map((order) => (
+            <>
+              {/* Facture Globale Multi-Commandes Banner */}
+              <div
+                className="card"
+                style={{
+                  backgroundColor: '#f0fdf4',
+                  border: '1.5px solid #86efac',
+                  padding: '1.25rem 1.5rem',
+                  marginBottom: '1.5rem',
+                  borderRadius: '16px',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                  gap: '1rem',
+                  boxShadow: '0 4px 15px rgba(22, 101, 52, 0.07)',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+                  <div
+                    style={{
+                      width: '44px',
+                      height: '44px',
+                      borderRadius: '12px',
+                      backgroundColor: '#166534',
+                      color: '#ffffff',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                    }}
+                  >
+                    <FileText size={22} />
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 800, fontSize: '1.05rem', color: '#14532d', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      <span>Facture Globale Récapitulative</span>
+                      <span
+                        style={{
+                          fontSize: '0.72rem',
+                          backgroundColor: '#dcfce7',
+                          color: '#166534',
+                          padding: '0.15rem 0.55rem',
+                          borderRadius: '10px',
+                          fontWeight: 800,
+                          border: '1px solid #bbf7d0',
+                        }}
+                      >
+                        {orders.length} commande{orders.length > 1 ? 's' : ''} regroupée{orders.length > 1 ? 's' : ''}
+                      </span>
+                    </div>
+                    <p style={{ margin: '0.2rem 0 0', fontSize: '0.85rem', color: '#166534' }}>
+                      Toutes vos commandes réunies sur une seule facture commerciale avec total cumulé.
+                    </p>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: '0.72rem', color: '#166534', fontWeight: 700, textTransform: 'uppercase' }}>Total Général TTC</div>
+                    <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#14532d' }}>
+                      {orders.reduce((sum, o) => sum + (Number(o.total) || 0), 0).toFixed(2)} DH
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setInvoiceOrder(null);
+                      setIsGlobalInvoiceOpen(true);
+                    }}
+                    className="btn btn-primary"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.45rem',
+                      backgroundColor: '#166534',
+                      borderColor: '#166534',
+                      fontWeight: 800,
+                      padding: '0.65rem 1.15rem',
+                      borderRadius: '10px',
+                    }}
+                  >
+                    <FileText size={16} />
+                    <span>Ouvrir la Facture Globale</span>
+                  </button>
+                </div>
+              </div>
+
+              <div className="client-orders-list">
+                {orders.map((order) => (
                 <div
                   key={order.id}
                   className="card client-order-card"
@@ -257,15 +347,22 @@ export const ClientDashboardPage: React.FC<ClientDashboardPageProps> = ({ onNavi
                 </div>
               ))}
             </div>
+            </>
           )}
         </div>
       </div>
 
       {/* Invoice Modal for Client */}
-      {invoiceOrder && (
+      {(invoiceOrder || isGlobalInvoiceOpen) && orders.length > 0 && (
         <InvoiceModal
-          order={invoiceOrder}
-          onClose={() => setInvoiceOrder(null)}
+          orders={orders}
+          order={invoiceOrder || orders[0]}
+          clientBusiness={business}
+          initialMode={isGlobalInvoiceOpen ? 'global' : 'global'}
+          onClose={() => {
+            setInvoiceOrder(null);
+            setIsGlobalInvoiceOpen(false);
+          }}
         />
       )}
     </div>

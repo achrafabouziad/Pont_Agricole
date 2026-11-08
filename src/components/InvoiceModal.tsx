@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Order, CompanySettings } from '../types';
+import { Order, CompanySettings, Business } from '../types';
 import {
   Printer,
   X,
@@ -11,13 +11,17 @@ import {
   Trash2,
   RotateCcw,
   Eye,
+  Layers,
 } from 'lucide-react';
 import { store } from '../services/store';
 
-interface InvoiceModalProps {
-  order: Order | null;
+export interface InvoiceModalProps {
+  order?: Order | null;
+  orders?: Order[] | null;
   onClose: () => void;
   settings?: CompanySettings | null;
+  clientBusiness?: Business | null;
+  initialMode?: 'global' | 'single';
 }
 
 interface InvoiceRowItem {
@@ -29,7 +33,27 @@ interface InvoiceRowItem {
   montantHt: number;
 }
 
-export const InvoiceModal: React.FC<InvoiceModalProps> = ({ order, onClose, settings: propsSettings }) => {
+export const InvoiceModal: React.FC<InvoiceModalProps> = ({
+  order,
+  orders,
+  onClose,
+  settings: propsSettings,
+  clientBusiness,
+  initialMode,
+}) => {
+  // Determine all available orders for this client
+  const allOrders: Order[] = orders && orders.length > 0
+    ? orders
+    : (order ? [order] : []);
+
+  const [invoiceMode, setInvoiceMode] = useState<'global' | 'single'>(
+    initialMode || (allOrders.length > 1 ? 'global' : 'single')
+  );
+  const [selectedSingleId, setSelectedSingleId] = useState<string>(
+    order?.id || allOrders[0]?.id || ''
+  );
+  const [viewGrouping, setViewGrouping] = useState<'consolidated' | 'detailed'>('consolidated');
+
   const [liveSettings, setLiveSettings] = useState<CompanySettings | null>(propsSettings || null);
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [savingNotice, setSavingNotice] = useState<string | null>(null);
@@ -55,9 +79,17 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ order, onClose, sett
   const [remiseGratuit, setRemiseGratuit] = useState<number>(0);
   const [totalTva, setTotalTva] = useState<number>(0);
 
-  // Initialize and auto-populate all fields from the order
-  const initFromOrder = () => {
-    if (!order) return;
+  // Active orders based on selected mode
+  const activeOrders: Order[] = invoiceMode === 'single'
+    ? (allOrders.filter((o) => o.id === selectedSingleId).length > 0
+        ? allOrders.filter((o) => o.id === selectedSingleId)
+        : [allOrders[0]])
+    : allOrders;
+
+  // Initialize and auto-populate all fields from active orders
+  const initInvoice = () => {
+    if (activeOrders.length === 0) return;
+    const baseOrd = activeOrders[0];
 
     if (!propsSettings) {
       store.getCompanySettings().then((st) => {
@@ -69,64 +101,115 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ order, onClose, sett
       if (propsSettings.phone) setInvoicePhone(propsSettings.phone);
     }
 
-    // Auto lookup business ICE if not on order
-    store.getBusinesses().then((bizList) => {
-      const match = bizList.find(
-        (b) => b.id === order.businessId || b.ownerId === order.customerId || b.phone === order.customerPhone
-      );
-      if (match?.ice) {
-        setCustomerIce(match.ice);
-      }
+    // Auto lookup business ICE if not passed
+    if (clientBusiness?.ice) {
+      setCustomerIce(clientBusiness.ice);
+    } else {
+      store.getBusinesses().then((bizList) => {
+        const match = bizList.find(
+          (b) => b.id === baseOrd.businessId || b.ownerId === baseOrd.customerId || b.phone === baseOrd.customerPhone
+        );
+        if (match?.ice) {
+          setCustomerIce(match.ice);
+        }
+      });
+    }
+
+    const clientCode = baseOrd.customerId ? baseOrd.customerId.slice(-4).toUpperCase() : '001';
+    const nowIso = new Date().toISOString();
+    const todayFormatted = new Date().toLocaleDateString('fr-FR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
     });
 
-    const num = order.orderNumber.replace('#', '').replace(/^PA-/, '');
-    setInvoiceNumber(num || '001');
+    if (activeOrders.length > 1) {
+      setInvoiceNumber(`REC-${clientCode}-${nowIso.slice(2, 7).replace('-', '')}`);
+      setInvoiceDate(todayFormatted);
+    } else {
+      const num = baseOrd.orderNumber.replace('#', '').replace(/^PA-/, '');
+      setInvoiceNumber(num || '001');
+      const formattedDate = baseOrd.requestedDeliveryDate
+        ? baseOrd.requestedDeliveryDate
+        : new Date(baseOrd.createdAt).toLocaleDateString('fr-FR', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+          });
+      setInvoiceDate(formattedDate);
+    }
 
-    const formattedDate = order.requestedDeliveryDate
-      ? order.requestedDeliveryDate
-      : new Date(order.createdAt).toLocaleDateString('fr-FR', {
-          day: '2-digit',
-          month: '2-digit',
-          year: 'numeric',
+    setBusinessName(clientBusiness?.businessName || baseOrd.businessName || baseOrd.customerName || '');
+    setDeliveryAddress(clientBusiness?.deliveryAddress || baseOrd.deliveryAddress || '');
+    setCustomerPhone(clientBusiness?.phone || baseOrd.customerPhone || '');
+    if (clientBusiness?.ice) setCustomerIce(clientBusiness.ice);
+    else if (baseOrd.customerIce) setCustomerIce(baseOrd.customerIce);
+    setDeliveryCity(clientBusiness?.city || baseOrd.deliveryCity || 'Casablanca');
+    setCustomerCode(clientCode ? `CLT-${clientCode}` : 'CLT-01');
+
+    // Auto-map produce items
+    if (activeOrders.length > 1 && viewGrouping === 'consolidated') {
+      const productMap = new Map<string, InvoiceRowItem>();
+      activeOrders.forEach((ord) => {
+        (ord.items || []).forEach((item, idx) => {
+          const key = (item.productId || item.productNameSnapshot || `item-${idx}`).trim().toLowerCase();
+          const isCaisse = item.unitSnapshot === 'caisse' || item.unitSnapshot === 'carton';
+          const caissesCount = isCaisse ? item.quantity : 1;
+          const qte = item.unitSnapshot === 'kg' ? item.quantity : item.quantity * 10;
+          const lineTot = item.lineTotal || (item.unitPriceSnapshot * item.quantity);
+
+          if (productMap.has(key)) {
+            const cur = productMap.get(key)!;
+            cur.caisses += caissesCount;
+            cur.qteKg += qte;
+            cur.montantHt = Math.round((cur.montantHt + lineTot) * 100) / 100;
+          } else {
+            productMap.set(key, {
+              id: item.productId || `prod-${key}`,
+              designation: item.productNameSnapshot || '',
+              caisses: caissesCount,
+              qteKg: qte,
+              puKg: item.unitPriceSnapshot || 0,
+              montantHt: Math.round(lineTot * 100) / 100,
+            });
+          }
         });
-    setInvoiceDate(formattedDate);
+      });
+      setRows(Array.from(productMap.values()));
+    } else {
+      const mappedRows: InvoiceRowItem[] = [];
+      activeOrders.forEach((ord) => {
+        const ordRef = ord.orderNumber ? ord.orderNumber.replace('#', '').slice(-8) : '';
+        const nameSuffix = activeOrders.length > 1 ? ` (Cde ${ordRef})` : '';
+        (ord.items || []).forEach((item, idx) => {
+          const isCaisse = item.unitSnapshot === 'caisse' || item.unitSnapshot === 'carton';
+          const caissesCount = isCaisse ? item.quantity : 1;
+          const qte = item.unitSnapshot === 'kg' ? item.quantity : item.quantity * 10;
+          mappedRows.push({
+            id: `${ord.id}-${item.productId || idx}`,
+            designation: `${item.productNameSnapshot}${nameSuffix}`,
+            caisses: caissesCount,
+            qteKg: qte,
+            puKg: item.unitPriceSnapshot || 0,
+            montantHt: item.lineTotal || 0,
+          });
+        });
+      });
+      setRows(mappedRows);
+    }
 
-    setBusinessName(order.businessName || order.customerName || '');
-    setDeliveryAddress(order.deliveryAddress || '');
-    setCustomerPhone(order.customerPhone || '');
-    setCustomerIce(order.customerIce || '');
-    setDeliveryCity(order.deliveryCity || 'Casablanca');
-    setCustomerCode(order.customerId ? order.customerId.slice(-6).toUpperCase() : 'CLT-01');
-
-    // Auto-map items
-    const mappedRows: InvoiceRowItem[] = (order.items || []).map((item, idx) => {
-      const isCaisse = item.unitSnapshot === 'caisse' || item.unitSnapshot === 'carton';
-      const caissesCount = isCaisse ? item.quantity : 1;
-      const qte = item.unitSnapshot === 'kg' ? item.quantity : item.quantity * 10;
-      return {
-        id: item.productId || `row-${idx}`,
-        designation: item.productNameSnapshot || '',
-        caisses: caissesCount,
-        qteKg: qte,
-        puKg: item.unitPriceSnapshot || 0,
-        montantHt: item.lineTotal || 0,
-      };
-    });
-
-    setRows(mappedRows);
     setRemiseLegumes(0);
     setRemiseGratuit(0);
     setTotalTva(0);
   };
 
   useEffect(() => {
-    initFromOrder();
-  }, [order, propsSettings]);
+    initInvoice();
+  }, [order, orders, invoiceMode, selectedSingleId, viewGrouping, propsSettings, clientBusiness]);
 
-  if (!order) return null;
+  if (allOrders.length === 0) return null;
 
   const handlePrint = () => {
-    // Switch to clean preview mode before printing if currently editing
     setIsEditing(false);
     setTimeout(() => {
       window.print();
@@ -140,6 +223,20 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ order, onClose, sett
     0,
     totalHT + (Number(totalTva) || 0) - (Number(remiseLegumes) || 0) - (Number(remiseGratuit) || 0)
   );
+
+  // Date range for multi-order invoices
+  const dates = activeOrders.map((o) => o.requestedDeliveryDate || o.createdAt).filter(Boolean);
+  dates.sort();
+  const earliestDate = dates[0]
+    ? dates[0].includes('T')
+      ? new Date(dates[0]).toLocaleDateString('fr-FR')
+      : dates[0]
+    : '';
+  const latestDate = dates[dates.length - 1]
+    ? dates[dates.length - 1].includes('T')
+      ? new Date(dates[dates.length - 1]).toLocaleDateString('fr-FR')
+      : dates[dates.length - 1]
+    : '';
 
   // Row update handlers
   const handleRowChange = (index: number, field: keyof InvoiceRowItem, val: any) => {
@@ -175,28 +272,54 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ order, onClose, sett
   };
 
   const handleSaveToOrder = async () => {
-    if (!order) return;
+    if (activeOrders.length === 0) return;
     try {
-      const updatedOrder: Order = {
-        ...order,
-        businessName,
-        deliveryAddress,
-        customerPhone,
-        deliveryCity,
-        customerIce,
-        subtotal: totalHT,
-        total: totalTTC,
-        items: rows.map((r) => ({
-          productId: r.id,
-          productNameSnapshot: r.designation,
-          unitSnapshot: 'caisse',
-          unitPriceSnapshot: r.puKg,
-          quantity: r.caisses,
-          lineTotal: r.montantHt,
-        })),
-      };
-      await store.updateOrder(updatedOrder);
-      setSavingNotice('Facture modifiée et enregistrée avec succès !');
+      if (activeOrders.length === 1) {
+        const targetOrd = activeOrders[0];
+        const updatedOrder: Order = {
+          ...targetOrd,
+          businessName,
+          deliveryAddress,
+          customerPhone,
+          deliveryCity,
+          customerIce,
+          subtotal: totalHT,
+          total: totalTTC,
+          items: rows.map((r) => ({
+            productId: r.id,
+            productNameSnapshot: r.designation,
+            unitSnapshot: 'caisse',
+            unitPriceSnapshot: r.puKg,
+            quantity: r.caisses,
+            lineTotal: r.montantHt,
+          })),
+        };
+        await store.updateOrder(updatedOrder);
+        setSavingNotice('Facture de commande modifiée et enregistrée avec succès !');
+      } else {
+        const customInvoice = {
+          invoiceNumber,
+          invoiceDate,
+          businessName,
+          deliveryAddress,
+          customerPhone,
+          customerIce,
+          deliveryCity,
+          customerCode,
+          rows,
+          totalHT,
+          totalTTC,
+          totalTva,
+          remiseLegumes,
+          remiseGratuit,
+          orderIds: activeOrders.map((o) => o.id),
+          updatedAt: new Date().toISOString(),
+        };
+        try {
+          localStorage.setItem(`pont_global_invoice_${invoiceNumber}`, JSON.stringify(customInvoice));
+        } catch {}
+        setSavingNotice('Facture globale récapitulative enregistrée avec succès !');
+      }
       setTimeout(() => setSavingNotice(null), 3500);
       setIsEditing(false);
     } catch (err) {
@@ -205,7 +328,6 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ order, onClose, sett
   };
 
   // Pad rows up to minimum 5 rows matching the template design
-  const displayRowsCount = Math.max(5, rows.length);
   const emptyRowsNeeded = Math.max(0, 5 - rows.length);
 
   return (
@@ -222,9 +344,14 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ order, onClose, sett
                 <FileText size={17} />
               </div>
               <div style={{ minWidth: 0 }}>
-                <h3 className="invoice-header-title">Facture Officielle Pont Agricole</h3>
+                <h3 className="invoice-header-title">
+                  {activeOrders.length > 1
+                    ? `Facture Globale Récapitulative (${activeOrders.length} Commandes)`
+                    : 'Facture Officielle Pont Agricole'}
+                </h3>
                 <p className="invoice-header-subtitle">
                   Facture #{invoiceNumber || '---'} • {invoiceDate}
+                  {activeOrders.length > 1 && ` • ${businessName || 'Client'}`}
                 </p>
               </div>
             </div>
@@ -238,6 +365,117 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ order, onClose, sett
               <X size={17} />
             </button>
           </div>
+
+          {/* Mode Switcher when multiple orders exist */}
+          {allOrders.length > 1 && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: '0.5rem',
+                paddingTop: '0.45rem',
+                borderTop: '1px solid #f1f5f9',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={() => setInvoiceMode('global')}
+                  style={{
+                    padding: '0.3rem 0.75rem',
+                    borderRadius: '8px',
+                    fontSize: '0.78rem',
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    border: '1.5px solid',
+                    backgroundColor: invoiceMode === 'global' ? '#166534' : '#ffffff',
+                    color: invoiceMode === 'global' ? '#ffffff' : '#166534',
+                    borderColor: '#166534',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                    boxShadow: invoiceMode === 'global' ? '0 2px 6px rgba(22, 101, 52, 0.2)' : 'none',
+                  }}
+                >
+                  <FileText size={13} />
+                  <span>Facture Globale ({allOrders.length} Commandes)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setInvoiceMode('single')}
+                  style={{
+                    padding: '0.3rem 0.75rem',
+                    borderRadius: '8px',
+                    fontSize: '0.78rem',
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    border: '1.5px solid',
+                    backgroundColor: invoiceMode === 'single' ? '#166534' : '#ffffff',
+                    color: invoiceMode === 'single' ? '#ffffff' : '#166534',
+                    borderColor: '#166534',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                    boxShadow: invoiceMode === 'single' ? '0 2px 6px rgba(22, 101, 52, 0.2)' : 'none',
+                  }}
+                >
+                  <span>Par Commande Seule</span>
+                </button>
+
+                {invoiceMode === 'single' && (
+                  <select
+                    value={selectedSingleId}
+                    onChange={(e) => setSelectedSingleId(e.target.value)}
+                    style={{
+                      padding: '0.28rem 0.55rem',
+                      borderRadius: '6px',
+                      fontSize: '0.78rem',
+                      border: '1px solid #cbd5e1',
+                      fontWeight: 700,
+                      color: '#1e293b',
+                      backgroundColor: '#ffffff',
+                    }}
+                  >
+                    {allOrders.map((ord) => (
+                      <option key={ord.id} value={ord.id}>
+                        {ord.orderNumber} ({new Date(ord.createdAt).toLocaleDateString('fr-FR')} - {ord.total.toFixed(2)} DH)
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+
+              {invoiceMode === 'global' && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                  <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>Affichage :</span>
+                  <button
+                    type="button"
+                    onClick={() => setViewGrouping(viewGrouping === 'consolidated' ? 'detailed' : 'consolidated')}
+                    style={{
+                      border: '1px solid #cbd5e1',
+                      backgroundColor: '#ffffff',
+                      color: '#334155',
+                      borderRadius: '6px',
+                      padding: '0.22rem 0.55rem',
+                      fontSize: '0.74rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.3rem',
+                    }}
+                    title="Changer entre produits groupés ou détail par commande"
+                  >
+                    <Layers size={12} />
+                    <span>{viewGrouping === 'consolidated' ? 'Groupé par produit' : 'Détaillé par date'}</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="invoice-actions-row">
             {/* Toggle Edit Mode */}
@@ -271,7 +509,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ order, onClose, sett
                 </button>
                 <button
                   type="button"
-                  onClick={initFromOrder}
+                  onClick={initInvoice}
                   className="invoice-action-btn"
                   title="Rétablir les données d'origine"
                 >
@@ -376,8 +614,13 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ order, onClose, sett
                   fontFamily: 'Arial, sans-serif',
                 }}
               >
-                Facture
+                {activeOrders.length > 1 ? 'Facture Récapitulative' : 'Facture'}
               </div>
+              {activeOrders.length > 1 && (
+                <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#166534', marginTop: '3px' }}>
+                  Facture Globale regroupant {activeOrders.length} commandes{earliestDate && latestDate ? ` • Période du ${earliestDate} au ${latestDate}` : ''}
+                </div>
+              )}
             </div>
 
             {/* Subheader Row: N°, TEL, DATE */}
@@ -394,7 +637,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ order, onClose, sett
                       fontWeight: 800,
                       fontSize: '0.92rem',
                       padding: '2px 4px',
-                      width: '115px',
+                      width: '135px',
                     }}
                   />
                 ) : (
@@ -821,6 +1064,24 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ order, onClose, sett
                 </tbody>
               </table>
             </div>
+
+            {/* Multi-orders manifest notice on paper */}
+            {activeOrders.length > 1 && (
+              <div
+                style={{
+                  marginTop: '10px',
+                  padding: '6px 10px',
+                  border: '1px dashed #000000',
+                  borderRadius: '4px',
+                  fontSize: '0.74rem',
+                  color: '#000000',
+                  backgroundColor: '#ffffff',
+                }}
+              >
+                <strong>Bordereau des {activeOrders.length} commandes incluses dans cette facture : </strong>
+                {activeOrders.map((o) => `${o.orderNumber} (${o.total.toFixed(2)} DH)`).join(' • ')}
+              </div>
+            )}
           </div>
         </div>
       </div>

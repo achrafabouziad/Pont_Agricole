@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { store, isClientOnline, formatClientPresence } from '../services/store';
+import { store, isClientOnline, formatClientPresence, normalizePhone } from '../services/store';
 import {
   Order,
   Product,
@@ -106,8 +106,53 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
   const [savingSettings, setSavingSettings] = useState<boolean>(false);
   const [settingsSaveNotice, setSettingsSaveNotice] = useState<string | null>(null);
 
-  // Selected order for commercial invoice view & print
+  // Selected order & client for consolidated commercial invoice
   const [selectedInvoiceOrder, setSelectedInvoiceOrder] = useState<Order | null>(null);
+  const [selectedInvoiceOrders, setSelectedInvoiceOrders] = useState<Order[] | null>(null);
+  const [selectedInvoiceClient, setSelectedInvoiceClient] = useState<Business | null>(null);
+
+  const handleOpenGlobalInvoiceForClient = (biz: Business) => {
+    const bizPhoneNorm = normalizePhone(biz.phone || '');
+    const clientOrders = orders.filter((o) => {
+      if (o.businessId && o.businessId === biz.id) return true;
+      if (o.customerId && o.customerId === biz.ownerId) return true;
+      const oPhoneNorm = normalizePhone(o.customerPhone || '');
+      if (bizPhoneNorm && oPhoneNorm && bizPhoneNorm === oPhoneNorm) return true;
+      return false;
+    });
+
+    if (clientOrders.length === 0) {
+      alert(`Aucune commande enregistrée pour ${biz.businessName}.`);
+      return;
+    }
+
+    setSelectedInvoiceOrder(clientOrders[0]);
+    setSelectedInvoiceOrders(clientOrders);
+    setSelectedInvoiceClient(biz);
+  };
+
+  const handleOpenInvoiceForOrder = (ord: Order) => {
+    const oPhoneNorm = normalizePhone(ord.customerPhone || '');
+    const clientOrders = orders.filter((o) => {
+      if (ord.businessId && o.businessId === ord.businessId) return true;
+      if (ord.customerId && o.customerId === ord.customerId) return true;
+      const phoneNorm = normalizePhone(o.customerPhone || '');
+      if (oPhoneNorm && phoneNorm && oPhoneNorm === phoneNorm) return true;
+      return false;
+    });
+
+    const matchBiz = businesses.find((b) => {
+      if (ord.businessId && b.id === ord.businessId) return true;
+      if (ord.customerId && b.ownerId === ord.customerId) return true;
+      const bPhoneNorm = normalizePhone(b.phone || '');
+      if (oPhoneNorm && bPhoneNorm && oPhoneNorm === bPhoneNorm) return true;
+      return false;
+    });
+
+    setSelectedInvoiceOrder(ord);
+    setSelectedInvoiceOrders(clientOrders.length > 0 ? clientOrders : [ord]);
+    setSelectedInvoiceClient(matchBiz || null);
+  };
 
   // Clients Tab search & filter state
   const [clientSearchQuery, setClientSearchQuery] = useState<string>('');
@@ -1362,7 +1407,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
                             </select>
 
                             <button
-                              onClick={() => setSelectedInvoiceOrder(ord)}
+                              onClick={() => handleOpenInvoiceForOrder(ord)}
                               className="btn btn-secondary btn-sm"
                               style={{
                                 display: 'inline-flex',
@@ -1550,6 +1595,75 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
               Gestion des Commandes B2B ({orders.length})
             </h3>
 
+            {/* Quick Global Invoice Selector by Client */}
+            {businesses.length > 0 && orders.length > 0 && (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: '0.75rem',
+                  padding: '0.85rem 1.15rem',
+                  backgroundColor: '#f0fdf4',
+                  border: '1px solid #bbf7d0',
+                  borderRadius: '12px',
+                  marginBottom: '1.25rem',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                  <FileText size={18} style={{ color: '#166534' }} />
+                  <div>
+                    <strong style={{ fontSize: '0.9rem', color: '#14532d' }}>
+                      Facture Globale par Client (Multi-Commandes)
+                    </strong>
+                    <div style={{ fontSize: '0.76rem', color: '#166534' }}>
+                      Regroupe toutes les commandes d'un client dans une seule facture officielle
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <select
+                    onChange={(e) => {
+                      const bizId = e.target.value;
+                      if (!bizId) return;
+                      const targetBiz = businesses.find((b) => b.id === bizId);
+                      if (targetBiz) handleOpenGlobalInvoiceForClient(targetBiz);
+                      e.target.value = '';
+                    }}
+                    style={{
+                      padding: '0.45rem 0.85rem',
+                      borderRadius: '8px',
+                      fontSize: '0.82rem',
+                      border: '1.5px solid #86efac',
+                      backgroundColor: '#ffffff',
+                      color: '#166534',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <option value="">Sélectionner un client pour générer sa facture globale...</option>
+                    {businesses.map((biz) => {
+                      const cOrders = orders.filter((o) => {
+                        if (o.businessId && o.businessId === biz.id) return true;
+                        if (o.customerId && o.customerId === biz.ownerId) return true;
+                        const bPhone = normalizePhone(biz.phone || '');
+                        const oPhone = normalizePhone(o.customerPhone || '');
+                        return Boolean(bPhone && oPhone && bPhone === oPhone);
+                      });
+                      if (cOrders.length === 0) return null;
+                      return (
+                        <option key={biz.id} value={biz.id}>
+                          {biz.businessName} ({cOrders.length} commande{cOrders.length > 1 ? 's' : ''} • {cOrders.reduce((s, o) => s + (Number(o.total) || 0), 0).toFixed(0)} DH)
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+              </div>
+            )}
+
             <div className="table-responsive">
               <table className="data-table">
                 <thead>
@@ -1624,7 +1738,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
                           </select>
 
                           <button
-                            onClick={() => setSelectedInvoiceOrder(ord)}
+                            onClick={() => handleOpenInvoiceForOrder(ord)}
                             className="btn btn-secondary btn-sm"
                             style={{
                               display: 'inline-flex',
@@ -2295,6 +2409,24 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
                                   </button>
                                 )}
                                 <button
+                                  onClick={() => handleOpenGlobalInvoiceForClient(biz)}
+                                  className="btn btn-secondary btn-sm"
+                                  style={{
+                                    color: '#166534',
+                                    borderColor: '#bbf7d0',
+                                    backgroundColor: '#f0fdf4',
+                                    fontSize: '0.75rem',
+                                    padding: '0.25rem 0.6rem',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '0.3rem',
+                                    fontWeight: 700,
+                                  }}
+                                  title="Générer la facture globale regroupant toutes les commandes de ce client"
+                                >
+                                  <FileText size={12} /> Facture Globale
+                                </button>
+                                <button
                                   onClick={() => handleOpenPasswordModal(biz)}
                                   className="btn btn-secondary btn-sm"
                                   style={{
@@ -2570,6 +2702,24 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
                               Suspendre
                             </button>
                           )}
+                          <button
+                            onClick={() => handleOpenGlobalInvoiceForClient(biz)}
+                            className="btn btn-secondary btn-sm"
+                            style={{
+                              color: '#166534',
+                              borderColor: '#bbf7d0',
+                              backgroundColor: '#f0fdf4',
+                              fontSize: '0.75rem',
+                              padding: '0.3rem 0.65rem',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.25rem',
+                              fontWeight: 700,
+                            }}
+                            title="Facture globale du client"
+                          >
+                            <FileText size={12} /> Facture Globale
+                          </button>
                           <button
                             onClick={() => handleOpenPasswordModal(biz)}
                             className="btn btn-secondary btn-sm"
@@ -3744,10 +3894,16 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
       )}
 
       {/* B2B Commercial Invoice / Delivery Slip Modal */}
-      {selectedInvoiceOrder && (
+      {(selectedInvoiceOrder || selectedInvoiceOrders) && (
         <InvoiceModal
           order={selectedInvoiceOrder}
-          onClose={() => setSelectedInvoiceOrder(null)}
+          orders={selectedInvoiceOrders}
+          clientBusiness={selectedInvoiceClient}
+          onClose={() => {
+            setSelectedInvoiceOrder(null);
+            setSelectedInvoiceOrders(null);
+            setSelectedInvoiceClient(null);
+          }}
           settings={settings}
         />
       )}
