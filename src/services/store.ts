@@ -799,7 +799,8 @@ class StoreService {
     }
     const uniqueCandidates = Array.from(new Set(candidateEmails.filter(Boolean)));
 
-    if (!passwordMatches && isSupabaseConfigured && supabase && uniqueCandidates.length > 0) {
+    // C. Initialiser ou vérifier la session Supabase GoTrue Auth
+    if (isSupabaseConfigured && supabase && uniqueCandidates.length > 0) {
       for (const emailTry of uniqueCandidates) {
         try {
           const { data, error } = await supabase.auth.signInWithPassword({
@@ -2091,6 +2092,11 @@ class StoreService {
     // 3. Charger depuis Supabase (avec délai d'attente sécurisé de 2.5s max pour ne jamais bloquer l'interface)
     if (isSupabaseConfigured && supabase) {
       try {
+        let adminToken: string | null = null;
+        if (this.currentUser?.role === 'admin') {
+          adminToken = await this.ensureAdminAuth();
+        }
+
         const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('orders_timeout')), 2500));
         const queryPromise = supabase
           .from('orders')
@@ -2098,10 +2104,32 @@ class StoreService {
           .order('created_at', { ascending: false });
 
         const res: any = await Promise.race([queryPromise, timeoutPromise]);
-        const data = res?.data;
+        let data = res?.data;
         const error = res?.error;
 
-        if (!error && data) {
+        // Fallback REST direct si erreur ou token admin disponible
+        if ((!data || data.length === 0) && adminToken) {
+          try {
+            const restOrdersRes = await fetch(
+              'https://qovqogxhvugtgvjxxsbc.supabase.co/rest/v1/orders?select=*,order_items(*)&order=created_at.desc',
+              {
+                headers: {
+                  apikey: 'sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
+                  Authorization: `Bearer ${adminToken}`,
+                },
+                cache: 'no-store',
+              }
+            );
+            if (restOrdersRes.ok) {
+              const restOrdersData = await restOrdersRes.json();
+              if (Array.isArray(restOrdersData) && restOrdersData.length > 0) {
+                data = restOrdersData;
+              }
+            }
+          } catch {}
+        }
+
+        if (data && Array.isArray(data)) {
           data.forEach((o: any) => {
             addOrUpdateOrder({
               id: o.id,
@@ -2809,8 +2837,22 @@ class StoreService {
       }).catch(() => {});
     } catch {}
 
+    const adminToken = await this.ensureAdminAuth();
     if (isSupabaseConfigured && supabase) {
-      await supabase.from('businesses').update({ approval_status: status }).eq('id', businessId);
+      try {
+        await supabase.from('businesses').update({ approval_status: status }).eq('id', businessId);
+      } catch {}
+      try {
+        await fetch(`https://qovqogxhvugtgvjxxsbc.supabase.co/rest/v1/businesses?id=eq.${businessId}`, {
+          method: 'PATCH',
+          headers: {
+            apikey: 'sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
+            Authorization: adminToken ? `Bearer ${adminToken}` : 'Bearer sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ approval_status: status }),
+        });
+      } catch {}
     }
     const businesses = getStored<Business[]>(KEY_BUSINESSES, []);
     const b = businesses.find((biz) => biz.id === businessId);
@@ -2848,7 +2890,14 @@ class StoreService {
     if (ownerId) delete creds[ownerId];
     setStored(KEY_USER_CREDS, creds);
 
-    // 1. Marquer comme rejeté / supprimé dans Supabase (garantie d'expulsion immédiate sur tous les téléphones)
+    // 1. Marquer comme rejeté et supprimer dans Supabase avec le jeton Administrateur (garantie d'expulsion sur tous les téléphones)
+    const adminToken = await this.ensureAdminAuth();
+    const headers: Record<string, string> = {
+      apikey: 'sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
+      Authorization: adminToken ? `Bearer ${adminToken}` : 'Bearer sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
+      'Content-Type': 'application/json',
+    };
+
     if (isSupabaseConfigured && supabase) {
       try {
         await supabase.from('businesses').update({ approval_status: 'rejected' }).eq('id', businessId);
@@ -2865,12 +2914,15 @@ class StoreService {
     try {
       await fetch(`https://qovqogxhvugtgvjxxsbc.supabase.co/rest/v1/businesses?id=eq.${businessId}`, {
         method: 'PATCH',
-        headers: {
-          apikey: 'sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
-          Authorization: 'Bearer sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify({ approval_status: 'rejected' }),
+      });
+    } catch {}
+
+    try {
+      await fetch(`https://qovqogxhvugtgvjxxsbc.supabase.co/rest/v1/businesses?id=eq.${businessId}`, {
+        method: 'DELETE',
+        headers,
       });
     } catch {}
 
