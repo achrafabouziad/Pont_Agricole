@@ -18,7 +18,7 @@ interface HomePageProps {
 }
 
 export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectCategory, onOpenCart }) => {
-  const [popularProducts, setPopularProducts] = useState<Product[]>([]);
+  const [popularProducts, setPopularProducts] = useState<Product[]>(() => store.getProductsSync().slice(0, 8));
   const [categories, setCategories] = useState<Category[]>([]);
   const [cart, setCart] = useState<CartItem[]>(store.getCart());
 

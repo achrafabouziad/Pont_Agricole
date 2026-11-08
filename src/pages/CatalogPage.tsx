@@ -29,7 +29,7 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({
   onNavigate,
 }) => {
   const [categories, setCategories] = useState<Category[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<Product[]>(() => store.getProductsSync());
   const [selectedCategory, setSelectedCategory] = useState<string>(initialCategoryId || 'all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [onlyAvailable, setOnlyAvailable] = useState<boolean>(false);

@@ -193,10 +193,12 @@ class StoreService {
 
   private init() {
     // Initialize default data if not present in local storage
-    if (!localStorage.getItem(KEY_PRODUCTS)) {
+    const storedProds = getStored<any[]>(KEY_PRODUCTS, []);
+    if (!Array.isArray(storedProds) || storedProds.length === 0) {
       setStored(KEY_PRODUCTS, INITIAL_PRODUCTS);
     }
-    if (!localStorage.getItem(KEY_CATEGORIES)) {
+    const storedCats = getStored<any[]>(KEY_CATEGORIES, []);
+    if (!Array.isArray(storedCats) || storedCats.length === 0) {
       setStored(KEY_CATEGORIES, INITIAL_CATEGORIES);
     }
     if (!localStorage.getItem(KEY_ZONES)) {
@@ -1356,7 +1358,41 @@ class StoreService {
     return null;
   }
 
+  public normalizeProduct(p: any): Product {
+    if (!p) {
+      return INITIAL_PRODUCTS[0];
+    }
+    return {
+      id: String(p.id || `prod-${Date.now()}`),
+      categoryId: String(p.categoryId || p.category_id || 'cat-legumes'),
+      name: String(p.name || 'Produit Maraîcher'),
+      description: String(p.description || ''),
+      imageUrl: String(
+        p.imageUrl ||
+        p.image_url ||
+        'https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=600&q=80'
+      ),
+      unit: (p.unit || 'caisse') as any,
+      price: Number(p.price) >= 0 ? Number(p.price) : 0,
+      minimumQuantity: Number(p.minimumQuantity !== undefined ? p.minimumQuantity : p.minimum_quantity) || 1,
+      isAvailable: p.isAvailable !== undefined ? Boolean(p.isAvailable) : (p.is_available !== undefined ? Boolean(p.is_available) : true),
+      origin: String(p.origin || 'Maroc'),
+      badge: p.badge || undefined,
+      createdAt: p.createdAt || p.created_at || new Date().toISOString(),
+      updatedAt: p.updatedAt || p.updated_at || new Date().toISOString(),
+    };
+  }
+
+  public getProductsSync(): Product[] {
+    const stored = getStored<any[]>(KEY_PRODUCTS, []);
+    if (Array.isArray(stored) && stored.length > 0) {
+      return stored.map((p) => this.normalizeProduct(p));
+    }
+    return INITIAL_PRODUCTS;
+  }
+
   public async refreshProductsFromCloud(): Promise<Product[]> {
+    // 1. Supabase JS client
     if (isSupabaseConfigured && supabase) {
       try {
         const { data, error } = await supabase
@@ -1364,19 +1400,7 @@ class StoreService {
           .select('*')
           .order('created_at', { ascending: false });
         if (!error && Array.isArray(data) && data.length > 0) {
-          const prods: Product[] = data.map((p: any) => ({
-            id: p.id,
-            categoryId: p.category_id,
-            name: p.name,
-            description: p.description || '',
-            imageUrl: p.image_url || '',
-            unit: p.unit,
-            price: Number(p.price),
-            minimumQuantity: Number(p.minimum_quantity) || 1,
-            isAvailable: Boolean(p.is_available),
-            origin: p.origin || 'Maroc',
-            badge: p.badge || undefined,
-          }));
+          const prods: Product[] = data.map((p: any) => this.normalizeProduct(p));
           setStored(KEY_PRODUCTS, prods);
           return prods;
         }
@@ -1384,7 +1408,7 @@ class StoreService {
         console.warn('Supabase JS products query error, attempting REST fallback:', e);
       }
 
-      // Direct REST fallback for client devices
+      // 2. Direct REST fallback for client devices
       try {
         const res = await fetch(
           'https://qovqogxhvugtgvjxxsbc.supabase.co/rest/v1/products?select=*&order=created_at.desc',
@@ -1397,19 +1421,7 @@ class StoreService {
         if (res.ok) {
           const data = await res.json();
           if (Array.isArray(data) && data.length > 0) {
-            const prods: Product[] = data.map((p: any) => ({
-              id: p.id,
-              categoryId: p.category_id,
-              name: p.name,
-              description: p.description || '',
-              imageUrl: p.image_url || '',
-              unit: p.unit,
-              price: Number(p.price),
-              minimumQuantity: Number(p.minimum_quantity) || 1,
-              isAvailable: Boolean(p.is_available),
-              origin: p.origin || 'Maroc',
-              badge: p.badge || undefined,
-            }));
+            const prods: Product[] = data.map((p: any) => this.normalizeProduct(p));
             setStored(KEY_PRODUCTS, prods);
             return prods;
           }
@@ -1417,19 +1429,28 @@ class StoreService {
       } catch {}
     }
 
-    // Dev server local WiFi sync fallback
+    // 3. Dev server local WiFi sync fallback
     try {
       const res = await fetch('/api/sync/products');
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data) && data.length > 0) {
-          setStored(KEY_PRODUCTS, data);
-          return data;
+          const prods: Product[] = data.map((p: any) => this.normalizeProduct(p));
+          setStored(KEY_PRODUCTS, prods);
+          return prods;
         }
       }
     } catch {}
 
-    return getStored<Product[]>(KEY_PRODUCTS, INITIAL_PRODUCTS);
+    // 4. Stored cache fallback
+    const stored = getStored<any[]>(KEY_PRODUCTS, []);
+    if (Array.isArray(stored) && stored.length > 0) {
+      const prods: Product[] = stored.map((p: any) => this.normalizeProduct(p));
+      return prods;
+    }
+
+    setStored(KEY_PRODUCTS, INITIAL_PRODUCTS);
+    return INITIAL_PRODUCTS;
   }
 
   public async getProducts(): Promise<Product[]> {

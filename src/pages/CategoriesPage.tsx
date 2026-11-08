@@ -13,7 +13,7 @@ export const CategoriesPage: React.FC<CategoriesPageProps> = ({
   onNavigate,
 }) => {
   const [categories, setCategories] = useState<Category[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<Product[]>(() => store.getProductsSync());
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   useEffect(() => {
