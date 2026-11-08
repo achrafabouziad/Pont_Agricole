@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Trash2, Plus, Minus, Calendar, MapPin, Truck, AlertTriangle, CheckCircle, ShieldAlert, ArrowRight, ShoppingBag, AlertCircle } from 'lucide-react';
+import { X, Trash2, Plus, Minus, AlertTriangle, ArrowRight, ShoppingBag } from 'lucide-react';
 import { store } from '../services/store';
 import { CartItem, DeliveryZone, Order } from '../types';
 
@@ -57,16 +57,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
 
   if (!isOpen) return null;
 
-  const currentZone = zones.find((z) => z.city.toLowerCase() === selectedCity.toLowerCase()) || zones[0];
   const subtotal = store.getCartSubtotal();
-  const deliveryFee = 0; // Livraison 100% offerte
   const total = subtotal;
-  const minOrderAmount = 0;
-  const isMinOrderMet = true;
-
-  // Account status check
-  const isApproved = currentUser?.role === 'admin' || currentBusiness?.approvalStatus === 'approved';
-  const isPending = currentBusiness?.approvalStatus === 'pending';
 
   const handleQuantityChange = (productId: string, qty: number) => {
     store.updateCartQuantity(productId, qty);
@@ -121,42 +113,27 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
       <div className="drawer-backdrop" onClick={onClose} />
       <div className="drawer">
         {/* Header */}
-        <div
-          style={{
-            padding: '1.25rem',
-            borderBottom: '1px solid var(--border-light)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            backgroundColor: 'var(--primary-50)',
-          }}
-        >
+        <div className="drawer-header">
           <div>
-            <div style={{ fontWeight: 800, fontSize: '1.15rem', color: 'var(--primary-900)' }}>
-              Panier Professionnel
-            </div>
-            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+            <div className="drawer-header-title">Panier Professionnel</div>
+            <div className="drawer-header-sub">
               {cart.reduce((s, i) => s + i.quantity, 0)} articles sélectionnés
             </div>
           </div>
-          <button onClick={onClose} style={{ padding: '0.4rem', color: 'var(--text-muted)' }} title="Fermer">
+          <button onClick={onClose} className="drawer-close-btn" title="Fermer" aria-label="Fermer le panier">
             <X size={20} />
           </button>
         </div>
 
         {/* Content Body */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '1.25rem' }}>
+        <div className="cart-body">
           {cart.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '3.5rem 1rem', color: 'var(--text-muted)' }}>
-              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.25rem' }}>
-                <div style={{ width: '64px', height: '64px', borderRadius: '50%', backgroundColor: 'var(--primary-50)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary-700)' }}>
-                  <ShoppingBag size={28} strokeWidth={1.75} />
-                </div>
+            <div className="cart-empty-box">
+              <div className="cart-empty-icon">
+                <ShoppingBag size={28} strokeWidth={1.75} />
               </div>
-              <h3 style={{ fontSize: '1.1rem', marginBottom: '0.4rem', color: 'var(--primary-900)', fontWeight: 700 }}>
-                Votre panier est actuellement vide
-              </h3>
-              <p style={{ fontSize: '0.85rem', marginBottom: '1.5rem', maxWidth: '280px', margin: '0 auto 1.5rem', lineHeight: 1.5 }}>
+              <h3 className="cart-empty-title">Votre panier est actuellement vide</h3>
+              <p className="cart-empty-sub">
                 Sélectionnez vos fruits, légumes et herbes fraîches directement depuis la mercuriale pro.
               </p>
               <button onClick={onClose} className="btn btn-primary btn-sm">
@@ -164,83 +141,75 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
               </button>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <>
               {/* Product items list */}
               {cart.map((item) => (
-                <div
-                  key={item.product.id}
-                  style={{
-                    display: 'flex',
-                    gap: '0.85rem',
-                    padding: '0.85rem',
-                    backgroundColor: 'var(--bg-main)',
-                    borderRadius: 'var(--radius-md)',
-                    border: '1px solid var(--border-subtle)',
-                    alignItems: 'center',
-                  }}
-                >
-                  <img
-                    src={item.product.imageUrl}
-                    alt={item.product.name}
-                    style={{ width: '64px', height: '64px', borderRadius: '10px', objectFit: 'cover' }}
-                  />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 700, fontSize: '0.98rem', color: 'var(--primary-900)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {item.product.name}
+                <div key={item.product.id} className="cart-item">
+                  <div className="cart-item-top">
+                    <img
+                      className="cart-item-img"
+                      src={item.product.imageUrl}
+                      alt={item.product.name}
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src =
+                          'https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=800&q=80';
+                      }}
+                    />
+                    <div className="cart-item-info">
+                      <div className="cart-item-name">{item.product.name}</div>
+                      <div className="cart-item-unit">
+                        {item.product.price.toFixed(2)} DH / {item.product.unit}
+                      </div>
                     </div>
-                    <div style={{ fontSize: '0.84rem', color: 'var(--text-muted)', marginTop: '0.1rem' }}>
-                      {item.product.price.toFixed(2)} DH / {item.product.unit}
+                    <button
+                      onClick={() => handleRemove(item.product.id)}
+                      className="cart-remove-btn"
+                      title="Supprimer"
+                      aria-label={`Supprimer ${item.product.name}`}
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
+
+                  <div className="cart-item-bottom">
+                    {/* Quantity Stepper */}
+                    <div className="cart-qty-stepper">
+                      <button
+                        onClick={() => handleQuantityChange(item.product.id, item.quantity - 1)}
+                        className="cart-qty-btn"
+                        title="Diminuer la quantité"
+                        aria-label="Diminuer la quantité"
+                      >
+                        <Minus size={15} />
+                      </button>
+                      <span className="cart-qty-num">{item.quantity}</span>
+                      <button
+                        onClick={() => handleQuantityChange(item.product.id, item.quantity + 1)}
+                        className="cart-qty-btn"
+                        title="Augmenter la quantité"
+                        aria-label="Augmenter la quantité"
+                      >
+                        <Plus size={15} />
+                      </button>
                     </div>
-                    <div style={{ fontWeight: 800, fontSize: '0.98rem', color: 'var(--primary-700)', marginTop: '0.25rem' }}>
+
+                    <div className="cart-item-total">
                       {(item.product.price * item.quantity).toFixed(2)} DH
                     </div>
                   </div>
-
-                  {/* Quantity Stepper */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', backgroundColor: '#ffffff', borderRadius: '8px', border: '1.5px solid var(--border-light)', padding: '2px' }}>
-                    <button
-                      onClick={() => handleQuantityChange(item.product.id, item.quantity - 1)}
-                      style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-main)', borderRadius: '6px' }}
-                      title="Diminuer la quantité"
-                    >
-                      <Minus size={15} />
-                    </button>
-                    <span style={{ fontSize: '0.95rem', fontWeight: 800, minWidth: '24px', textAlign: 'center', color: 'var(--primary-900)' }}>
-                      {item.quantity}
-                    </span>
-                    <button
-                      onClick={() => handleQuantityChange(item.product.id, item.quantity + 1)}
-                      style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-main)', borderRadius: '6px' }}
-                      title="Augmenter la quantité"
-                    >
-                      <Plus size={15} />
-                    </button>
-                  </div>
-
-                  {/* Remove Button */}
-                  <button
-                    onClick={() => handleRemove(item.product.id)}
-                    style={{ width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#dc2626', borderRadius: '8px', marginLeft: '0.2rem' }}
-                    title="Supprimer"
-                  >
-                    <Trash2 size={18} />
-                  </button>
                 </div>
               ))}
 
               {/* Order Options */}
-              <div style={{ marginTop: '1.25rem', padding: '1.15rem', backgroundColor: '#ffffff', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)' }}>
-                <div style={{ fontWeight: 800, fontSize: '1.02rem', color: 'var(--primary-900)', marginBottom: '0.95rem' }}>
-                  Détails de Livraison
-                </div>
+              <div className="cart-details-card">
+                <div className="cart-details-title">Détails de Livraison</div>
 
                 <div className="form-group">
-                  <label className="form-label" style={{ fontSize: '0.88rem', fontWeight: 600 }}>Ville de livraison</label>
+                  <label className="form-label">Ville de livraison</label>
                   <select
                     className="form-select"
                     value={selectedCity}
                     onChange={(e) => setSelectedCity(e.target.value)}
-                    style={{ fontSize: '16px', padding: '0.7rem' }}
                   >
                     {zones.map((z) => (
                       <option key={z.id} value={z.city}>
@@ -251,41 +220,38 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label" style={{ fontSize: '0.88rem', fontWeight: 600 }}>Adresse de l’établissement (Restaurant, Hôtel, Café)</label>
+                  <label className="form-label">Adresse de l’établissement (Restaurant, Hôtel, Café)</label>
                   <input
                     type="text"
                     className="form-input"
                     placeholder="Ex: 12 Rue de Normandie, Gauthier, Casablanca"
                     value={deliveryAddress}
                     onChange={(e) => setDeliveryAddress(e.target.value)}
-                    style={{ fontSize: '16px', padding: '0.7rem' }}
                   />
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label" style={{ fontSize: '0.88rem', fontWeight: 600 }}>Date de livraison souhaitée</label>
+                  <label className="form-label">Date de livraison souhaitée</label>
                   <input
                     type="date"
                     className="form-input"
                     value={requestedDate}
                     onChange={(e) => setRequestedDate(e.target.value)}
-                    style={{ fontSize: '16px', padding: '0.7rem' }}
                   />
                 </div>
 
                 <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label" style={{ fontSize: '0.88rem', fontWeight: 600 }}>Instructions cuisine ou déchargement</label>
+                  <label className="form-label">Instructions cuisine ou déchargement</label>
                   <textarea
                     className="form-textarea"
                     placeholder="Ex: Déposer quai de réception arrière avant 08h30"
                     rows={2}
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
-                    style={{ fontSize: '16px', padding: '0.7rem' }}
                   />
                 </div>
               </div>
-            </div>
+            </>
           )}
         </div>
 
@@ -294,40 +260,15 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
           <div className="drawer-footer">
             {/* Error banner */}
             {errorMessage && (
-              <div
-                style={{
-                  padding: '0.65rem 0.85rem',
-                  backgroundColor: '#fee2e2',
-                  color: '#991b1b',
-                  borderRadius: 'var(--radius-sm)',
-                  fontSize: '0.82rem',
-                  marginBottom: '0.85rem',
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: '0.4rem',
-                }}
-              >
-                <AlertTriangle size={16} style={{ flexShrink: 0, marginTop: '2px' }} />
+              <div className="cart-banner-error">
+                <AlertTriangle size={16} />
                 <span>{errorMessage}</span>
               </div>
             )}
 
             {/* Account warning if not logged or pending */}
             {!currentUser ? (
-              <div
-                style={{
-                  padding: '0.65rem 0.85rem',
-                  backgroundColor: 'var(--amber-50)',
-                  border: '1px solid var(--amber-400)',
-                  color: 'var(--amber-600)',
-                  borderRadius: 'var(--radius-sm)',
-                  fontSize: '0.82rem',
-                  marginBottom: '0.85rem',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                }}
-              >
+              <div className="cart-banner-warning">
                 <span>Connexion requise pour valider la commande B2B.</span>
                 <button
                   onClick={() => {
@@ -335,7 +276,6 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                     onNavigateToAuth();
                   }}
                   className="btn btn-sm btn-accent"
-                  style={{ fontSize: '0.78rem' }}
                 >
                   Se connecter
                 </button>
@@ -343,43 +283,28 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
             ) : null}
 
             {/* Calculations lines */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.94rem', color: 'var(--text-muted)', marginBottom: '0.4rem' }}>
+            <div className="cart-total-line">
               <span>Sous-total HT</span>
-              <span style={{ fontWeight: 700, color: 'var(--text-main)' }}>{subtotal.toFixed(2)} DH</span>
+              <strong>{subtotal.toFixed(2)} DH</strong>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.94rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
+            <div className="cart-total-line">
               <span>Frais de livraison ({selectedCity})</span>
-              <span style={{ color: 'var(--primary-700)', fontWeight: 800 }}>
+              <span className="cart-total-line free" style={{ margin: 0 }}>
                 Gratuits (0 DH)
               </span>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.25rem', fontWeight: 800, color: 'var(--primary-900)', borderTop: '1.5px solid var(--border-light)', paddingTop: '0.75rem', marginBottom: '1.15rem' }}>
+            <div className="cart-total-line grand">
               <span>Total Estimé</span>
-              <span style={{ color: 'var(--primary-800)' }}>{total.toFixed(2)} DH</span>
+              <span>{total.toFixed(2)} DH</span>
             </div>
 
             {/* Checkout Action */}
             <button
               onClick={handleCheckout}
               disabled={submitting || !currentUser}
-              className="btn btn-primary"
-              style={{
-                width: '100%',
-                padding: '0.95rem 1rem',
-                minHeight: '52px',
-                fontSize: '1.05rem',
-                fontWeight: 800,
-                borderRadius: '12px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '0.5rem',
-                opacity: submitting || !currentUser ? 0.6 : 1,
-                cursor: submitting || !currentUser ? 'not-allowed' : 'pointer',
-                boxShadow: '0 3px 10px rgba(10, 38, 24, 0.15)',
-              }}
+              className="btn btn-primary cart-checkout-btn"
             >
               {submitting ? (
                 <span>Validation en cours...</span>
