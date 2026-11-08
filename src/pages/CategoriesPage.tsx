@@ -124,9 +124,6 @@ export const CategoriesPage: React.FC<CategoriesPageProps> = ({
 
                 <div className="category-modern-body">
                   <h3 className="category-modern-name">{cat.name}</h3>
-                  {cat.description && (
-                    <p className="category-modern-desc">{cat.description}</p>
-                  )}
                   <div className="category-modern-footer">
                     <span>Voir les arrivages</span>
                     <ArrowRight size={13} />

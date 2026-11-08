@@ -90,7 +90,6 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectCategory
                     />
                     <div className="cat-card-body">
                       <h3 className="cat-card-name">{cat.name}</h3>
-                      <p className="cat-card-desc">{cat.description}</p>
                       <span className="cat-card-link">
                         Voir les arrivages
                         <ArrowRight size={14} />
