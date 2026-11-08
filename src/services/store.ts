@@ -883,9 +883,6 @@ class StoreService {
     const newBizId = `biz-${Date.now()}-${randSuffix}`;
     const userId = `usr-${Date.now()}-${randSuffix}`;
 
-    // Vider le panier lors d'une nouvelle inscription pour isoler les sessions
-    this.clearCart();
-
     // 1. Initialiser la session active IMMÉDIATEMENT (Temps d'exécution < 10ms, aucun gel de l'écran)
     this.currentUser = {
       id: userId,
@@ -1061,7 +1058,6 @@ class StoreService {
     }
     this.currentUser = null;
     this.currentBusiness = null;
-    this.clearCart();
     sessionStorage.removeItem(KEY_SESSION_USER);
     sessionStorage.removeItem(KEY_SESSION_BUSINESS);
     localStorage.removeItem(KEY_USER);
