@@ -578,12 +578,12 @@ class StoreService {
     let matchedBiz: any = null;
     let rejectedBizFound: any = null;
 
-    // A. Rechercher l'établissement dans la base Supabase
+    // A. Rechercher l'établissement dans la base Supabase (Priorité absolue aux comptes actifs)
     if (isSupabaseConfigured && supabase) {
       try {
         const { data: dbBizs } = await supabase.from('businesses').select('*');
         if (dbBizs && dbBizs.length > 0) {
-          const found = dbBizs.find((b: any) => {
+          const checkMatches = (b: any) => {
             const bUser = (b.username || '').toLowerCase().trim();
             const bPhone = (b.phone || '').trim();
             const bPhoneDigits = bPhone.replace(/[^0-9]/g, '');
@@ -609,13 +609,20 @@ class StoreService {
             }
 
             return false;
-          });
+          };
 
-          if (found) {
-            if (found.approval_status === 'rejected' || deletedBizIds.has(found.id)) {
-              rejectedBizFound = found;
-            } else {
-              matchedBiz = found;
+          // 1. Chercher d'abord un compte actif (non rejeté et non supprimé)
+          const approvedMatch = dbBizs.find(
+            (b: any) => checkMatches(b) && b.approval_status !== 'rejected' && !deletedBizIds.has(b.id)
+          );
+
+          if (approvedMatch) {
+            matchedBiz = approvedMatch;
+          } else {
+            // 2. Si aucun compte actif n'existe, vérifier s'il s'agit d'un ancien compte supprimé
+            const rejectedMatch = dbBizs.find((b: any) => checkMatches(b));
+            if (rejectedMatch) {
+              rejectedBizFound = rejectedMatch;
             }
           }
         }
@@ -624,23 +631,28 @@ class StoreService {
       }
     }
 
-    // B. Fallback local / cache businesses
+    // B. Fallback local / cache businesses (Priorité absolue aux comptes actifs)
     if (!matchedBiz) {
       const allLocalBiz = getStored<Business[]>(KEY_BUSINESSES, []);
-      const found = allLocalBiz.find((b) => {
+      const checkLocalMatches = (b: Business) => {
         const bUser = (b.username || '').toLowerCase().trim();
         const bPhoneDigits = (b.phone || '').replace(/[^0-9]/g, '');
         if (slug && bUser && bUser === slug) return true;
         if (isPureDigits && cleanDigits.length >= 8 && bPhoneDigits.endsWith(cleanDigits.slice(-8))) return true;
         if (cleanLower.includes('@') && b.email && b.email.toLowerCase().trim() === cleanLower) return true;
         return false;
-      });
+      };
 
-      if (found) {
-        if (found.approvalStatus === 'rejected' || deletedBizIds.has(found.id)) {
-          rejectedBizFound = found;
-        } else {
-          matchedBiz = found;
+      const approvedLocal = allLocalBiz.find(
+        (b) => checkLocalMatches(b) && b.approvalStatus !== 'rejected' && !deletedBizIds.has(b.id)
+      );
+
+      if (approvedLocal) {
+        matchedBiz = approvedLocal;
+      } else if (!rejectedBizFound) {
+        const rejectedLocal = allLocalBiz.find(checkLocalMatches);
+        if (rejectedLocal) {
+          rejectedBizFound = rejectedLocal;
         }
       }
     }
@@ -2296,7 +2308,12 @@ class StoreService {
         }
 
         if (!bizError && bizData && bizData.length > 0) {
+          const rejectedInDb = new Set(
+            bizData.filter((b: any) => b.approval_status === 'rejected').map((b: any) => b.id)
+          );
+
           for (const b of bizData) {
+            if (b.approval_status === 'rejected') continue;
             const decodedPass = decodeAuth(b.google_maps_url);
             const bizObj: Business = {
               id: b.id,
@@ -2316,6 +2333,13 @@ class StoreService {
               lastSeenAt: b.last_seen_at || undefined,
             };
             addOrUpdateClient(bizObj);
+          }
+
+          // Nettoyer du tableau les clients qui ont été supprimés/rejetés dans la base
+          for (let i = list.length - 1; i >= 0; i--) {
+            if (rejectedInDb.has(list[i].id)) {
+              list.splice(i, 1);
+            }
           }
         }
       } catch (e) {
@@ -2589,11 +2613,6 @@ class StoreService {
         await supabase.from('businesses').update({ approval_status: 'rejected' }).eq('id', businessId);
       } catch (e) {
         console.warn('Error marking business as rejected in Supabase', e);
-      }
-      if (ownerId) {
-        try {
-          await supabase.from('businesses').update({ approval_status: 'rejected' }).eq('owner_id', ownerId);
-        } catch {}
       }
       try {
         await supabase.from('businesses').delete().eq('id', businessId);
