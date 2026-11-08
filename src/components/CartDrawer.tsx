@@ -197,12 +197,28 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                       </div>
                     </div>
                     <button
+                      type="button"
                       onClick={() => handleRemove(item.product.id)}
                       className="cart-remove-btn"
-                      title="Supprimer"
-                      aria-label={`Supprimer ${item.product.name}`}
+                      title="Supprimer ce produit (Kerwa)"
+                      aria-label={`Supprimer ${item.product.name} du panier`}
+                      style={{
+                        backgroundColor: '#fef2f2',
+                        color: '#dc2626',
+                        border: '1.5px solid #fecaca',
+                        borderRadius: '10px',
+                        padding: '0.35rem 0.65rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.35rem',
+                        fontSize: '0.78rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        boxShadow: '0 1px 3px rgba(220, 38, 38, 0.08)',
+                      }}
                     >
-                      <Trash2 size={18} />
+                      <X size={15} strokeWidth={2.8} />
+                      <span>Supprimer</span>
                     </button>
                   </div>
 

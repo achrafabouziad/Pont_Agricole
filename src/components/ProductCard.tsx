@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ShoppingCart, Check, Heart, Plus, Minus } from 'lucide-react';
+import { ShoppingCart, Check, Heart, Plus, Minus, X } from 'lucide-react';
 import { Product } from '../types';
 import { store } from '../services/store';
 
@@ -50,6 +50,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
     store.updateCartQuantity(product.id, Math.max(0, cartQty - 1));
   };
 
+  const handleRemoveFromCart = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    store.removeFromCart(product.id);
+  };
+
   return (
     <div
       className="modern-product-card"
@@ -62,6 +67,37 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
           <span className="modern-badge-pill out-of-stock">
             Rupture
           </span>
+        )}
+
+        {/* Floating Red Kerwa / Supprimer Badge when in cart */}
+        {cartQty > 0 && (
+          <button
+            type="button"
+            onClick={handleRemoveFromCart}
+            className="modern-card-cart-pill"
+            style={{
+              position: 'absolute',
+              top: '8px',
+              left: '8px',
+              backgroundColor: '#fee2e2',
+              color: '#dc2626',
+              border: '1.5px solid #fecaca',
+              borderRadius: '20px',
+              padding: '3px 8px',
+              fontSize: '0.72rem',
+              fontWeight: 800,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              cursor: 'pointer',
+              zIndex: 3,
+              boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
+            }}
+            title="Supprimer ce produit du panier (Kerwa)"
+          >
+            <X size={12} strokeWidth={3} />
+            <span>Supprimer</span>
+          </button>
         )}
 
         <button
@@ -106,76 +142,106 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
 
           {cartQty > 0 ? (
             <div
-              className="modern-cart-stepper"
+              style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
               onClick={(e) => e.stopPropagation()}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                backgroundColor: '#166534',
-                borderRadius: '22px',
-                padding: '2px 3px',
-                gap: '2px',
-                boxShadow: '0 2px 8px rgba(22, 101, 52, 0.3)',
-                zIndex: 2,
-              }}
             >
+              <div
+                className="modern-cart-stepper"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  backgroundColor: '#166534',
+                  borderRadius: '22px',
+                  padding: '2px 3px',
+                  gap: '2px',
+                  boxShadow: '0 2px 8px rgba(22, 101, 52, 0.3)',
+                  zIndex: 2,
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={handleDecrement}
+                  style={{
+                    width: '26px',
+                    height: '26px',
+                    borderRadius: '50%',
+                    border: 'none',
+                    backgroundColor: 'rgba(255, 255, 255, 0.22)',
+                    color: '#ffffff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    fontWeight: 900,
+                  }}
+                  title="Diminuer la quantité"
+                  aria-label="Diminuer la quantité"
+                >
+                  <Minus size={13} strokeWidth={3} />
+                </button>
+
+                <span
+                  style={{
+                    minWidth: '22px',
+                    textAlign: 'center',
+                    color: '#ffffff',
+                    fontWeight: 800,
+                    fontSize: '0.85rem',
+                    padding: '0 3px',
+                    userSelect: 'none',
+                  }}
+                >
+                  {cartQty}
+                </span>
+
+                <button
+                  type="button"
+                  onClick={handleIncrement}
+                  disabled={!product.isAvailable}
+                  style={{
+                    width: '26px',
+                    height: '26px',
+                    borderRadius: '50%',
+                    border: 'none',
+                    backgroundColor: 'rgba(255, 255, 255, 0.22)',
+                    color: '#ffffff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    fontWeight: 900,
+                  }}
+                  title="Augmenter la quantité"
+                  aria-label="Augmenter la quantité"
+                >
+                  <Plus size={13} strokeWidth={3} />
+                </button>
+              </div>
+
+              {/* Red Kerwa / Supprimer Button */}
               <button
                 type="button"
-                onClick={handleDecrement}
+                onClick={handleRemoveFromCart}
                 style={{
-                  width: '26px',
-                  height: '26px',
+                  width: '30px',
+                  height: '30px',
                   borderRadius: '50%',
-                  border: 'none',
-                  backgroundColor: 'rgba(255, 255, 255, 0.22)',
-                  color: '#ffffff',
+                  border: '1.5px solid #fecaca',
+                  backgroundColor: '#fef2f2',
+                  color: '#dc2626',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   cursor: 'pointer',
-                  fontWeight: 900,
+                  padding: 0,
+                  boxShadow: '0 2px 6px rgba(220, 38, 38, 0.12)',
+                  flexShrink: 0,
+                  transition: 'all 0.15s ease',
                 }}
-                title="Diminuer la quantité"
-                aria-label="Diminuer la quantité"
+                title="Supprimer ce produit (Kerwa)"
+                aria-label={`Supprimer ${product.name} du panier`}
               >
-                <Minus size={13} strokeWidth={3} />
-              </button>
-
-              <span
-                style={{
-                  minWidth: '22px',
-                  textAlign: 'center',
-                  color: '#ffffff',
-                  fontWeight: 800,
-                  fontSize: '0.85rem',
-                  padding: '0 3px',
-                  userSelect: 'none',
-                }}
-              >
-                {cartQty}
-              </span>
-
-              <button
-                type="button"
-                onClick={handleIncrement}
-                disabled={!product.isAvailable}
-                style={{
-                  width: '26px',
-                  height: '26px',
-                  borderRadius: '50%',
-                  border: 'none',
-                  backgroundColor: 'rgba(255, 255, 255, 0.22)',
-                  color: '#ffffff',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                  fontWeight: 900,
-                }}
-                title="Augmenter la quantité"
-                aria-label="Augmenter la quantité"
-              >
-                <Plus size={13} strokeWidth={3} />
+                <X size={16} strokeWidth={2.8} />
               </button>
             </div>
           ) : (
