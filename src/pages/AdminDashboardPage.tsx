@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { store, isClientOnline, formatClientPresence, normalizePhone } from '../services/store';
 import {
   Order,
@@ -243,18 +243,38 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
   const [cancelModalOrderId, setCancelModalOrderId] = useState<string | null>(null);
   const [cancelReason, setCancelReason] = useState<string>('');
 
-  const loadData = async () => {
+  const isLoadingDataRef = useRef(false);
+
+  const loadData = async (refreshProducts = false) => {
+    if (isLoadingDataRef.current) return;
+    isLoadingDataRef.current = true;
     try {
-      const [ordsRes, prodsRes, bizsRes, znsRes, stgsRes] = await Promise.allSettled([
+      const fetchList: Promise<any>[] = [
         store.getOrders(),
-        store.getProducts(),
         store.getBusinesses(),
         store.getDeliveryZones(),
         store.getCompanySettings(),
-      ]);
+      ];
+      const shouldFetchProducts = refreshProducts || products.length === 0;
+      if (shouldFetchProducts) {
+        fetchList.push(store.getProducts());
+      }
 
-      if (ordsRes.status === 'fulfilled') setOrders(ordsRes.value);
-      if (prodsRes.status === 'fulfilled') {
+      const results = await Promise.allSettled(fetchList);
+      const ordsRes = results[0];
+      const bizsRes = results[1];
+      const znsRes = results[2];
+      const stgsRes = results[3];
+      const prodsRes = shouldFetchProducts ? results[4] : null;
+
+      if (ordsRes && ordsRes.status === 'fulfilled') setOrders(ordsRes.value);
+      if (bizsRes && bizsRes.status === 'fulfilled') setBusinesses(bizsRes.value);
+      if (znsRes && znsRes.status === 'fulfilled') setZones(znsRes.value);
+      if (stgsRes && stgsRes.status === 'fulfilled') {
+        setSettings(stgsRes.value);
+        setSettingsForm(stgsRes.value);
+      }
+      if (prodsRes && prodsRes.status === 'fulfilled') {
         const prods = prodsRes.value;
         setProducts(prods);
         setPriceEdits((prev) => {
@@ -277,14 +297,10 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
           return initials;
         });
       }
-      if (bizsRes.status === 'fulfilled') setBusinesses(bizsRes.value);
-      if (znsRes.status === 'fulfilled') setZones(znsRes.value);
-      if (stgsRes.status === 'fulfilled') {
-        setSettings(stgsRes.value);
-        setSettingsForm(stgsRes.value);
-      }
     } catch (e) {
       console.error('loadData error', e);
+    } finally {
+      isLoadingDataRef.current = false;
     }
   };
 
@@ -381,9 +397,9 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
   };
 
   useEffect(() => {
-    loadData();
+    loadData(true);
     const unsub = store.subscribe(() => {
-      loadData();
+      loadData(false);
     });
 
     // Écouter les diffusions inter-onglets et inter-fenêtres (BroadcastChannel)
@@ -392,8 +408,11 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
       if (typeof BroadcastChannel !== 'undefined') {
         bc = new BroadcastChannel('pont_agricole_channel');
         bc.onmessage = (event) => {
-          if (event.data?.type === 'STORE_UPDATED' || event.data?.type === 'PRESENCE_PING') {
-            loadData();
+          if (event.data?.type === 'STORE_UPDATED') {
+            const isProdAction = ['PRODUCT_SAVED', 'PRODUCT_DELETED', 'PRODUCT_UPDATED', 'DAILY_PRICES_UPDATED'].includes(event.data?.action);
+            loadData(isProdAction);
+          } else if (event.data?.type === 'PRESENCE_PING') {
+            loadData(false);
           }
         };
       }
@@ -402,21 +421,21 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
     // Détecter les modifications directes dans le stockage local d'autres fenêtres
     const handleStorage = (e: StorageEvent) => {
       if (e.key && e.key.includes('pont_agricole_')) {
-        loadData();
+        loadData(false);
       }
     };
     window.addEventListener('storage', handleStorage);
 
     // Recharger immédiatement lorsque l'administrateur revient sur l'onglet
     const handleFocus = () => {
-      loadData();
+      loadData(false);
     };
     window.addEventListener('focus', handleFocus);
 
-    // Polling régulier toutes les 4s pour détecter tout nouvel utilisateur ou commande
+    // Polling régulier toutes les 12s pour détecter tout nouvel utilisateur ou commande sans saturer le réseau
     const pollInterval = setInterval(() => {
-      loadData();
-    }, 4000);
+      loadData(false);
+    }, 12000);
 
     return () => {
       unsub();
@@ -629,7 +648,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
     try {
       await store.saveProduct(prodToSave);
       setIsProductModalOpen(false);
-      await loadData();
+      await loadData(true);
     } catch (err: any) {
       alert(err.message || 'Erreur lors de la sauvegarde du produit.');
     }
@@ -643,7 +662,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
     if (window.confirm('Êtes-vous sûr de vouloir supprimer ce produit du catalogue ?')) {
       try {
         await store.deleteProduct(id);
-        await loadData();
+        await loadData(true);
       } catch (err: any) {
         alert(err.message || 'Erreur lors de la suppression.');
       }

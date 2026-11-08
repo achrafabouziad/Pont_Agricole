@@ -35,10 +35,10 @@ export function App() {
   // Heartbeat de présence & validation de session en direct (expulsion immédiate dès suppression par l'admin)
   useEffect(() => {
     if (!currentUser) {
-      // Pour les visiteurs : rafraîchir périodiquement le catalogue de produits
+      // Pour les visiteurs : rafraîchir périodiquement le catalogue
       const visitorInterval = setInterval(() => {
         store.getProducts();
-      }, 15000);
+      }, 60000);
 
       const handleVisitorFocus = () => {
         store.getProducts();
@@ -60,15 +60,14 @@ export function App() {
       store.updateLastSeen();
     }
 
-    // Validation rapide toutes les 3 secondes pour les clients (multi-appareils / mobile)
+    // Validation légère toutes les 8s pour les clients
     const interval = setInterval(() => {
       if (currentUser.role === 'customer') {
         store.validateSession();
       } else {
         store.updateLastSeen();
       }
-      store.getProducts();
-    }, currentUser.role === 'customer' ? 3000 : 30000);
+    }, currentUser.role === 'customer' ? 8000 : 30000);
 
     const handleFocus = () => {
       if (currentUser.role === 'customer') {
@@ -76,7 +75,6 @@ export function App() {
       } else {
         store.updateLastSeen();
       }
-      store.getProducts();
     };
 
     const handleVisibility = () => {
@@ -86,7 +84,6 @@ export function App() {
         } else {
           store.updateLastSeen();
         }
-        store.getProducts();
       }
     };
 

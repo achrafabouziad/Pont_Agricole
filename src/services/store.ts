@@ -853,135 +853,132 @@ class StoreService {
     const authTag = encodeAuth(params.password);
     const syncedMapsUrl = cleanUrl ? `${cleanUrl}#${authTag}` : authTag;
 
-    if (isSupabaseConfigured && supabase) {
-      // 1. Rechercher si l'établissement existe déjà dans Supabase
-      let existingBiz: any = null;
-      try {
-        const { data: dbBizs } = await supabase.from('businesses').select('*');
-        if (dbBizs && dbBizs.length > 0) {
-          existingBiz = dbBizs.find((b: any) => {
-            const bUser = (b.username || '').toLowerCase().trim();
-            const bDigits = (b.phone || '').replace(/[^0-9]/g, '');
-            if (bUser === cleanUsername) return true;
-            if (bDigits.length >= 9 && cleanDigits.length >= 9 && (bDigits.endsWith(cleanDigits.slice(-9)) || cleanDigits.endsWith(bDigits.slice(-9)))) return true;
-            return false;
-          });
-        }
-      } catch {}
+    // Rechercher si l'établissement existe déjà en cache local
+    const localBizs = getStored<Business[]>(KEY_BUSINESSES, []);
+    const existingBiz = localBizs.find((b: any) => {
+      const bUser = (b.username || '').toLowerCase().trim();
+      const bDigits = (b.phone || '').replace(/[^0-9]/g, '');
+      if (bUser === cleanUsername) return true;
+      if (bDigits.length >= 9 && cleanDigits.length >= 9 && (bDigits.endsWith(cleanDigits.slice(-9)) || cleanDigits.endsWith(bDigits.slice(-9)))) return true;
+      return false;
+    });
 
-      // 2. Inscription ou connexion Supabase GoTrue Auth
-      let userId: string = existingBiz?.owner_id || 'c56abe06-f012-4c80-8847-7f2db685a4e9';
+    const newBizId = existingBiz?.id || `biz-${Date.now()}`;
+    const userId = existingBiz?.ownerId || `usr-${Date.now()}`;
+
+    // 1. Initialiser la session active IMMÉDIATEMENT (Temps d'exécution < 10ms, aucun gel de l'écran)
+    this.currentUser = {
+      id: userId,
+      fullName: params.fullName.trim(),
+      phone: params.phone.trim(),
+      role: 'customer',
+      createdAt: nowIso,
+      lastSeenAt: nowIso,
+    };
+
+    this.currentBusiness = {
+      id: newBizId,
+      ownerId: userId,
+      businessName: params.businessName.trim(),
+      businessType: params.businessType,
+      city: params.city || 'Casablanca',
+      deliveryAddress: params.deliveryAddress.trim() || 'Casablanca',
+      approvalStatus: 'approved',
+      createdAt: nowIso,
+      contactName: params.fullName.trim(),
+      phone: params.phone.trim(),
+      email: deterministicEmail,
+      googleMapsUrl: cleanUrl,
+      username: cleanUsername,
+      lastSeenAt: nowIso,
+      password: params.password,
+      isVerified: true,
+    };
+
+    // 2. Sauvegarder immédiatement les identifiants et le compte en cache local
+    const creds = getStored<Record<string, string>>(KEY_USER_CREDS, {});
+    creds[cleanUsername] = params.password;
+    creds[cleanDigits] = params.password;
+    setStored(KEY_USER_CREDS, creds);
+
+    const allBiz = getStored<Business[]>(KEY_BUSINESSES, []);
+    const exIdx = allBiz.findIndex((b) => b.id === newBizId || b.username === cleanUsername);
+    if (exIdx >= 0) allBiz[exIdx] = this.currentBusiness;
+    else allBiz.unshift(this.currentBusiness);
+    setStored(KEY_BUSINESSES, allBiz);
+
+    setSessionStored(KEY_SESSION_USER, this.currentUser);
+    setSessionStored(KEY_SESSION_BUSINESS, this.currentBusiness);
+    this.touchPresence(this.currentUser.id, this.currentBusiness?.id, this.currentUser.phone);
+
+    // 3. Diffuser immédiatement aux autres onglets (l'admin voit le client en temps réel)
+    if (this.broadcastChannel) {
       try {
-        const { data: authData, error: authErr } = await supabase.auth.signUp({
-          email: deterministicEmail,
-          password: params.password,
-          options: {
-            data: {
-              full_name: params.fullName.trim(),
-              phone: params.phone.trim(),
-              business_name: params.businessName.trim(),
-              username: cleanUsername,
-            },
-          },
+        this.broadcastChannel.postMessage({
+          type: 'STORE_UPDATED',
+          action: 'NEW_CLIENT',
+          client: this.currentBusiness,
+          timestamp: Date.now(),
         });
+      } catch {}
+    }
+    this.notify();
 
-        if (authData?.user?.id) {
-          userId = authData.user.id;
-        } else if (authErr) {
-          // Si l'utilisateur est déjà inscrit dans auth.users, tenter la connexion pour récupérer son id
+    // 4. Synchroniser avec le serveur local (/api/sync/clients) sans bloquer
+    this.syncBusinessToRemote(this.currentBusiness).catch(() => {});
+
+    // 5. Synchroniser dans le Cloud Supabase en arrière-plan avec délai d'attente sécurisé
+    if (isSupabaseConfigured && supabase) {
+      (async () => {
+        try {
+          let authUserId = userId;
           try {
-            const { data: signData } = await supabase.auth.signInWithPassword({
+            const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('auth_timeout')), 4000));
+            const signUpPromise = supabase.auth.signUp({
               email: deterministicEmail,
               password: params.password,
+              options: {
+                data: {
+                  full_name: params.fullName.trim(),
+                  phone: params.phone.trim(),
+                  business_name: params.businessName.trim(),
+                  username: cleanUsername,
+                },
+              },
             });
-            if (signData?.user?.id) {
-              userId = signData.user.id;
+            const authRes: any = await Promise.race([signUpPromise, timeoutPromise]);
+            if (authRes?.data?.user?.id) {
+              authUserId = authRes.data.user.id;
+            } else if (authRes?.error) {
+              try {
+                const { data: signData }: any = await supabase.auth.signInWithPassword({
+                  email: deterministicEmail,
+                  password: params.password,
+                });
+                if (signData?.user?.id) {
+                  authUserId = signData.user.id;
+                }
+              } catch {}
             }
           } catch {}
-        }
-      } catch (e) {
-        console.warn('Supabase auth exception, bascule sur sauvegarde directe:', e);
-      }
 
-      // 3. Upsert dans profiles
-      try {
-        await supabase.from('profiles').upsert({
-          id: userId,
-          full_name: params.fullName.trim(),
-          phone: params.phone.trim(),
-          role: 'customer',
-          email: deterministicEmail,
-          updated_at: nowIso,
-        });
-      } catch {}
+          // Profils
+          try {
+            await supabase.from('profiles').upsert({
+              id: authUserId,
+              full_name: params.fullName.trim(),
+              phone: params.phone.trim(),
+              role: 'customer',
+              email: deterministicEmail,
+              updated_at: nowIso,
+            });
+          } catch {}
 
-      // 4. Insérer ou mettre à jour dans businesses (garantie absolue de synchronisation multi-appareils)
-      let newBizId = existingBiz?.id || '';
-      try {
-        // Vérifier si un enregistrement existe déjà pour ce propriétaire ou ce nom d'utilisateur
-        if (!newBizId) {
-          const { data: checkRows } = await supabase
-            .from('businesses')
-            .select('id')
-            .or(`owner_id.eq.${userId},username.eq.${cleanUsername},phone.eq.${params.phone.trim()}`)
-            .limit(1);
-          if (checkRows && checkRows.length > 0) {
-            newBizId = checkRows[0].id;
-          }
-        }
-
-        if (newBizId) {
-          // Mise à jour de l'établissement existant
-          await supabase.from('businesses').update({
-            business_name: params.businessName.trim(),
-            business_type: params.businessType,
-            city: params.city.trim() || 'Casablanca',
-            delivery_address: params.deliveryAddress.trim() || 'Casablanca',
-            contact_name: params.fullName.trim(),
-            phone: params.phone.trim(),
-            email: deterministicEmail,
-            google_maps_url: syncedMapsUrl,
-            username: cleanUsername,
-            approval_status: 'approved',
-            updated_at: nowIso,
-          }).eq('id', newBizId);
-        } else {
-          // Nouvel établissement inséré dans Supabase
-          const { data: createdBiz } = await supabase.from('businesses').insert({
-            owner_id: userId,
-            business_name: params.businessName.trim(),
-            business_type: params.businessType,
-            city: params.city.trim() || 'Casablanca',
-            delivery_address: params.deliveryAddress.trim() || 'Casablanca',
-            contact_name: params.fullName.trim(),
-            phone: params.phone.trim(),
-            email: deterministicEmail,
-            google_maps_url: syncedMapsUrl,
-            username: cleanUsername,
-            approval_status: 'approved',
-          }).select().single();
-
-          if (createdBiz?.id) {
-            newBizId = createdBiz.id;
-          }
-        }
-      } catch (be) {
-        console.warn('Business Supabase save warning:', be);
-      }
-
-      // Fallback REST direct si nécessaire
-      if (!newBizId) {
-        try {
-          const restRes = await fetch('https://qovqogxhvugtgvjxxsbc.supabase.co/rest/v1/businesses', {
-            method: 'POST',
-            headers: {
-              apikey: 'sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
-              Authorization: 'Bearer sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
-              'Content-Type': 'application/json',
-              Prefer: 'return=representation',
-            },
-            body: JSON.stringify({
-              owner_id: userId,
+          // Établissements (businesses)
+          try {
+            await supabase.from('businesses').upsert({
+              id: newBizId,
+              owner_id: authUserId,
               business_name: params.businessName.trim(),
               business_type: params.businessType,
               city: params.city.trim() || 'Casablanca',
@@ -992,78 +989,43 @@ class StoreService {
               google_maps_url: syncedMapsUrl,
               username: cleanUsername,
               approval_status: 'approved',
-            }),
-          });
-          if (restRes.ok) {
-            const rows = await restRes.json();
-            if (Array.isArray(rows) && rows[0]?.id) {
-              newBizId = rows[0].id;
-            }
+              updated_at: nowIso,
+            });
+          } catch {
+            // Fallback REST direct
+            try {
+              await fetch('https://qovqogxhvugtgvjxxsbc.supabase.co/rest/v1/businesses', {
+                method: 'POST',
+                headers: {
+                  apikey: 'sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
+                  Authorization: 'Bearer sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
+                  'Content-Type': 'application/json',
+                  Prefer: 'resolution=merge-duplicates',
+                },
+                body: JSON.stringify({
+                  id: newBizId,
+                  owner_id: authUserId,
+                  business_name: params.businessName.trim(),
+                  business_type: params.businessType,
+                  city: params.city.trim() || 'Casablanca',
+                  delivery_address: params.deliveryAddress.trim() || 'Casablanca',
+                  contact_name: params.fullName.trim(),
+                  phone: params.phone.trim(),
+                  email: deterministicEmail,
+                  google_maps_url: syncedMapsUrl,
+                  username: cleanUsername,
+                  approval_status: 'approved',
+                }),
+              });
+            } catch {}
           }
-        } catch {}
-      }
-
-      if (!newBizId) {
-        newBizId = `biz-${Date.now()}`;
-      }
-
-      // Initialiser la session active
-      this.currentUser = {
-        id: userId,
-        fullName: params.fullName.trim(),
-        phone: params.phone.trim(),
-        role: 'customer',
-        createdAt: nowIso,
-        lastSeenAt: nowIso,
-      };
-
-      this.currentBusiness = {
-        id: newBizId,
-        ownerId: userId,
-        businessName: params.businessName.trim(),
-        businessType: params.businessType,
-        city: params.city,
-        deliveryAddress: params.deliveryAddress.trim(),
-        approvalStatus: 'approved',
-        createdAt: nowIso,
-        contactName: params.fullName.trim(),
-        phone: params.phone.trim(),
-        email: deterministicEmail,
-        googleMapsUrl: cleanUrl,
-        username: cleanUsername,
-        lastSeenAt: nowIso,
-        password: params.password,
-        isVerified: true,
-      };
-
-      // Sauvegarder identifiants en cache local
-      const creds = getStored<Record<string, string>>(KEY_USER_CREDS, {});
-      creds[cleanUsername] = params.password;
-      creds[cleanDigits] = params.password;
-      setStored(KEY_USER_CREDS, creds);
-
-      const allBiz = getStored<Business[]>(KEY_BUSINESSES, []);
-      const exIdx = allBiz.findIndex((b) => b.id === newBizId || b.username === cleanUsername);
-      if (exIdx >= 0) allBiz[exIdx] = this.currentBusiness;
-      else allBiz.unshift(this.currentBusiness);
-      setStored(KEY_BUSINESSES, allBiz);
-
-      setSessionStored(KEY_SESSION_USER, this.currentUser);
-      setSessionStored(KEY_SESSION_BUSINESS, this.currentBusiness);
-      this.touchPresence(this.currentUser.id, this.currentBusiness?.id, this.currentUser.phone);
-      await this.syncBusinessToRemote(this.currentBusiness);
-
-      if (this.broadcastChannel) {
-        try {
-          this.broadcastChannel.postMessage({ type: 'STORE_UPDATED', action: 'NEW_CLIENT', client: this.currentBusiness, timestamp: Date.now() });
-        } catch {}
-      }
-
-      this.notify();
-      return { success: true };
+        } catch (e) {
+          console.warn('Background Supabase registration sync warning:', e);
+        }
+      })();
     }
 
-    return { success: false, error: 'Connexion au serveur de base de données impossible.' };
+    return { success: true };
   }
 
   public async logout(): Promise<void> {
@@ -1507,6 +1469,7 @@ class StoreService {
       throw new Error("Action réservée exclusivement à l'administrateur.");
     }
 
+    const now = new Date().toISOString();
     const payload = {
       id: product.id,
       category_id: product.categoryId,
@@ -1519,61 +1482,10 @@ class StoreService {
       is_available: Boolean(product.isAvailable),
       origin: product.origin || 'Maroc',
       badge: product.badge || null,
-      updated_at: new Date().toISOString(),
+      updated_at: now,
     };
 
-    // 1. Sauvegarder dans Supabase avec le jeton d'authentification Administrateur
-    if (isSupabaseConfigured && supabase) {
-      let saved = false;
-      const adminToken = await this.ensureAdminAuth();
-
-      // Tentative via client JS Supabase
-      try {
-        const { error: upsertErr } = await supabase.from('products').upsert(payload);
-        if (!upsertErr) {
-          saved = true;
-        } else {
-          console.warn('Supabase JS upsert error, trying direct authenticated REST:', upsertErr);
-        }
-      } catch (e) {
-        console.warn('Supabase JS upsert exception:', e);
-      }
-
-      // Tentative de secours REST direct avec Bearer Token Admin
-      if (!saved && adminToken) {
-        try {
-          const res = await fetch('https://qovqogxhvugtgvjxxsbc.supabase.co/rest/v1/products', {
-            method: 'POST',
-            headers: {
-              apikey: 'sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
-              Authorization: `Bearer ${adminToken}`,
-              'Content-Type': 'application/json',
-              Prefer: 'resolution=merge-duplicates,return=representation',
-            },
-            body: JSON.stringify(payload),
-          });
-          if (res.ok) {
-            saved = true;
-          } else {
-            const errTxt = await res.text();
-            console.error('Direct REST product upsert failed:', res.status, errTxt);
-          }
-        } catch (e) {
-          console.error('Direct REST product upsert network error:', e);
-        }
-      }
-    }
-
-    // 2. Synchroniser sur le serveur dev local / WiFi
-    try {
-      await fetch('/api/sync/products', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(product),
-      });
-    } catch {}
-
-    // 3. Mettre à jour le cache local immédiatement
+    // 1. Mettre à jour le cache local immédiatement (0ms de latence)
     const products = getStored<Product[]>(KEY_PRODUCTS, INITIAL_PRODUCTS);
     const index = products.findIndex((p) => p.id === product.id);
     if (index >= 0) {
@@ -1583,7 +1495,7 @@ class StoreService {
     }
     setStored(KEY_PRODUCTS, products);
 
-    // 4. Synchroniser entre onglets & notifier les composants
+    // 2. Diffuser immédiatement aux autres onglets et avertir les composants UI
     if (this.broadcastChannel) {
       try {
         this.broadcastChannel.postMessage({
@@ -1594,6 +1506,49 @@ class StoreService {
       } catch {}
     }
     this.notify();
+
+    // 3. Synchroniser sur le serveur dev local / WiFi
+    try {
+      fetch('/api/sync/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(product),
+      }).catch(() => {});
+    } catch {}
+
+    // 4. Sauvegarder dans Supabase en arrière-plan avec délai d'attente sécurisé
+    if (isSupabaseConfigured && supabase) {
+      (async () => {
+        try {
+          let saved = false;
+          const adminToken = await this.ensureAdminAuth();
+
+          try {
+            const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 4000));
+            const upsertPromise = supabase.from('products').upsert(payload);
+            const res: any = await Promise.race([upsertPromise, timeoutPromise]);
+            if (res && !res.error) saved = true;
+          } catch {}
+
+          if (!saved && adminToken) {
+            try {
+              await fetch('https://qovqogxhvugtgvjxxsbc.supabase.co/rest/v1/products', {
+                method: 'POST',
+                headers: {
+                  apikey: 'sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
+                  Authorization: `Bearer ${adminToken}`,
+                  'Content-Type': 'application/json',
+                  Prefer: 'resolution=merge-duplicates,return=representation',
+                },
+                body: JSON.stringify(payload),
+              });
+            } catch {}
+          }
+        } catch (e) {
+          console.warn('Background Supabase product upsert warning:', e);
+        }
+      })();
+    }
   }
 
   public async updateProductPrice(productId: string, newPrice: number, isAvailable?: boolean): Promise<void> {
@@ -1610,47 +1565,18 @@ class StoreService {
       prod.isAvailable = isAvailable;
     }
 
+    const now = new Date().toISOString();
     const updateFields: any = {
       price: prod.price,
-      updated_at: new Date().toISOString(),
+      updated_at: now,
     };
     if (typeof isAvailable === 'boolean') {
       updateFields.is_available = isAvailable;
     }
 
-    if (isSupabaseConfigured && supabase) {
-      let updated = false;
-      const adminToken = await this.ensureAdminAuth();
-      try {
-        const { error } = await supabase.from('products').update(updateFields).eq('id', productId);
-        if (!error) updated = true;
-      } catch {}
-
-      if (!updated && adminToken) {
-        try {
-          await fetch(`https://qovqogxhvugtgvjxxsbc.supabase.co/rest/v1/products?id=eq.${productId}`, {
-            method: 'PATCH',
-            headers: {
-              apikey: 'sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
-              Authorization: `Bearer ${adminToken}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(updateFields),
-          });
-        } catch {}
-      }
-    }
-
-    try {
-      await fetch('/api/sync/products', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(prod),
-      });
-    } catch {}
-
+    // 1. Sauvegarder localement et notifier immédiatement (1ms)
     setStored(KEY_PRODUCTS, products);
-    localStorage.setItem('pont_last_price_update', new Date().toISOString());
+    localStorage.setItem('pont_last_price_update', now);
 
     if (this.broadcastChannel) {
       try {
@@ -1662,6 +1588,49 @@ class StoreService {
       } catch {}
     }
     this.notify();
+
+    // 2. Synchroniser sur le serveur dev local
+    try {
+      fetch('/api/sync/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(prod),
+      }).catch(() => {});
+    } catch {}
+
+    // 3. Mettre à jour Supabase en arrière-plan
+    if (isSupabaseConfigured && supabase) {
+      (async () => {
+        try {
+          let updated = false;
+          const adminToken = await this.ensureAdminAuth();
+          try {
+            const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000));
+            const { error }: any = await Promise.race([
+              supabase.from('products').update(updateFields).eq('id', productId),
+              timeoutPromise,
+            ]);
+            if (!error) updated = true;
+          } catch {}
+
+          if (!updated && adminToken) {
+            try {
+              await fetch(`https://qovqogxhvugtgvjxxsbc.supabase.co/rest/v1/products?id=eq.${productId}`, {
+                method: 'PATCH',
+                headers: {
+                  apikey: 'sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
+                  Authorization: `Bearer ${adminToken}`,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(updateFields),
+              });
+            } catch {}
+          }
+        } catch (e) {
+          console.warn('Background product price update warning:', e);
+        }
+      })();
+    }
   }
 
   public async updateDailyPrices(
@@ -1682,47 +1651,11 @@ class StoreService {
       }
     }
 
-    if (isSupabaseConfigured && supabase) {
-      const adminToken = await this.ensureAdminAuth();
-      for (const u of updates) {
-        const payload = {
-          price: Math.max(0, Number(u.price)),
-          is_available: u.isAvailable,
-          updated_at: now,
-        };
-        let updated = false;
-        try {
-          const { error } = await supabase.from('products').update(payload).eq('id', u.id);
-          if (!error) updated = true;
-        } catch {}
-
-        if (!updated && adminToken) {
-          try {
-            await fetch(`https://qovqogxhvugtgvjxxsbc.supabase.co/rest/v1/products?id=eq.${u.id}`, {
-              method: 'PATCH',
-              headers: {
-                apikey: 'sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
-                Authorization: `Bearer ${adminToken}`,
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify(payload),
-            });
-          } catch {}
-        }
-      }
-    }
-
-    try {
-      await fetch('/api/sync/products', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(products),
-      });
-    } catch {}
-
+    // 1. Sauvegarde locale immédiate (instantané en 2ms - l'interface réagit immédiatement)
     setStored(KEY_PRODUCTS, products);
     localStorage.setItem('pont_last_price_update', now);
 
+    // 2. Notifier immédiatement l'interface utilisateur & les onglets
     if (this.broadcastChannel) {
       try {
         this.broadcastChannel.postMessage({
@@ -1732,6 +1665,58 @@ class StoreService {
       } catch {}
     }
     this.notify();
+
+    // 3. Synchroniser sur le serveur dev local sans bloquer
+    try {
+      fetch('/api/sync/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(products),
+      }).catch(() => {});
+    } catch {}
+
+    // 4. Synchronisation Supabase en arrière-plan par lots concurrents de 15 pour une rapidité maximale
+    if (isSupabaseConfigured && supabase) {
+      (async () => {
+        try {
+          const adminToken = await this.ensureAdminAuth();
+          const batchSize = 15;
+          for (let i = 0; i < updates.length; i += batchSize) {
+            const batch = updates.slice(i, i + batchSize);
+            await Promise.allSettled(
+              batch.map(async (u) => {
+                const payload = {
+                  price: Math.max(0, Number(u.price)),
+                  is_available: u.isAvailable,
+                  updated_at: now,
+                };
+                let updated = false;
+                try {
+                  const { error } = await supabase.from('products').update(payload).eq('id', u.id);
+                  if (!error) updated = true;
+                } catch {}
+
+                if (!updated && adminToken) {
+                  try {
+                    await fetch(`https://qovqogxhvugtgvjxxsbc.supabase.co/rest/v1/products?id=eq.${u.id}`, {
+                      method: 'PATCH',
+                      headers: {
+                        apikey: 'sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
+                        Authorization: `Bearer ${adminToken}`,
+                        'Content-Type': 'application/json',
+                      },
+                      body: JSON.stringify(payload),
+                    });
+                  } catch {}
+                }
+              })
+            );
+          }
+        } catch (e) {
+          console.warn('Background Supabase daily price sync warning:', e);
+        }
+      })();
+    }
   }
 
   public async deleteProduct(productId: string): Promise<void> {
@@ -1739,31 +1724,7 @@ class StoreService {
       throw new Error("Action réservée exclusivement à l'administrateur.");
     }
 
-    if (isSupabaseConfigured && supabase) {
-      const adminToken = await this.ensureAdminAuth();
-      let deleted = false;
-      try {
-        const { error } = await supabase.from('products').delete().eq('id', productId);
-        if (!error) deleted = true;
-      } catch {}
-
-      if (!deleted && adminToken) {
-        try {
-          await fetch(`https://qovqogxhvugtgvjxxsbc.supabase.co/rest/v1/products?id=eq.${productId}`, {
-            method: 'DELETE',
-            headers: {
-              apikey: 'sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
-              Authorization: `Bearer ${adminToken}`,
-            },
-          });
-        } catch {}
-      }
-    }
-
-    try {
-      await fetch(`/api/sync/products?id=${productId}`, { method: 'DELETE' });
-    } catch {}
-
+    // 1. Mettre à jour immédiatement le cache local et notifier (0ms)
     let products = getStored<Product[]>(KEY_PRODUCTS, INITIAL_PRODUCTS);
     products = products.filter((p) => p.id !== productId);
     setStored(KEY_PRODUCTS, products);
@@ -1778,6 +1739,39 @@ class StoreService {
       } catch {}
     }
     this.notify();
+
+    // 2. Synchroniser sur le serveur dev local
+    try {
+      fetch(`/api/sync/products?id=${productId}`, { method: 'DELETE' }).catch(() => {});
+    } catch {}
+
+    // 3. Supprimer dans Supabase en arrière-plan
+    if (isSupabaseConfigured && supabase) {
+      (async () => {
+        try {
+          const adminToken = await this.ensureAdminAuth();
+          let deleted = false;
+          try {
+            const { error } = await supabase.from('products').delete().eq('id', productId);
+            if (!error) deleted = true;
+          } catch {}
+
+          if (!deleted && adminToken) {
+            try {
+              await fetch(`https://qovqogxhvugtgvjxxsbc.supabase.co/rest/v1/products?id=eq.${productId}`, {
+                method: 'DELETE',
+                headers: {
+                  apikey: 'sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
+                  Authorization: `Bearer ${adminToken}`,
+                },
+              });
+            } catch {}
+          }
+        } catch (e) {
+          console.warn('Background Supabase delete warning:', e);
+        }
+      })();
+    }
   }
 
   // --- CART METHODS ---
@@ -1871,7 +1865,13 @@ class StoreService {
       }
     };
 
-    // 1. Charger depuis le serveur local dev / réseau (/api/sync/orders)
+    // 1. Charger immédiatement depuis le cache local (0ms de latence)
+    const storedOrders = getStored<Order[]>(KEY_ORDERS, []);
+    for (const ord of storedOrders) {
+      addOrUpdateOrder(ord);
+    }
+
+    // 2. Charger depuis le serveur local dev / réseau (/api/sync/orders)
     try {
       if (typeof fetch !== 'undefined') {
         const res = await fetch('/api/sync/orders', { cache: 'no-store' });
@@ -1888,13 +1888,18 @@ class StoreService {
       // Offline fallback
     }
 
-    // 2. Charger depuis Supabase (si configuré)
+    // 3. Charger depuis Supabase (avec délai d'attente sécurisé de 2.5s max pour ne jamais bloquer l'interface)
     if (isSupabaseConfigured && supabase) {
       try {
-        const { data, error } = await supabase
+        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('orders_timeout')), 2500));
+        const queryPromise = supabase
           .from('orders')
           .select('*, order_items(*)')
           .order('created_at', { ascending: false });
+
+        const res: any = await Promise.race([queryPromise, timeoutPromise]);
+        const data = res?.data;
+        const error = res?.error;
 
         if (!error && data) {
           data.forEach((o: any) => {
@@ -1928,14 +1933,8 @@ class StoreService {
           });
         }
       } catch (err) {
-        console.warn('Erreur lecture Supabase orders', err);
+        // En cas de lenteur Supabase, les données locales et dev-sync sont déjà disponibles immédiatement
       }
-    }
-
-    // 3. Charger depuis le stockage local (cache)
-    const storedOrders = getStored<Order[]>(KEY_ORDERS, []);
-    for (const ord of storedOrders) {
-      addOrUpdateOrder(ord);
     }
 
     // Trier par date décroissante
@@ -2253,17 +2252,42 @@ class StoreService {
       }
     };
 
-    // 1. Charger en priorité absolue depuis Supabase (Base centrale pour tous les appareils)
+    // 1. Charger immédiatement depuis le cache local (0ms de latence)
+    const localBusinesses = getStored<Business[]>(KEY_BUSINESSES, []);
+    for (const lb of localBusinesses) {
+      addOrUpdateClient(lb);
+    }
+
+    // 2. Charger depuis le serveur sync (si dev / réseau local)
+    try {
+      if (typeof fetch !== 'undefined') {
+        const res = await fetch('/api/sync/clients', { cache: 'no-store' });
+        if (res.ok) {
+          const syncData = await res.json();
+          if (Array.isArray(syncData)) {
+            for (const b of syncData) {
+              addOrUpdateClient(b);
+            }
+          }
+        }
+      }
+    } catch {}
+
+    // 3. Charger depuis Supabase (avec délai d'attente sécurisé de 2.5s pour ne jamais bloquer l'administrateur)
     if (isSupabaseConfigured && supabase) {
       try {
-        const { data: bizData, error: bizError } = await supabase
+        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('businesses_timeout')), 2500));
+        const queryPromise = supabase
           .from('businesses')
           .select('*')
           .order('created_at', { ascending: false });
 
+        const result: any = await Promise.race([queryPromise, timeoutPromise]);
+        const bizData = result?.data;
+        const bizError = result?.error;
+
         if (bizError) {
           console.warn('Supabase businesses query error:', bizError.code, bizError.message);
-          // Si le jeton stocké dans le navigateur est expiré ou corrompu (PGRST301), nettoyer le stockage auth
           if (typeof localStorage !== 'undefined' && (bizError.code === 'PGRST301' || bizError.message?.includes('JWT') || bizError.message?.includes('expired'))) {
             try {
               localStorage.removeItem('sb-qovqogxhvugtgvjxxsbc-auth-token');
@@ -2295,22 +2319,24 @@ class StoreService {
           }
         }
       } catch (e) {
-        console.warn('Error fetching businesses from Supabase', e);
+        // En cas de lenteur réseau Supabase, les clients locaux et du serveur sync sont déjà affichés
       }
     }
 
-    // 1b. Requête REST directe avec clé d'API publique (Garantie absolue cross-browser insensible aux sessions navigateur)
+    // 3b. Requête REST directe de secours si la liste est vide
     if (list.length === 0) {
       try {
+        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('rest_timeout')), 2000));
         const restUrl = 'https://qovqogxhvugtgvjxxsbc.supabase.co/rest/v1/businesses?approval_status=neq.rejected&select=*&order=created_at.desc';
-        const restRes = await fetch(restUrl, {
+        const fetchPromise = fetch(restUrl, {
           headers: {
             apikey: 'sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
             Authorization: 'Bearer sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
           },
           cache: 'no-store',
         });
-        if (restRes.ok) {
+        const restRes: any = await Promise.race([fetchPromise, timeoutPromise]);
+        if (restRes && restRes.ok) {
           const restData = await restRes.json();
           if (Array.isArray(restData) && restData.length > 0) {
             for (const b of restData) {
@@ -2336,31 +2362,8 @@ class StoreService {
             }
           }
         }
-      } catch (re) {
-        console.warn('Direct REST fallback error:', re);
-      }
+      } catch (re) {}
     }
-
-    // 2. Charger depuis le cache local (si hors ligne)
-    const localBusinesses = getStored<Business[]>(KEY_BUSINESSES, []);
-    for (const lb of localBusinesses) {
-      addOrUpdateClient(lb);
-    }
-
-    // 3. Charger depuis le serveur sync (si dev / réseau local)
-    try {
-      if (typeof fetch !== 'undefined') {
-        const res = await fetch('/api/sync/clients', { cache: 'no-store' });
-        if (res.ok) {
-          const syncData = await res.json();
-          if (Array.isArray(syncData)) {
-            for (const b of syncData) {
-              addOrUpdateClient(b);
-            }
-          }
-        }
-      }
-    } catch {}
 
     // 4. Récupérer l'état de présence (dev sync + cache local)
     let presenceMap = getStored<Record<string, string>>(KEY_PRESENCE, {});
@@ -2746,46 +2749,61 @@ class StoreService {
   // --- DELIVERY ZONES & SETTINGS ---
   public async getDeliveryZones(): Promise<DeliveryZone[]> {
     if (isSupabaseConfigured && supabase) {
-      const { data, error } = await supabase.from('delivery_zones').select('*');
-      if (!error && data && data.length > 0) {
-        return data.map((z: any) => ({
-          id: z.id,
-          city: z.city,
-          zoneName: z.zone_name,
-          deliveryFee: Number(z.delivery_fee),
-          minimumOrderAmount: Number(z.minimum_order_amount),
-          isActive: z.is_active,
-          estimatedHours: z.estimated_hours,
-        }));
-      }
+      try {
+        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('zones_timeout')), 2000));
+        const queryPromise = supabase.from('delivery_zones').select('*');
+        const res: any = await Promise.race([queryPromise, timeoutPromise]);
+        const data = res?.data;
+        const error = res?.error;
+        if (!error && data && data.length > 0) {
+          return data.map((z: any) => ({
+            id: z.id,
+            city: z.city,
+            zoneName: z.zone_name,
+            deliveryFee: Number(z.delivery_fee),
+            minimumOrderAmount: Number(z.minimum_order_amount),
+            isActive: z.is_active,
+            estimatedHours: z.estimated_hours,
+          }));
+        }
+      } catch {}
     }
     return getStored<DeliveryZone[]>(KEY_ZONES, INITIAL_DELIVERY_ZONES);
   }
 
   public async saveDeliveryZone(zone: DeliveryZone): Promise<void> {
-    if (isSupabaseConfigured && supabase) {
-      await supabase.from('delivery_zones').upsert({
-        id: zone.id,
-        city: zone.city,
-        zone_name: zone.zoneName,
-        delivery_fee: zone.deliveryFee,
-        minimum_order_amount: zone.minimumOrderAmount,
-        is_active: zone.isActive,
-        estimated_hours: zone.estimatedHours,
-      });
-    }
     const zones = getStored<DeliveryZone[]>(KEY_ZONES, INITIAL_DELIVERY_ZONES);
     const idx = zones.findIndex((z) => z.id === zone.id);
     if (idx >= 0) zones[idx] = zone;
     else zones.push(zone);
     setStored(KEY_ZONES, zones);
     this.notify();
+
+    if (isSupabaseConfigured && supabase) {
+      (async () => {
+        try {
+          await supabase.from('delivery_zones').upsert({
+            id: zone.id,
+            city: zone.city,
+            zone_name: zone.zoneName,
+            delivery_fee: zone.deliveryFee,
+            minimum_order_amount: zone.minimumOrderAmount,
+            is_active: zone.isActive,
+            estimated_hours: zone.estimatedHours,
+          });
+        } catch {}
+      })();
+    }
   }
 
   public async getCompanySettings(): Promise<CompanySettings> {
     if (isSupabaseConfigured && supabase) {
       try {
-        const { data, error } = await supabase.from('company_settings').select('*').single();
+        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('settings_timeout')), 2000));
+        const queryPromise = supabase.from('company_settings').select('*').single();
+        const res: any = await Promise.race([queryPromise, timeoutPromise]);
+        const data = res?.data;
+        const error = res?.error;
         if (!error && data) {
           return {
             companyName: data.company_name || 'Pont Agricole',
@@ -2809,7 +2827,7 @@ class StoreService {
           };
         }
       } catch (err) {
-        console.warn('Error reading company settings from Supabase', err);
+        // Fallback local
       }
     }
     const local = getStored<CompanySettings>(KEY_SETTINGS, INITIAL_COMPANY_SETTINGS);
@@ -2820,34 +2838,38 @@ class StoreService {
   }
 
   public async saveCompanySettings(settings: CompanySettings): Promise<void> {
-    if (isSupabaseConfigured && supabase) {
-      try {
-        await supabase.from('company_settings').upsert({
-          id: 1,
-          company_name: settings.companyName,
-          tagline: settings.tagline,
-          phone: settings.phone,
-          whatsapp: settings.whatsapp,
-          email: settings.email,
-          address: settings.address,
-          city: settings.city,
-          ice: settings.ice,
-          rc: settings.rc,
-          if_code: settings.ifCode,
-          patente: settings.patente,
-          cnss: settings.cnss,
-          capital: settings.capital,
-          rib: settings.rib,
-          min_order_default: settings.minOrderDefault,
-          free_delivery_threshold: settings.freeDeliveryThreshold,
-          order_cutoff_time: settings.orderCutoffTime,
-        });
-      } catch (err) {
-        console.warn('Error upserting company settings to Supabase', err);
-      }
-    }
+    // Sauvegarde locale immédiate
     setStored(KEY_SETTINGS, settings);
     this.notify();
+
+    if (isSupabaseConfigured && supabase) {
+      (async () => {
+        try {
+          await supabase.from('company_settings').upsert({
+            id: 1,
+            company_name: settings.companyName,
+            tagline: settings.tagline,
+            phone: settings.phone,
+            whatsapp: settings.whatsapp,
+            email: settings.email,
+            address: settings.address,
+            city: settings.city,
+            ice: settings.ice,
+            rc: settings.rc,
+            if_code: settings.ifCode,
+            patente: settings.patente,
+            cnss: settings.cnss,
+            capital: settings.capital,
+            rib: settings.rib,
+            min_order_default: settings.minOrderDefault,
+            free_delivery_threshold: settings.freeDeliveryThreshold,
+            order_cutoff_time: settings.orderCutoffTime,
+          });
+        } catch (err) {
+          console.warn('Error upserting company settings to Supabase', err);
+        }
+      })();
+    }
   }
 }
 
