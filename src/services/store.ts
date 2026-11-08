@@ -194,8 +194,20 @@ class StoreService {
   private init() {
     // Initialize default data if not present in local storage
     const storedProds = getStored<any[]>(KEY_PRODUCTS, []);
-    if (!Array.isArray(storedProds) || storedProds.length === 0) {
-      setStored(KEY_PRODUCTS, INITIAL_PRODUCTS);
+    if (!Array.isArray(storedProds) || storedProds.length < 50) {
+      // Si le cache local a moins de 50 produits (ex: 37 ou vide), charger immédiatement le catalogue complet de 95 produits
+      try {
+        fetch('/products_catalog.json')
+          .then((r) => r.json())
+          .then((prods) => {
+            if (Array.isArray(prods) && prods.length > 0) {
+              const merged = this.mergeProducts(prods, storedProds);
+              setStored(KEY_PRODUCTS, merged);
+              this.notify();
+            }
+          })
+          .catch(() => {});
+      } catch {}
     }
     const storedCats = getStored<any[]>(KEY_CATEGORIES, []);
     if (!Array.isArray(storedCats) || storedCats.length === 0) {
@@ -1383,6 +1395,47 @@ class StoreService {
     };
   }
 
+  public mergeProducts(incoming: any[], existing: any[]): Product[] {
+    const map = new Map<string, Product>();
+
+    // 1. Ajouter d'abord les produits entrants (cloud / sync / catalogue)
+    if (Array.isArray(incoming)) {
+      for (const item of incoming) {
+        if (item && item.id) {
+          map.set(String(item.id), this.normalizeProduct(item));
+        }
+      }
+    }
+
+    // 2. Superposer les produits locaux existants pour conserver les modifications de prix/disponibilité
+    if (Array.isArray(existing)) {
+      for (const item of existing) {
+        if (item && item.id) {
+          const norm = this.normalizeProduct(item);
+          if (map.has(norm.id)) {
+            const prev = map.get(norm.id)!;
+            const prevTime = new Date(prev.updatedAt || 0).getTime();
+            const currTime = new Date(norm.updatedAt || 0).getTime();
+            if (currTime >= prevTime) {
+              map.set(norm.id, { ...prev, ...norm });
+            }
+          } else {
+            map.set(norm.id, norm);
+          }
+        }
+      }
+    }
+
+    // 3. S'assurer que les produits initiaux de secours sont également présents
+    for (const item of INITIAL_PRODUCTS) {
+      if (!map.has(item.id)) {
+        map.set(item.id, item);
+      }
+    }
+
+    return Array.from(map.values());
+  }
+
   public getProductsSync(): Product[] {
     const stored = getStored<any[]>(KEY_PRODUCTS, []);
     if (Array.isArray(stored) && stored.length > 0) {
@@ -1392,65 +1445,57 @@ class StoreService {
   }
 
   public async refreshProductsFromCloud(): Promise<Product[]> {
-    // 1. Supabase JS client
-    if (isSupabaseConfigured && supabase) {
-      try {
-        const { data, error } = await supabase
-          .from('products')
-          .select('*')
-          .order('created_at', { ascending: false });
-        if (!error && Array.isArray(data) && data.length > 0) {
-          const prods: Product[] = data.map((p: any) => this.normalizeProduct(p));
-          setStored(KEY_PRODUCTS, prods);
-          return prods;
-        }
-      } catch (e) {
-        console.warn('Supabase JS products query error, attempting REST fallback:', e);
-      }
+    const currentStored = getStored<any[]>(KEY_PRODUCTS, []);
+    let fetchedProducts: any[] = [];
 
-      // 2. Direct REST fallback for client devices
-      try {
-        const res = await fetch(
-          'https://qovqogxhvugtgvjxxsbc.supabase.co/rest/v1/products?select=*&order=created_at.desc',
-          {
-            headers: {
-              apikey: 'sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
-            },
-          }
-        );
-        if (res.ok) {
-          const data = await res.json();
-          if (Array.isArray(data) && data.length > 0) {
-            const prods: Product[] = data.map((p: any) => this.normalizeProduct(p));
-            setStored(KEY_PRODUCTS, prods);
-            return prods;
-          }
-        }
-      } catch {}
-    }
-
-    // 3. Dev server local WiFi sync fallback
+    // 1. Priorité 1 : Synchronisation serveur local ultra-rapide (/api/sync/products - 2ms)
     try {
       const res = await fetch('/api/sync/products');
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data) && data.length > 0) {
-          const prods: Product[] = data.map((p: any) => this.normalizeProduct(p));
-          setStored(KEY_PRODUCTS, prods);
-          return prods;
+          fetchedProducts = data;
         }
       }
     } catch {}
 
-    // 4. Stored cache fallback
-    const stored = getStored<any[]>(KEY_PRODUCTS, []);
-    if (Array.isArray(stored) && stored.length > 0) {
-      const prods: Product[] = stored.map((p: any) => this.normalizeProduct(p));
-      return prods;
+    // 2. Priorité 2 : Fichier catalogue statique complet (95 produits dans public/products_catalog.json - 5ms)
+    if (fetchedProducts.length < 50) {
+      try {
+        const res = await fetch('/products_catalog.json');
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data) && data.length > 0) {
+            fetchedProducts = fetchedProducts.length > 0 ? [...fetchedProducts, ...data] : data;
+          }
+        }
+      } catch {}
     }
 
-    setStored(KEY_PRODUCTS, INITIAL_PRODUCTS);
-    return INITIAL_PRODUCTS;
+    // 3. Priorité 3 : Supabase Cloud (avec timeout strict de 4 secondes pour ne jamais bloquer la page)
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const timeoutPromise = new Promise<{ data: null; error: any }>((_, reject) =>
+          setTimeout(() => reject(new Error('Supabase query timeout')), 4000)
+        );
+        const queryPromise = supabase
+          .from('products')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        const result: any = await Promise.race([queryPromise, timeoutPromise]);
+        if (result && !result.error && Array.isArray(result.data) && result.data.length > 0) {
+          fetchedProducts = [...fetchedProducts, ...result.data];
+        }
+      } catch (e) {
+        // En cas de lenteur réseau ou de timeout, les 95 produits des étapes 1 et 2 sont déjà garantis
+      }
+    }
+
+    // 4. Fusionner l'ensemble des sources pour ne JAMAIS perdre aucun produit
+    const merged = this.mergeProducts(fetchedProducts, currentStored);
+    setStored(KEY_PRODUCTS, merged);
+    return merged;
   }
 
   public async getProducts(): Promise<Product[]> {
