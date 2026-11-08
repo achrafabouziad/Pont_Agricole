@@ -34,7 +34,25 @@ export function App() {
 
   // Heartbeat de présence & validation de session en direct (expulsion immédiate dès suppression par l'admin)
   useEffect(() => {
-    if (!currentUser) return;
+    if (!currentUser) {
+      // Pour les visiteurs : rafraîchir périodiquement le catalogue de produits
+      const visitorInterval = setInterval(() => {
+        store.getProducts();
+      }, 15000);
+
+      const handleVisitorFocus = () => {
+        store.getProducts();
+      };
+
+      window.addEventListener('focus', handleVisitorFocus);
+      document.addEventListener('visibilitychange', handleVisitorFocus);
+
+      return () => {
+        clearInterval(visitorInterval);
+        window.removeEventListener('focus', handleVisitorFocus);
+        document.removeEventListener('visibilitychange', handleVisitorFocus);
+      };
+    }
 
     if (currentUser.role === 'customer') {
       store.validateSession();
@@ -49,6 +67,7 @@ export function App() {
       } else {
         store.updateLastSeen();
       }
+      store.getProducts();
     }, currentUser.role === 'customer' ? 3000 : 30000);
 
     const handleFocus = () => {
@@ -57,6 +76,7 @@ export function App() {
       } else {
         store.updateLastSeen();
       }
+      store.getProducts();
     };
 
     const handleVisibility = () => {
@@ -66,6 +86,7 @@ export function App() {
         } else {
           store.updateLastSeen();
         }
+        store.getProducts();
       }
     };
 

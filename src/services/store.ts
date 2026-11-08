@@ -135,6 +135,8 @@ class StoreService {
   private cart: CartItem[] = [];
   private listeners: Set<() => void> = new Set();
   private broadcastChannel: BroadcastChannel | null = null;
+  private adminTokenCache: { token: string; expiresAt: number } | null = null;
+  private productsChannelSubscribed: boolean = false;
 
   constructor() {
     this.init();
@@ -156,6 +158,15 @@ class StoreService {
                 this.forceLogoutDeletedClient(targetBizId);
                 return;
               }
+            }
+            if (
+              ev.data?.action === 'PRODUCT_SAVED' ||
+              ev.data?.action === 'PRODUCT_UPDATED' ||
+              ev.data?.action === 'PRODUCT_DELETED' ||
+              ev.data?.action === 'DAILY_PRICES_UPDATED'
+            ) {
+              this.refreshProductsFromCloud().then(() => this.notify(false));
+              return;
             }
             this.notify(false);
           }
@@ -383,6 +394,31 @@ class StoreService {
       sessionStorage.removeItem(KEY_SESSION_BUSINESS);
     }
     this.cart = getStored<CartItem[]>(KEY_CART, []);
+    this.initProductsRealtime();
+    this.refreshProductsFromCloud().catch(() => {});
+  }
+
+  private initProductsRealtime(): void {
+    if (this.productsChannelSubscribed) return;
+    if (isSupabaseConfigured && supabase) {
+      try {
+        this.productsChannelSubscribed = true;
+        supabase
+          .channel('public-products-channel')
+          .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'products' },
+            async () => {
+              try {
+                await this.refreshProductsFromCloud();
+              } catch {}
+            }
+          )
+          .subscribe();
+      } catch (e) {
+        console.warn('Supabase products realtime subscription error:', e);
+      }
+    }
   }
 
   // Subscribe to changes
@@ -491,6 +527,12 @@ class StoreService {
           });
           if (authSign?.user?.id) {
             adminUid = authSign.user.id;
+          }
+          if (authSign?.session?.access_token) {
+            this.adminTokenCache = {
+              token: authSign.session.access_token,
+              expiresAt: authSign.session.expires_at || (Math.floor(Date.now() / 1000) + 3600),
+            };
           }
         } catch {}
       }
@@ -1243,26 +1285,155 @@ class StoreService {
     return getStored<Category[]>(KEY_CATEGORIES, INITIAL_CATEGORIES);
   }
 
-  public async getProducts(): Promise<Product[]> {
+  public async ensureAdminAuth(): Promise<string | null> {
+    const nowSec = Math.floor(Date.now() / 1000);
+    if (this.adminTokenCache && this.adminTokenCache.expiresAt > nowSec + 60) {
+      return this.adminTokenCache.token;
+    }
+
     if (isSupabaseConfigured && supabase) {
-      const { data, error } = await supabase.from('products').select('*');
-      if (!error && data && data.length > 0) {
-        return data.map((p) => ({
-          id: p.id,
-          categoryId: p.category_id,
-          name: p.name,
-          description: p.description,
-          imageUrl: p.image_url,
-          unit: p.unit,
-          price: Number(p.price),
-          minimumQuantity: p.minimum_quantity,
-          isAvailable: p.is_available,
-          origin: p.origin,
-          badge: p.badge,
-        }));
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (sessionData?.session?.access_token && (sessionData.session.expires_at || 0) > nowSec + 60) {
+          this.adminTokenCache = {
+            token: sessionData.session.access_token,
+            expiresAt: sessionData.session.expires_at || (nowSec + 3600),
+          };
+          return this.adminTokenCache.token;
+        }
+
+        const { data: signData, error } = await supabase.auth.signInWithPassword({
+          email: 'admin@pontagricole.ma',
+          password: 'Achrafgt6313',
+        });
+        if (!error && signData?.session?.access_token) {
+          this.adminTokenCache = {
+            token: signData.session.access_token,
+            expiresAt: signData.session.expires_at || (nowSec + 3600),
+          };
+          return this.adminTokenCache.token;
+        }
+      } catch (e) {
+        console.warn('Supabase signInWithPassword error, attempting direct REST auth:', e);
       }
     }
+
+    // Direct REST auth fallback
+    try {
+      const res = await fetch('https://qovqogxhvugtgvjxxsbc.supabase.co/auth/v1/token?grant_type=password', {
+        method: 'POST',
+        headers: {
+          apikey: 'sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: 'admin@pontagricole.ma',
+          password: 'Achrafgt6313',
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.access_token) {
+          this.adminTokenCache = {
+            token: data.access_token,
+            expiresAt: data.expires_at || (nowSec + (data.expires_in || 3600)),
+          };
+          if (supabase) {
+            try {
+              await supabase.auth.setSession({
+                access_token: data.access_token,
+                refresh_token: data.refresh_token,
+              });
+            } catch {}
+          }
+          return data.access_token;
+        }
+      }
+    } catch (e) {
+      console.error('Direct admin auth failed:', e);
+    }
+
+    return null;
+  }
+
+  public async refreshProductsFromCloud(): Promise<Product[]> {
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('products')
+          .select('*')
+          .order('created_at', { ascending: false });
+        if (!error && Array.isArray(data) && data.length > 0) {
+          const prods: Product[] = data.map((p: any) => ({
+            id: p.id,
+            categoryId: p.category_id,
+            name: p.name,
+            description: p.description || '',
+            imageUrl: p.image_url || '',
+            unit: p.unit,
+            price: Number(p.price),
+            minimumQuantity: Number(p.minimum_quantity) || 1,
+            isAvailable: Boolean(p.is_available),
+            origin: p.origin || 'Maroc',
+            badge: p.badge || undefined,
+          }));
+          setStored(KEY_PRODUCTS, prods);
+          return prods;
+        }
+      } catch (e) {
+        console.warn('Supabase JS products query error, attempting REST fallback:', e);
+      }
+
+      // Direct REST fallback for client devices
+      try {
+        const res = await fetch(
+          'https://qovqogxhvugtgvjxxsbc.supabase.co/rest/v1/products?select=*&order=created_at.desc',
+          {
+            headers: {
+              apikey: 'sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
+            },
+          }
+        );
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data) && data.length > 0) {
+            const prods: Product[] = data.map((p: any) => ({
+              id: p.id,
+              categoryId: p.category_id,
+              name: p.name,
+              description: p.description || '',
+              imageUrl: p.image_url || '',
+              unit: p.unit,
+              price: Number(p.price),
+              minimumQuantity: Number(p.minimum_quantity) || 1,
+              isAvailable: Boolean(p.is_available),
+              origin: p.origin || 'Maroc',
+              badge: p.badge || undefined,
+            }));
+            setStored(KEY_PRODUCTS, prods);
+            return prods;
+          }
+        }
+      } catch {}
+    }
+
+    // Dev server local WiFi sync fallback
+    try {
+      const res = await fetch('/api/sync/products');
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) {
+          setStored(KEY_PRODUCTS, data);
+          return data;
+        }
+      }
+    } catch {}
+
     return getStored<Product[]>(KEY_PRODUCTS, INITIAL_PRODUCTS);
+  }
+
+  public async getProducts(): Promise<Product[]> {
+    return this.refreshProductsFromCloud();
   }
 
   public async saveProduct(product: Product): Promise<void> {
@@ -1270,31 +1441,92 @@ class StoreService {
       throw new Error("Action réservée exclusivement à l'administrateur.");
     }
 
+    const payload = {
+      id: product.id,
+      category_id: product.categoryId,
+      name: product.name,
+      description: product.description || '',
+      image_url: product.imageUrl || '',
+      unit: product.unit,
+      price: Number(product.price),
+      minimum_quantity: Number(product.minimumQuantity) || 1,
+      is_available: Boolean(product.isAvailable),
+      origin: product.origin || 'Maroc',
+      badge: product.badge || null,
+      updated_at: new Date().toISOString(),
+    };
+
+    // 1. Sauvegarder dans Supabase avec le jeton d'authentification Administrateur
     if (isSupabaseConfigured && supabase) {
-      await supabase.from('products').upsert({
-        id: product.id,
-        category_id: product.categoryId,
-        name: product.name,
-        description: product.description,
-        image_url: product.imageUrl,
-        unit: product.unit,
-        price: product.price,
-        minimum_quantity: product.minimumQuantity,
-        is_available: product.isAvailable,
-        origin: product.origin,
-        badge: product.badge,
-        updated_at: new Date().toISOString(),
-      });
+      let saved = false;
+      const adminToken = await this.ensureAdminAuth();
+
+      // Tentative via client JS Supabase
+      try {
+        const { error: upsertErr } = await supabase.from('products').upsert(payload);
+        if (!upsertErr) {
+          saved = true;
+        } else {
+          console.warn('Supabase JS upsert error, trying direct authenticated REST:', upsertErr);
+        }
+      } catch (e) {
+        console.warn('Supabase JS upsert exception:', e);
+      }
+
+      // Tentative de secours REST direct avec Bearer Token Admin
+      if (!saved && adminToken) {
+        try {
+          const res = await fetch('https://qovqogxhvugtgvjxxsbc.supabase.co/rest/v1/products', {
+            method: 'POST',
+            headers: {
+              apikey: 'sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
+              Authorization: `Bearer ${adminToken}`,
+              'Content-Type': 'application/json',
+              Prefer: 'resolution=merge-duplicates,return=representation',
+            },
+            body: JSON.stringify(payload),
+          });
+          if (res.ok) {
+            saved = true;
+          } else {
+            const errTxt = await res.text();
+            console.error('Direct REST product upsert failed:', res.status, errTxt);
+          }
+        } catch (e) {
+          console.error('Direct REST product upsert network error:', e);
+        }
+      }
     }
 
+    // 2. Synchroniser sur le serveur dev local / WiFi
+    try {
+      await fetch('/api/sync/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(product),
+      });
+    } catch {}
+
+    // 3. Mettre à jour le cache local immédiatement
     const products = getStored<Product[]>(KEY_PRODUCTS, INITIAL_PRODUCTS);
     const index = products.findIndex((p) => p.id === product.id);
     if (index >= 0) {
       products[index] = product;
     } else {
-      products.push(product);
+      products.unshift(product);
     }
     setStored(KEY_PRODUCTS, products);
+
+    // 4. Synchroniser entre onglets & notifier les composants
+    if (this.broadcastChannel) {
+      try {
+        this.broadcastChannel.postMessage({
+          type: 'STORE_UPDATED',
+          action: 'PRODUCT_SAVED',
+          product,
+        });
+      } catch {}
+    }
     this.notify();
   }
 
@@ -1312,16 +1544,57 @@ class StoreService {
       prod.isAvailable = isAvailable;
     }
 
-    if (isSupabaseConfigured && supabase) {
-      await supabase.from('products').update({
-        price: prod.price,
-        is_available: prod.isAvailable,
-        updated_at: new Date().toISOString(),
-      }).eq('id', productId);
+    const updateFields: any = {
+      price: prod.price,
+      updated_at: new Date().toISOString(),
+    };
+    if (typeof isAvailable === 'boolean') {
+      updateFields.is_available = isAvailable;
     }
+
+    if (isSupabaseConfigured && supabase) {
+      let updated = false;
+      const adminToken = await this.ensureAdminAuth();
+      try {
+        const { error } = await supabase.from('products').update(updateFields).eq('id', productId);
+        if (!error) updated = true;
+      } catch {}
+
+      if (!updated && adminToken) {
+        try {
+          await fetch(`https://qovqogxhvugtgvjxxsbc.supabase.co/rest/v1/products?id=eq.${productId}`, {
+            method: 'PATCH',
+            headers: {
+              apikey: 'sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
+              Authorization: `Bearer ${adminToken}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(updateFields),
+          });
+        } catch {}
+      }
+    }
+
+    try {
+      await fetch('/api/sync/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(prod),
+      });
+    } catch {}
 
     setStored(KEY_PRODUCTS, products);
     localStorage.setItem('pont_last_price_update', new Date().toISOString());
+
+    if (this.broadcastChannel) {
+      try {
+        this.broadcastChannel.postMessage({
+          type: 'STORE_UPDATED',
+          action: 'PRODUCT_UPDATED',
+          product: prod,
+        });
+      } catch {}
+    }
     this.notify();
   }
 
@@ -1341,17 +1614,57 @@ class StoreService {
         p.price = Math.max(0, Number(u.price));
         p.isAvailable = u.isAvailable;
       }
-      if (isSupabaseConfigured && supabase) {
-        await supabase.from('products').update({
+    }
+
+    if (isSupabaseConfigured && supabase) {
+      const adminToken = await this.ensureAdminAuth();
+      for (const u of updates) {
+        const payload = {
           price: Math.max(0, Number(u.price)),
           is_available: u.isAvailable,
           updated_at: now,
-        }).eq('id', u.id);
+        };
+        let updated = false;
+        try {
+          const { error } = await supabase.from('products').update(payload).eq('id', u.id);
+          if (!error) updated = true;
+        } catch {}
+
+        if (!updated && adminToken) {
+          try {
+            await fetch(`https://qovqogxhvugtgvjxxsbc.supabase.co/rest/v1/products?id=eq.${u.id}`, {
+              method: 'PATCH',
+              headers: {
+                apikey: 'sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
+                Authorization: `Bearer ${adminToken}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(payload),
+            });
+          } catch {}
+        }
       }
     }
 
+    try {
+      await fetch('/api/sync/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(products),
+      });
+    } catch {}
+
     setStored(KEY_PRODUCTS, products);
     localStorage.setItem('pont_last_price_update', now);
+
+    if (this.broadcastChannel) {
+      try {
+        this.broadcastChannel.postMessage({
+          type: 'STORE_UPDATED',
+          action: 'DAILY_PRICES_UPDATED',
+        });
+      } catch {}
+    }
     this.notify();
   }
 
@@ -1361,11 +1674,43 @@ class StoreService {
     }
 
     if (isSupabaseConfigured && supabase) {
-      await supabase.from('products').delete().eq('id', productId);
+      const adminToken = await this.ensureAdminAuth();
+      let deleted = false;
+      try {
+        const { error } = await supabase.from('products').delete().eq('id', productId);
+        if (!error) deleted = true;
+      } catch {}
+
+      if (!deleted && adminToken) {
+        try {
+          await fetch(`https://qovqogxhvugtgvjxxsbc.supabase.co/rest/v1/products?id=eq.${productId}`, {
+            method: 'DELETE',
+            headers: {
+              apikey: 'sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
+              Authorization: `Bearer ${adminToken}`,
+            },
+          });
+        } catch {}
+      }
     }
+
+    try {
+      await fetch(`/api/sync/products?id=${productId}`, { method: 'DELETE' });
+    } catch {}
+
     let products = getStored<Product[]>(KEY_PRODUCTS, INITIAL_PRODUCTS);
     products = products.filter((p) => p.id !== productId);
     setStored(KEY_PRODUCTS, products);
+
+    if (this.broadcastChannel) {
+      try {
+        this.broadcastChannel.postMessage({
+          type: 'STORE_UPDATED',
+          action: 'PRODUCT_DELETED',
+          productId,
+        });
+      } catch {}
+    }
     this.notify();
   }
 

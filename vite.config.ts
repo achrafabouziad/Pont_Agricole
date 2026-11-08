@@ -11,6 +11,7 @@ function localSyncPlugin(): Plugin {
   const deletedFile = path.join(syncDir, 'deleted_clients.json');
   const presenceFile = path.join(syncDir, 'presence.json');
   const ordersFile = path.join(syncDir, 'orders.json');
+  const productsFile = path.join(syncDir, 'products.json');
 
   const ensureDir = () => {
     if (!fs.existsSync(syncDir)) {
@@ -254,6 +255,45 @@ function localSyncPlugin(): Plugin {
             const orders = readJson(ordersFile, []);
             const filtered = orders.filter((o: any) => o.id !== targetId);
             writeJson(ordersFile, filtered);
+            res.statusCode = 200;
+            res.end(JSON.stringify({ success: true, count: filtered.length }));
+            return;
+          }
+        }
+
+        // 4. ENDPOINT PRODUITS (SYNCHRONISATION MULTI-APPAREILS LOCAL / WIFI)
+        if (url.startsWith('/api/sync/products')) {
+          if (req.method === 'GET') {
+            const products = readJson(productsFile, []);
+            res.statusCode = 200;
+            res.end(JSON.stringify(products));
+            return;
+          }
+          if (req.method === 'POST') {
+            readBody((body) => {
+              const products = readJson(productsFile, []);
+              const incoming = Array.isArray(body) ? body : [body];
+              for (const prod of incoming) {
+                if (!prod || !prod.id) continue;
+                const idx = products.findIndex((p: any) => p.id === prod.id);
+                if (idx >= 0) {
+                  products[idx] = { ...products[idx], ...prod };
+                } else {
+                  products.unshift(prod);
+                }
+              }
+              writeJson(productsFile, products);
+              res.statusCode = 200;
+              res.end(JSON.stringify({ success: true, count: products.length, products }));
+            });
+            return;
+          }
+          if (req.method === 'DELETE') {
+            const urlObj = new URL(url, 'http://localhost');
+            const targetId = urlObj.searchParams.get('id');
+            const products = readJson(productsFile, []);
+            const filtered = products.filter((p: any) => p.id !== targetId);
+            writeJson(productsFile, filtered);
             res.statusCode = 200;
             res.end(JSON.stringify({ success: true, count: filtered.length }));
             return;
