@@ -5,13 +5,9 @@ import { store } from '../services/store';
 import { Category, Product } from '../types';
 import {
   ArrowRight,
-  Sprout,
   Truck,
-  BadgePercent,
-  Headset,
   ClipboardCheck,
   MoonStar,
-  Sunrise,
 } from 'lucide-react';
 
 interface HomePageProps {
@@ -166,106 +162,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectCategory
         </div>
       </section>
 
-      {/* 4. Engagements — USP bar */}
-      <section className="home-advantages-section">
-        <div className="container">
-          <div className="home-section-header">
-            <h2 className="home-section-title">Pourquoi les Chefs nous font confiance</h2>
-            <p className="home-section-subtitle">
-              Un approvisionnement pensé pour les cuisines professionnelles du Maroc.
-            </p>
-          </div>
-          <div className="home-advantages-grid">
-            <div className="advantage-card">
-              <div className="advantage-icon-wrap primary">
-                <Sprout size={22} />
-              </div>
-              <div>
-                <h3 className="advantage-title">Fraîcheur du carreau</h3>
-                <p className="advantage-desc">
-                  Sélectionné chaque nuit au Marché de Gros de Casablanca, au pic de maturité.
-                </p>
-              </div>
-            </div>
-            <div className="advantage-card">
-              <div className="advantage-icon-wrap amber">
-                <Sunrise size={22} />
-              </div>
-              <div>
-                <h3 className="advantage-title">Livraison dès l'aube</h3>
-                <p className="advantage-desc">
-                  Vos commandes arrivent avant le service, prêtes à entrer en cuisine.
-                </p>
-              </div>
-            </div>
-            <div className="advantage-card">
-              <div className="advantage-icon-wrap primary">
-                <BadgePercent size={22} />
-              </div>
-              <div>
-                <h3 className="advantage-title">Prix de gros en MAD</h3>
-                <p className="advantage-desc">
-                  Mercuriale mise à jour quotidiennement, facturation claire en dirham.
-                </p>
-              </div>
-            </div>
-            <div className="advantage-card">
-              <div className="advantage-icon-wrap amber">
-                <Headset size={22} />
-              </div>
-              <div>
-                <h3 className="advantage-title">Service CHR dédié</h3>
-                <p className="advantage-desc">
-                  Une équipe qui connaît les exigences des cafés, restaurants et hôtels.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 5. Comment ça marche — 3 étapes */}
-      <section className="home-steps-section">
-        <div className="container">
-          <div className="home-section-header">
-            <h2 className="home-section-title">Commander en 3 étapes</h2>
-            <p className="home-section-subtitle">
-              Simple, rapide, et calé sur le rythme de votre cuisine.
-            </p>
-          </div>
-          <div className="home-steps-grid">
-            <div className="step-card">
-              <div className="step-num">01</div>
-              <div>
-                <h3 className="step-title">Créez votre compte pro</h3>
-                <p className="step-desc">
-                  Inscription gratuite pour les professionnels — accès immédiat au catalogue.
-                </p>
-              </div>
-            </div>
-            <div className="step-card">
-              <div className="step-num">02</div>
-              <div>
-                <h3 className="step-title">Commandez avant minuit</h3>
-                <p className="step-desc">
-                  Chaque soir, la mercuriale du jour est mise à jour — composez votre panier.
-                </p>
-              </div>
-            </div>
-            <div className="step-card">
-              <div className="step-num">03</div>
-              <div>
-                <h3 className="step-title">Livré à l'aube</h3>
-                <p className="step-desc">
-                  Réception fraîche dès les premières heures, facture et BL dans votre espace.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 6. Bande CTA finale */}
+      {/* 4. Bande CTA finale */}
       <section className="home-cta-band">
         <div className="container">
           <div className="home-cta-card">
