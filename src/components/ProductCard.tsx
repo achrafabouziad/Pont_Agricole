@@ -51,7 +51,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
   };
 
   return (
-    <div className="modern-product-card">
+    <div
+      className="modern-product-card"
+      onClick={cartQty === 0 && product.isAvailable ? handleQuickAdd : undefined}
+      style={{ cursor: cartQty === 0 && product.isAvailable ? 'pointer' : 'default' }}
+    >
       {/* Product Image Frame with Floating Actions (Matches Reference Image 1) */}
       <div className="modern-img-wrap">
         {!product.isAvailable && (

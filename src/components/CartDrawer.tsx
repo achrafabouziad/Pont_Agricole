@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { X, Trash2, Plus, Minus, AlertTriangle, ArrowRight, ShoppingBag } from 'lucide-react';
+import { X, Trash2, Plus, Minus, AlertTriangle, ArrowRight, ShoppingBag, ArrowLeft } from 'lucide-react';
 import { store } from '../services/store';
-import { CartItem, DeliveryZone, Order } from '../types';
+import { CartItem, DeliveryZone, Order, Product } from '../types';
 
 interface CartDrawerProps {
   isOpen: boolean;
@@ -24,9 +24,17 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   const [notes, setNotes] = useState<string>('');
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
 
   const currentUser = store.getCurrentUser();
   const currentBusiness = store.getCurrentBusiness();
+
+  // Load products to offer quick add recommendations directly inside the cart
+  useEffect(() => {
+    if (isOpen) {
+      store.getProducts().then(setAllProducts);
+    }
+  }, [isOpen]);
 
   // Load zones & prefill tomorrow's date
   useEffect(() => {
@@ -56,6 +64,10 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   }, []);
 
   if (!isOpen) return null;
+
+  const quickAddProducts = allProducts
+    .filter((p) => p.isAvailable && !cart.some((item) => item.product.id === p.id))
+    .slice(0, 8);
 
   const subtotal = store.getCartSubtotal();
   const total = subtotal;
@@ -117,12 +129,35 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
           <div>
             <div className="drawer-header-title">Panier Professionnel</div>
             <div className="drawer-header-sub">
-              {cart.reduce((s, i) => s + i.quantity, 0)} articles sélectionnés
+              {cart.length} produit{cart.length > 1 ? 's' : ''} ({cart.reduce((s, i) => s + i.quantity, 0)} articles)
             </div>
           </div>
-          <button onClick={onClose} className="drawer-close-btn" title="Fermer" aria-label="Fermer le panier">
-            <X size={20} />
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <button
+              type="button"
+              onClick={onClose}
+              style={{
+                background: '#ffffff',
+                border: '1.5px solid #86efac',
+                borderRadius: '8px',
+                padding: '0.4rem 0.75rem',
+                fontSize: '0.78rem',
+                fontWeight: 700,
+                color: '#166534',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.3rem',
+              }}
+              title="Ajouter d'autres produits"
+            >
+              <Plus size={14} strokeWidth={2.5} />
+              <span>+ Ajouter d'autres produits</span>
+            </button>
+            <button onClick={onClose} className="drawer-close-btn" title="Fermer" aria-label="Fermer le panier">
+              <X size={20} />
+            </button>
+          </div>
         </div>
 
         {/* Content Body */}
@@ -199,6 +234,145 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                   </div>
                 </div>
               ))}
+
+              {/* Quick Add More Products Row Directly Inside Cart */}
+              {quickAddProducts.length > 0 && (
+                <div
+                  style={{
+                    margin: '0.75rem 0 1.25rem',
+                    padding: '0.85rem',
+                    backgroundColor: '#f0fdf4',
+                    borderRadius: '14px',
+                    border: '1.5px dashed #86efac',
+                  }}
+                >
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      marginBottom: '0.65rem',
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: '0.82rem',
+                        fontWeight: 800,
+                        color: '#166534',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.35rem',
+                      }}
+                    >
+                      <Plus size={15} strokeWidth={2.5} />
+                      Ajouter d'autres produits à ce panier :
+                    </span>
+                    <button
+                      type="button"
+                      onClick={onClose}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#15803d',
+                        fontSize: '0.75rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        textDecoration: 'underline',
+                        padding: 0,
+                      }}
+                    >
+                      Voir le catalogue
+                    </button>
+                  </div>
+
+                  <div
+                    style={{
+                      display: 'flex',
+                      gap: '0.6rem',
+                      overflowX: 'auto',
+                      paddingBottom: '0.35rem',
+                    }}
+                  >
+                    {quickAddProducts.map((p) => (
+                      <div
+                        key={p.id}
+                        style={{
+                          flexShrink: 0,
+                          width: '135px',
+                          backgroundColor: '#ffffff',
+                          borderRadius: '10px',
+                          padding: '0.55rem',
+                          border: '1px solid #e2e8f0',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '0.3rem',
+                          boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                        }}
+                      >
+                        <img
+                          src={p.imageUrl}
+                          alt={p.name}
+                          style={{
+                            width: '100%',
+                            height: '68px',
+                            objectFit: 'cover',
+                            borderRadius: '6px',
+                          }}
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src =
+                              'https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=600&q=80';
+                          }}
+                        />
+                        <span
+                          style={{
+                            fontSize: '0.76rem',
+                            fontWeight: 700,
+                            color: '#1e293b',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                          }}
+                          title={p.name}
+                        >
+                          {p.name}
+                        </span>
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            marginTop: '0.15rem',
+                          }}
+                        >
+                          <span style={{ fontSize: '0.74rem', fontWeight: 800, color: '#166534' }}>
+                            {p.price.toFixed(2)} DH
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => store.addToCart(p, p.minimumQuantity || 1)}
+                            style={{
+                              backgroundColor: '#166534',
+                              color: '#ffffff',
+                              border: 'none',
+                              borderRadius: '6px',
+                              padding: '0.22rem 0.5rem',
+                              fontSize: '0.72rem',
+                              fontWeight: 800,
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.2rem',
+                            }}
+                          >
+                            <Plus size={12} strokeWidth={3} />
+                            Ajouter
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Order Options */}
               <div className="cart-details-card">
