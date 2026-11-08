@@ -153,6 +153,8 @@ class StoreService {
   private broadcastChannel: BroadcastChannel | null = null;
   private adminTokenCache: { token: string; expiresAt: number } | null = null;
   private productsChannelSubscribed: boolean = false;
+  private businessesChannelSubscribed: boolean = false;
+  private ordersChannelSubscribed: boolean = false;
 
   constructor() {
     this.init();
@@ -483,7 +485,57 @@ class StoreService {
     }
     this.cart = getStored<CartItem[]>(KEY_CART, []);
     this.initProductsRealtime();
+    this.initBusinessesRealtime();
+    this.initOrdersRealtime();
     this.refreshProductsFromCloud().catch(() => {});
+  }
+
+  private initBusinessesRealtime(): void {
+    if (this.businessesChannelSubscribed) return;
+    if (isSupabaseConfigured && supabase) {
+      try {
+        this.businessesChannelSubscribed = true;
+        supabase
+          .channel('public-businesses-realtime-channel')
+          .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'businesses' },
+            async () => {
+              try {
+                await this.getBusinesses();
+                this.notify();
+              } catch {}
+            }
+          )
+          .subscribe();
+      } catch (e) {
+        console.warn('Supabase businesses realtime error:', e);
+      }
+    }
+  }
+
+  private initOrdersRealtime(): void {
+    if (this.ordersChannelSubscribed) return;
+    if (isSupabaseConfigured && supabase) {
+      try {
+        this.ordersChannelSubscribed = true;
+        supabase
+          .channel('public-orders-realtime-channel')
+          .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'orders' },
+            async () => {
+              try {
+                await this.getOrders();
+                this.notify();
+              } catch {}
+            }
+          )
+          .subscribe();
+      } catch (e) {
+        console.warn('Supabase orders realtime error:', e);
+      }
+    }
   }
 
   private initProductsRealtime(): void {
@@ -2549,21 +2601,18 @@ class StoreService {
           }
         }
 
-        if (!bizError && bizData && bizData.length > 0) {
-          const rejectedInDb = new Set(
-            bizData.filter((b: any) => b.approval_status === 'rejected').map((b: any) => b.id)
-          );
-
+        if (!bizError && Array.isArray(bizData) && bizData.length > 0) {
+          const cloudList: Business[] = [];
           for (const b of bizData) {
             if (b.approval_status === 'rejected') continue;
             const decodedPass = decodeAuth(b.google_maps_url);
-            const bizObj: Business = {
+            cloudList.push({
               id: b.id,
               ownerId: b.owner_id,
               businessName: b.business_name || 'Établissement Pro',
               businessType: b.business_type || 'restaurant',
               city: b.city || 'Casablanca',
-              deliveryAddress: b.delivery_address || 'Adresse à préciser',
+              deliveryAddress: b.delivery_address || 'Casablanca',
               approvalStatus: b.approval_status || 'approved',
               createdAt: b.created_at || new Date().toISOString(),
               contactName: b.contact_name || b.business_name || 'Client Professionnel',
@@ -2573,19 +2622,15 @@ class StoreService {
               username: b.username || undefined,
               password: decodedPass || undefined,
               lastSeenAt: b.last_seen_at || undefined,
-            };
-            addOrUpdateClient(bizObj);
+            });
           }
 
-          // Nettoyer du tableau les clients qui ont été supprimés/rejetés dans la base
-          for (let i = list.length - 1; i >= 0; i--) {
-            if (rejectedInDb.has(list[i].id)) {
-              list.splice(i, 1);
-            }
-          }
+          // Supabase Cloud est la Source Unique de Vérité : on remplace complètement la liste pour éliminer tout fantôme
+          list.length = 0;
+          list.push(...cloudList);
         }
       } catch (e) {
-        // En cas de lenteur réseau Supabase, les clients locaux et du serveur sync sont déjà affichés
+        // En cas de lenteur réseau Supabase, les données en mémoire ou dev-sync restent temporairement
       }
     }
 
@@ -2605,15 +2650,17 @@ class StoreService {
         if (restRes && restRes.ok) {
           const restData = await restRes.json();
           if (Array.isArray(restData) && restData.length > 0) {
+            const cloudList: Business[] = [];
             for (const b of restData) {
+              if (b.approval_status === 'rejected') continue;
               const decodedPass = decodeAuth(b.google_maps_url);
-              const bizObj: Business = {
+              cloudList.push({
                 id: b.id,
                 ownerId: b.owner_id,
                 businessName: b.business_name || 'Établissement Pro',
                 businessType: b.business_type || 'restaurant',
                 city: b.city || 'Casablanca',
-                deliveryAddress: b.delivery_address || 'Adresse à préciser',
+                deliveryAddress: b.delivery_address || 'Casablanca',
                 approvalStatus: b.approval_status || 'approved',
                 createdAt: b.created_at || new Date().toISOString(),
                 contactName: b.contact_name || b.business_name || 'Client Professionnel',
@@ -2623,9 +2670,10 @@ class StoreService {
                 username: b.username || undefined,
                 password: decodedPass || undefined,
                 lastSeenAt: b.last_seen_at || undefined,
-              };
-              addOrUpdateClient(bizObj);
+              });
             }
+            list.length = 0;
+            list.push(...cloudList);
           }
         }
       } catch (re) {}
