@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Hero } from '../components/Hero';
 import { ProductCard } from '../components/ProductCard';
 import { store } from '../services/store';
-import { Category, Product } from '../types';
+import { Category, Product, CartItem } from '../types';
 import {
   ArrowRight,
   Truck,
   ClipboardCheck,
   MoonStar,
+  ShoppingBag,
 } from 'lucide-react';
 
 interface HomePageProps {
@@ -19,6 +20,7 @@ interface HomePageProps {
 export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectCategory, onOpenCart }) => {
   const [popularProducts, setPopularProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [cart, setCart] = useState<CartItem[]>(store.getCart());
 
   useEffect(() => {
     store.getProducts().then((prods) => {
@@ -36,13 +38,13 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectCategory
       store.getCategories().then((cats) => {
         setCategories(cats.filter((c) => c.isActive));
       });
+      setCart([...store.getCart()]);
     });
     return unsub;
   }, []);
 
   const handleAddToCart = (product: Product, quantity: number) => {
     store.addToCart(product, quantity);
-    onOpenCart();
   };
 
   return (
@@ -196,6 +198,84 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectCategory
           </div>
         </div>
       </section>
+
+      {/* Floating Bottom Cart Bar for Seamless Multi-Product Grouped Ordering */}
+      {cart.length > 0 && (
+        <div
+          className="home-floating-cart-bar"
+          style={{
+            position: 'fixed',
+            bottom: '76px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 1000,
+            width: 'calc(100% - 1.5rem)',
+            maxWidth: '520px',
+            animation: 'slideUp 0.2s ease-out',
+          }}
+        >
+          <button
+            type="button"
+            onClick={onOpenCart}
+            style={{
+              width: '100%',
+              backgroundColor: '#166534',
+              color: '#ffffff',
+              border: 'none',
+              borderRadius: '16px',
+              padding: '0.85rem 1.25rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              boxShadow: '0 10px 25px rgba(22, 101, 52, 0.4)',
+              cursor: 'pointer',
+              fontWeight: 800,
+              fontSize: '0.92rem',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+              <div
+                style={{
+                  backgroundColor: 'rgba(255, 255, 255, 0.22)',
+                  borderRadius: '10px',
+                  padding: '0.3rem 0.6rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  fontSize: '0.85rem',
+                  fontWeight: 900,
+                }}
+              >
+                <ShoppingBag size={15} />
+                <span>{cart.reduce((s, i) => s + i.quantity, 0)}</span>
+              </div>
+              <span>
+                {cart.length} produit{cart.length > 1 ? 's' : ''} dans le panier
+              </span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+              <span style={{ fontSize: '1rem', fontWeight: 900 }}>
+                {cart.reduce((s, i) => s + i.product.price * i.quantity, 0).toFixed(2)} DH
+              </span>
+              <span
+                style={{
+                  backgroundColor: '#ffffff',
+                  color: '#166534',
+                  borderRadius: '8px',
+                  padding: '0.3rem 0.65rem',
+                  fontSize: '0.78rem',
+                  fontWeight: 800,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.25rem',
+                }}
+              >
+                Commander <ArrowRight size={13} strokeWidth={2.5} />
+              </span>
+            </div>
+          </button>
+        </div>
+      )}
     </div>
   );
 };

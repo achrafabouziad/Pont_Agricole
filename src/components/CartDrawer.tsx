@@ -317,6 +317,30 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                 </>
               )}
             </button>
+
+            {/* Continue shopping button so clients know they can add more items into the same cart */}
+            <button
+              type="button"
+              onClick={onClose}
+              className="btn btn-outline"
+              style={{
+                width: '100%',
+                marginTop: '0.65rem',
+                padding: '0.75rem',
+                borderRadius: '12px',
+                fontWeight: 700,
+                fontSize: '0.88rem',
+                border: '1.5px solid #cbd5e1',
+                color: '#334155',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.4rem',
+                cursor: 'pointer',
+              }}
+            >
+              + Continuer mes achats & ajouter d'autres produits
+            </button>
           </div>
         )}
       </div>

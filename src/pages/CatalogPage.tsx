@@ -1,8 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { Search, ChevronLeft, ChevronDown, Check, X, Heart, SlidersHorizontal, ArrowLeft } from 'lucide-react';
+import {
+  Search,
+  ChevronLeft,
+  ChevronDown,
+  Check,
+  X,
+  Heart,
+  SlidersHorizontal,
+  ArrowLeft,
+  ShoppingBag,
+  ArrowRight,
+} from 'lucide-react';
 import { ProductCard } from '../components/ProductCard';
 import { store } from '../services/store';
-import { Category, Product } from '../types';
+import { Category, Product, CartItem } from '../types';
 
 interface CatalogPageProps {
   initialCategoryId?: string;
@@ -26,6 +37,7 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({
   const [sortBy, setSortBy] = useState<'default' | 'price_asc' | 'price_desc'>('default');
   const [showSearchBox, setShowSearchBox] = useState<boolean>(false);
   const [favorites, setFavorites] = useState<string[]>(store.getFavorites());
+  const [cart, setCart] = useState<CartItem[]>(store.getCart());
 
   useEffect(() => {
     store.getCategories().then(setCategories);
@@ -34,6 +46,7 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({
     const unsub = store.subscribe(() => {
       store.getProducts().then(setProducts);
       setFavorites(store.getFavorites());
+      setCart([...store.getCart()]);
     });
     return unsub;
   }, []);
@@ -46,7 +59,6 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({
 
   const handleAddToCart = (product: Product, quantity: number) => {
     store.addToCart(product, quantity);
-    onOpenCart();
   };
 
   const selectedCategoryObj = categories.find((c) => c.id === selectedCategory);
@@ -346,6 +358,84 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({
           </div>
         )}
       </div>
+
+      {/* Floating Bottom Cart Bar for Seamless Multi-Product Grouped Ordering */}
+      {cart.length > 0 && (
+        <div
+          className="catalog-floating-cart-bar"
+          style={{
+            position: 'fixed',
+            bottom: '76px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 1000,
+            width: 'calc(100% - 1.5rem)',
+            maxWidth: '520px',
+            animation: 'slideUp 0.2s ease-out',
+          }}
+        >
+          <button
+            type="button"
+            onClick={onOpenCart}
+            style={{
+              width: '100%',
+              backgroundColor: '#166534',
+              color: '#ffffff',
+              border: 'none',
+              borderRadius: '16px',
+              padding: '0.85rem 1.25rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              boxShadow: '0 10px 25px rgba(22, 101, 52, 0.4)',
+              cursor: 'pointer',
+              fontWeight: 800,
+              fontSize: '0.92rem',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+              <div
+                style={{
+                  backgroundColor: 'rgba(255, 255, 255, 0.22)',
+                  borderRadius: '10px',
+                  padding: '0.3rem 0.6rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  fontSize: '0.85rem',
+                  fontWeight: 900,
+                }}
+              >
+                <ShoppingBag size={15} />
+                <span>{cart.reduce((s, i) => s + i.quantity, 0)}</span>
+              </div>
+              <span>
+                {cart.length} produit{cart.length > 1 ? 's' : ''} dans le panier
+              </span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+              <span style={{ fontSize: '1rem', fontWeight: 900 }}>
+                {cart.reduce((s, i) => s + i.product.price * i.quantity, 0).toFixed(2)} DH
+              </span>
+              <span
+                style={{
+                  backgroundColor: '#ffffff',
+                  color: '#166534',
+                  borderRadius: '8px',
+                  padding: '0.3rem 0.65rem',
+                  fontSize: '0.78rem',
+                  fontWeight: 800,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.25rem',
+                }}
+              >
+                Commander <ArrowRight size={13} strokeWidth={2.5} />
+              </span>
+            </div>
+          </button>
+        </div>
+      )}
     </div>
   );
 };

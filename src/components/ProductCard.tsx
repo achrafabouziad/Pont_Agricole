@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ShoppingCart, Check, Heart } from 'lucide-react';
+import { ShoppingCart, Check, Heart, Plus, Minus } from 'lucide-react';
 import { Product } from '../types';
 import { store } from '../services/store';
 
@@ -11,10 +11,16 @@ interface ProductCardProps {
 export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
   const [isFav, setIsFav] = useState<boolean>(store.isFavorite(product.id));
   const [added, setAdded] = useState<boolean>(false);
+  const [cartQty, setCartQty] = useState<number>(() => {
+    const item = store.getCart().find((i) => i.product.id === product.id);
+    return item ? item.quantity : 0;
+  });
 
   useEffect(() => {
     const unsub = store.subscribe(() => {
       setIsFav(store.isFavorite(product.id));
+      const item = store.getCart().find((i) => i.product.id === product.id);
+      setCartQty(item ? item.quantity : 0);
     });
     return unsub;
   }, [product.id]);
@@ -30,7 +36,18 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
     if (!product.isAvailable) return;
     onAddToCart(product, product.minimumQuantity || 1);
     setAdded(true);
-    setTimeout(() => setAdded(false), 1200);
+    setTimeout(() => setAdded(false), 900);
+  };
+
+  const handleIncrement = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!product.isAvailable) return;
+    store.updateCartQuantity(product.id, cartQty + 1);
+  };
+
+  const handleDecrement = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    store.updateCartQuantity(product.id, Math.max(0, cartQty - 1));
   };
 
   return (
@@ -75,7 +92,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
           {product.name}
         </h3>
 
-        {/* Bottom Price & Circular Cart Button */}
+        {/* Bottom Price & Circular Cart Button / Stepper */}
         <div className="modern-card-bottom">
           <div className="modern-price-block">
             <span className="modern-current-price">
@@ -83,20 +100,96 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
             </span>
           </div>
 
-          <button
-            type="button"
-            onClick={handleQuickAdd}
-            disabled={!product.isAvailable}
-            className={`modern-add-circle-btn ${added ? 'added' : ''}`}
-            title="Ajouter au panier"
-            aria-label={`Ajouter ${product.name} au panier`}
-          >
-            {added ? (
-              <Check size={17} strokeWidth={2.5} />
-            ) : (
-              <ShoppingCart size={16} strokeWidth={2.2} />
-            )}
-          </button>
+          {cartQty > 0 ? (
+            <div
+              className="modern-cart-stepper"
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                backgroundColor: '#166534',
+                borderRadius: '22px',
+                padding: '2px 3px',
+                gap: '2px',
+                boxShadow: '0 2px 8px rgba(22, 101, 52, 0.3)',
+                zIndex: 2,
+              }}
+            >
+              <button
+                type="button"
+                onClick={handleDecrement}
+                style={{
+                  width: '26px',
+                  height: '26px',
+                  borderRadius: '50%',
+                  border: 'none',
+                  backgroundColor: 'rgba(255, 255, 255, 0.22)',
+                  color: '#ffffff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  fontWeight: 900,
+                }}
+                title="Diminuer la quantité"
+                aria-label="Diminuer la quantité"
+              >
+                <Minus size={13} strokeWidth={3} />
+              </button>
+
+              <span
+                style={{
+                  minWidth: '22px',
+                  textAlign: 'center',
+                  color: '#ffffff',
+                  fontWeight: 800,
+                  fontSize: '0.85rem',
+                  padding: '0 3px',
+                  userSelect: 'none',
+                }}
+              >
+                {cartQty}
+              </span>
+
+              <button
+                type="button"
+                onClick={handleIncrement}
+                disabled={!product.isAvailable}
+                style={{
+                  width: '26px',
+                  height: '26px',
+                  borderRadius: '50%',
+                  border: 'none',
+                  backgroundColor: 'rgba(255, 255, 255, 0.22)',
+                  color: '#ffffff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  fontWeight: 900,
+                }}
+                title="Augmenter la quantité"
+                aria-label="Augmenter la quantité"
+              >
+                <Plus size={13} strokeWidth={3} />
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={handleQuickAdd}
+              disabled={!product.isAvailable}
+              className={`modern-add-circle-btn ${added ? 'added' : ''}`}
+              title="Ajouter au panier"
+              aria-label={`Ajouter ${product.name} au panier`}
+            >
+              {added ? (
+                <Check size={17} strokeWidth={2.5} />
+              ) : (
+                <ShoppingCart size={16} strokeWidth={2.2} />
+              )}
+            </button>
+          )}
         </div>
       </div>
     </div>
