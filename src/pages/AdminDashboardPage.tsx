@@ -112,10 +112,17 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
   const [selectedInvoiceClient, setSelectedInvoiceClient] = useState<Business | null>(null);
 
   const handleOpenGlobalInvoiceForClient = (biz: Business) => {
-    const bizPhoneNorm = normalizePhone(biz.phone || '');
     const clientOrders = orders.filter((o) => {
-      if (o.businessId && o.businessId === biz.id) return true;
-      if (o.customerId && o.customerId === biz.ownerId) return true;
+      // 1. Si la commande a un businessId, elle doit correspondre à cet établissement
+      if (o.businessId) {
+        return o.businessId === biz.id;
+      }
+      // 2. Si la commande a un nom d'utilisateur client
+      if (biz.username && o.customerUsername) {
+        return o.customerUsername.toLowerCase().trim() === biz.username.toLowerCase().trim();
+      }
+      // 3. Sinon, vérifier par téléphone uniquement pour les commandes orphelines sans businessId
+      const bizPhoneNorm = normalizePhone(biz.phone || '');
       const oPhoneNorm = normalizePhone(o.customerPhone || '');
       if (bizPhoneNorm && oPhoneNorm && bizPhoneNorm === oPhoneNorm) return true;
       return false;
@@ -132,10 +139,14 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
   };
 
   const handleOpenInvoiceForOrder = (ord: Order) => {
-    const oPhoneNorm = normalizePhone(ord.customerPhone || '');
     const clientOrders = orders.filter((o) => {
-      if (ord.businessId && o.businessId === ord.businessId) return true;
-      if (ord.customerId && o.customerId === ord.customerId) return true;
+      if (ord.businessId && o.businessId) {
+        return o.businessId === ord.businessId;
+      }
+      if (ord.customerUsername && o.customerUsername) {
+        return o.customerUsername.toLowerCase().trim() === ord.customerUsername.toLowerCase().trim();
+      }
+      const oPhoneNorm = normalizePhone(ord.customerPhone || '');
       const phoneNorm = normalizePhone(o.customerPhone || '');
       if (oPhoneNorm && phoneNorm && oPhoneNorm === phoneNorm) return true;
       return false;
@@ -143,7 +154,8 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
 
     const matchBiz = businesses.find((b) => {
       if (ord.businessId && b.id === ord.businessId) return true;
-      if (ord.customerId && b.ownerId === ord.customerId) return true;
+      if (ord.customerUsername && b.username && b.username.toLowerCase().trim() === ord.customerUsername.toLowerCase().trim()) return true;
+      const oPhoneNorm = normalizePhone(ord.customerPhone || '');
       const bPhoneNorm = normalizePhone(b.phone || '');
       if (oPhoneNorm && bPhoneNorm && oPhoneNorm === bPhoneNorm) return true;
       return false;

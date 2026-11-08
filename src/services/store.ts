@@ -865,18 +865,26 @@ class StoreService {
     const authTag = encodeAuth(params.password);
     const syncedMapsUrl = cleanUrl ? `${cleanUrl}#${authTag}` : authTag;
 
-    // Rechercher si l'établissement existe déjà en cache local
+    // Vérifier si le nom d'utilisateur est déjà utilisé par un autre établissement actif
     const localBizs = getStored<Business[]>(KEY_BUSINESSES, []);
-    const existingBiz = localBizs.find((b: any) => {
+    const existingSameUsername = localBizs.find((b: any) => {
       const bUser = (b.username || '').toLowerCase().trim();
-      const bDigits = (b.phone || '').replace(/[^0-9]/g, '');
-      if (bUser === cleanUsername) return true;
-      if (bDigits.length >= 9 && cleanDigits.length >= 9 && (bDigits.endsWith(cleanDigits.slice(-9)) || cleanDigits.endsWith(bDigits.slice(-9)))) return true;
-      return false;
+      return bUser && bUser === cleanUsername && b.approvalStatus !== 'rejected';
     });
+    if (existingSameUsername) {
+      return {
+        success: false,
+        error: "Ce nom d'utilisateur est déjà utilisé par un autre établissement. Veuillez en choisir un autre.",
+      };
+    }
 
-    const newBizId = existingBiz?.id || `biz-${Date.now()}`;
-    const userId = existingBiz?.ownerId || `usr-${Date.now()}`;
+    // Chaque nouveau client possède son propre identifiant d'établissement et d'utilisateur 100% unique (aucune fusion par localisation ou téléphone)
+    const randSuffix = Math.random().toString(36).substring(2, 8);
+    const newBizId = `biz-${Date.now()}-${randSuffix}`;
+    const userId = `usr-${Date.now()}-${randSuffix}`;
+
+    // Vider le panier lors d'une nouvelle inscription pour isoler les sessions
+    this.clearCart();
 
     // 1. Initialiser la session active IMMÉDIATEMENT (Temps d'exécution < 10ms, aucun gel de l'écran)
     this.currentUser = {
@@ -1053,6 +1061,7 @@ class StoreService {
     }
     this.currentUser = null;
     this.currentBusiness = null;
+    this.clearCart();
     sessionStorage.removeItem(KEY_SESSION_USER);
     sessionStorage.removeItem(KEY_SESSION_BUSINESS);
     localStorage.removeItem(KEY_USER);
@@ -1957,15 +1966,38 @@ class StoreService {
     // Mettre à jour le cache local
     setStored(KEY_ORDERS, list);
 
-    // Si client connecté, filtrer ses commandes
+    // Si client connecté, filtrer strictement SES commandes uniquement (isolation totale par établissement)
     if (this.currentUser && this.currentUser.role === 'customer') {
-      const userPhoneNorm = normalizePhone(this.currentUser.phone || '');
-      return list.filter(
-        (o) =>
-          o.customerId === this.currentUser?.id ||
-          (this.currentBusiness && o.businessId === this.currentBusiness.id) ||
-          (userPhoneNorm && o.customerPhone && normalizePhone(o.customerPhone) === userPhoneNorm)
-      );
+      const curBiz = this.currentBusiness;
+      const curBizId = curBiz?.id;
+      const curUsername = (curBiz?.username || '').toLowerCase().trim();
+      const curPhoneDigits = (curBiz?.phone || this.currentUser.phone || '').replace(/[^0-9]/g, '');
+
+      return list.filter((o) => {
+        // 1. Si la commande appartient explicitement à un autre établissement, interdiction formelle
+        if (curBizId && o.businessId && o.businessId !== curBizId) {
+          return false;
+        }
+
+        // 2. Si la commande correspond explicitement à cet établissement
+        if (curBizId && o.businessId && o.businessId === curBizId) {
+          return true;
+        }
+
+        // 3. Si la commande a un username client spécifique identique
+        const ordUsername = (o.customerUsername || (o as any).username || '').toLowerCase().trim();
+        if (curUsername && ordUsername && curUsername === ordUsername) {
+          return true;
+        }
+
+        // 4. Si la commande n'a pas de businessId mais correspond au téléphone exact de ce client (au moins 9 chiffres)
+        const oPhoneDigits = (o.customerPhone || '').replace(/[^0-9]/g, '');
+        if (!o.businessId && curPhoneDigits.length >= 9 && oPhoneDigits.length >= 9 && curPhoneDigits.slice(-9) === oPhoneDigits.slice(-9)) {
+          return true;
+        }
+
+        return false;
+      });
     }
 
     // L'administrateur voit l'ensemble des commandes
@@ -2026,6 +2058,7 @@ class StoreService {
       customerId: this.currentUser.id,
       customerName: this.currentUser.fullName,
       customerPhone: this.currentUser.phone,
+      customerUsername: this.currentBusiness?.username,
       businessId: this.currentBusiness?.id,
       businessName: this.currentBusiness?.businessName,
       businessType: this.currentBusiness?.businessType,
@@ -2238,10 +2271,6 @@ class StoreService {
       const existingIdx = list.findIndex((c) => {
         if (bizObj.id && c.id && c.id === bizObj.id) return true;
         if (bUser && c.username && c.username.toLowerCase().trim() === bUser) return true;
-        const cDigits = (c.phone || '').replace(/[^0-9]/g, '');
-        if (bDigits.length >= 9 && cDigits.length >= 9 && (bDigits.endsWith(cDigits.slice(-9)) || cDigits.endsWith(bDigits.slice(-9)))) {
-          return true;
-        }
         return false;
       });
 

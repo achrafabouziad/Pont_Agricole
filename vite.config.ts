@@ -105,10 +105,7 @@ function localSyncPlugin(): Plugin {
                 const incNormPhone = normalizePhone(inc.phone || '');
                 const existingIdx = existingClients.findIndex((c: any) => {
                   if (inc.id && c.id === inc.id) return true;
-                  if (inc.ownerId && c.ownerId === inc.ownerId) return true;
-                  const cNormPhone = normalizePhone(c.phone || '');
-                  if (incNormPhone && cNormPhone && incNormPhone === cNormPhone) return true;
-                  if (inc.email && c.email && inc.email.toLowerCase().trim() === c.email.toLowerCase().trim()) return true;
+                  if (inc.username && c.username && inc.username.toLowerCase().trim() === c.username.toLowerCase().trim()) return true;
                   return false;
                 });
 
