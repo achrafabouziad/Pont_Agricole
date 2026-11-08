@@ -17,6 +17,7 @@ import {
   Eye,
   Phone,
   FileText,
+  Trash2,
 } from 'lucide-react';
 import { InvoiceModal } from '../components/InvoiceModal';
 
@@ -81,6 +82,13 @@ export const ClientDashboardPage: React.FC<ClientDashboardPageProps> = ({ onNavi
       setReorderNotice(null);
       onOpenCart();
     }, 800);
+  };
+
+  const handleDeleteOrder = async (orderId: string, orderRef: string) => {
+    if (window.confirm(`Voulez-vous vraiment supprimer la commande ${orderRef} ?`)) {
+      await store.deleteOrder(orderId);
+      store.getOrders().then(setOrders);
+    }
   };
 
   return (
@@ -342,6 +350,25 @@ export const ClientDashboardPage: React.FC<ClientDashboardPageProps> = ({ onNavi
                     >
                       <RotateCcw size={14} />
                       <span>Recommander</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteOrder(order.id, order.referenceNumber)}
+                      className="btn btn-secondary btn-sm"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.35rem',
+                        color: '#dc2626',
+                        backgroundColor: '#fef2f2',
+                        borderColor: '#fecaca',
+                        fontWeight: 700,
+                      }}
+                      title="Supprimer cette commande"
+                    >
+                      <Trash2 size={14} />
+                      <span>Supprimer</span>
                     </button>
                   </div>
                 </div>
