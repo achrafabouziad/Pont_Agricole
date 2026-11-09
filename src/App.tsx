@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { useUser } from '@clerk/clerk-react';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
 import { CartDrawer } from './components/CartDrawer';
 import { OrderSuccessModal } from './components/OrderSuccessModal';
 import { MobileBottomNav } from './components/MobileBottomNav';
+import { EstablishmentSetupModal } from './components/EstablishmentSetupModal';
 import { HomePage } from './pages/HomePage';
 import { CatalogPage } from './pages/CatalogPage';
 import { CategoriesPage } from './pages/CategoriesPage';
@@ -15,11 +17,27 @@ import { Order, UserProfile } from './types';
 import { Lock, ShieldCheck } from 'lucide-react';
 
 export function App() {
+  const { isLoaded: isClerkLoaded, isSignedIn: isClerkSignedIn, user: clerkUser } = useUser();
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(store.getCurrentUser());
   const [currentPage, setCurrentPage] = useState<string>('home');
   const [selectedCatalogCategory, setSelectedCatalogCategory] = useState<string>('all');
   const [isCartOpen, setIsCartOpen] = useState<boolean>(false);
   const [lastPlacedOrder, setLastPlacedOrder] = useState<Order | null>(null);
+
+  // Synchronisation automatique de la session Clerk vers le Store Pont Agricole & Supabase Database
+  useEffect(() => {
+    if (isClerkLoaded && isClerkSignedIn && clerkUser) {
+      store.syncSessionFromClerkUser(clerkUser).then(() => {
+        const u = store.getCurrentUser();
+        setCurrentUser(u);
+        if (u?.role === 'admin' && (currentPage === 'auth' || window.location.hash.includes('admin'))) {
+          handleNavigate('admin');
+        } else if (u?.role === 'customer' && currentPage === 'auth') {
+          handleNavigate('home');
+        }
+      });
+    }
+  }, [isClerkLoaded, isClerkSignedIn, clerkUser]);
 
   useEffect(() => {
     const unsub = store.subscribe(() => {
@@ -162,6 +180,19 @@ export function App() {
     setLastPlacedOrder(order);
   };
 
+  // Chargement initial Clerk
+  if (!isClerkLoaded) {
+    return (
+      <div style={{ minHeight: '100vh', backgroundColor: '#f6f7f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ width: '38px', height: '38px', border: '3px solid #bbf7d0', borderTopColor: '#15803d', borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 1rem' }} />
+          <div style={{ fontSize: '1rem', color: '#15803d', fontWeight: 700 }}>Pont Agricole B2B</div>
+          <div style={{ fontSize: '0.82rem', color: '#6b7280', marginTop: '0.25rem' }}>Connexion sécurisée en cours...</div>
+        </div>
+      </div>
+    );
+  }
+
   // VERROUILLAGE B2B STRICT : Le visiteur ne peut pas voir l'accueil sans être inscrit / connecté
   // Dès l'ouverture du lien, affiche la page de Connexion (Se connecter) ou Inscription (Sign up)
   if (!currentUser) {
@@ -184,8 +215,24 @@ export function App() {
     );
   }
 
+  // Si le client est connecté via Clerk mais n'a pas encore configuré son établissement dans Supabase Database
+  const needsEstablishmentSetup =
+    isClerkSignedIn &&
+    currentUser &&
+    currentUser.role === 'customer' &&
+    !store.getCurrentBusiness();
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', position: 'relative' }}>
+      {needsEstablishmentSetup && (
+        <EstablishmentSetupModal
+          clerkUser={clerkUser}
+          onCompleted={() => {
+            setCurrentUser(store.getCurrentUser());
+            handleNavigate('home');
+          }}
+        />
+      )}
       {/* Navigation Header */}
       <Navbar
         currentPage={currentPage}

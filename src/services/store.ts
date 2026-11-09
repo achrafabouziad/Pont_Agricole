@@ -527,6 +527,197 @@ class StoreService {
     } catch {}
   }
 
+  // --- AUTH METHODS (CLERK AUTHENTICATION + SUPABASE DATABASE) ---
+  public async syncSessionFromClerkUser(user: any): Promise<void> {
+    if (!user || !user.id) return;
+    const nowIso = new Date().toISOString();
+
+    const email = (
+      user.primaryEmailAddress?.emailAddress ||
+      user.emailAddresses?.[0]?.emailAddress ||
+      user.email ||
+      ''
+    ).toLowerCase().trim();
+
+    const phone = (
+      user.primaryPhoneNumber?.phoneNumber ||
+      user.phoneNumbers?.[0]?.phoneNumber ||
+      user.phone ||
+      ''
+    ).trim();
+
+    const username = (user.username || '').toLowerCase().trim();
+    const fullName =
+      user.fullName ||
+      [user.firstName, user.lastName].filter(Boolean).join(' ') ||
+      user.user_metadata?.full_name ||
+      '';
+
+    // 1. Administrateur (Directeur Fondateur)
+    const isAdmin =
+      email === 'admin@pontagricole.ma' ||
+      email === 'achrafabouziad@gmail.com' ||
+      username === 'admin' ||
+      username === 'achraf' ||
+      user.publicMetadata?.role === 'admin' ||
+      normalizePhone(phone).endsWith('707296123');
+
+    if (isAdmin) {
+      this.currentUser = {
+        id: user.id,
+        fullName: 'Achraf Abouziad (Directeur Fondateur)',
+        phone: '0707296123',
+        role: 'admin',
+        createdAt: nowIso,
+        lastSeenAt: nowIso,
+      };
+      this.currentBusiness = null;
+      setSessionStored(KEY_SESSION_USER, this.currentUser);
+      setSessionStored(KEY_SESSION_BUSINESS, null);
+      this.touchPresence(this.currentUser.id, undefined, this.currentUser.phone);
+      this.notify();
+      return;
+    }
+
+    // 2. Client Professionnel : retrouver ou lier l'établissement dans Supabase Database
+    let clientBiz: Business | null = null;
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { data: dbBizs } = await supabase
+          .from('businesses')
+          .select('*')
+          .neq('approval_status', 'rejected');
+
+        if (dbBizs && dbBizs.length > 0) {
+          const matched = dbBizs.find((b: any) => {
+            if (b.owner_id === user.id) return true;
+            if (email && b.email && b.email.toLowerCase().trim() === email) return true;
+            if (username && b.username && b.username.toLowerCase().trim() === username) return true;
+            const bPhone = (b.phone || '').replace(/[^0-9]/g, '');
+            const uPhone = phone.replace(/[^0-9]/g, '');
+            if (bPhone.length >= 8 && uPhone.length >= 8 && (bPhone.endsWith(uPhone.slice(-8)) || uPhone.endsWith(bPhone.slice(-8)))) {
+              return true;
+            }
+            return false;
+          });
+
+          if (matched) {
+            // Lier de manière permanente le Clerk User ID dans Supabase Database
+            if (matched.owner_id !== user.id) {
+              await supabase.from('businesses').update({ owner_id: user.id }).eq('id', matched.id);
+            }
+
+            clientBiz = {
+              id: matched.id,
+              ownerId: user.id,
+              businessName: matched.business_name || 'Établissement Pro',
+              businessType: matched.business_type || 'restaurant',
+              city: matched.city || 'Casablanca',
+              deliveryAddress: matched.delivery_address || 'Casablanca',
+              approvalStatus: matched.approval_status || 'approved',
+              createdAt: matched.created_at || nowIso,
+              contactName: matched.contact_name || fullName || 'Client Professionnel',
+              phone: matched.phone || phone,
+              email: matched.email || email,
+              googleMapsUrl: cleanMapsUrl(matched.google_maps_url) || undefined,
+              username: matched.username || username,
+              lastSeenAt: nowIso,
+            };
+          }
+        }
+      } catch (e) {
+        console.warn('Supabase DB lookup for Clerk user error:', e);
+      }
+    }
+
+    const contactName = clientBiz?.contactName || fullName || 'Client Professionnel';
+
+    this.currentUser = {
+      id: user.id,
+      fullName: contactName,
+      phone: phone || clientBiz?.phone || '',
+      role: 'customer',
+      createdAt: nowIso,
+      lastSeenAt: nowIso,
+    };
+    this.currentBusiness = clientBiz;
+
+    setSessionStored(KEY_SESSION_USER, this.currentUser);
+    setSessionStored(KEY_SESSION_BUSINESS, this.currentBusiness);
+    this.touchPresence(this.currentUser.id, this.currentBusiness?.id, this.currentUser.phone);
+    this.notify();
+  }
+
+  public async registerClerkBusiness(user: any, params: {
+    businessName: string;
+    businessType: BusinessType;
+    city: string;
+    deliveryAddress: string;
+    googleMapsUrl?: string;
+  }): Promise<{ success: boolean; error?: string }> {
+    if (!user || !user.id) return { success: false, error: 'Utilisateur Clerk non identifié.' };
+    const nowIso = new Date().toISOString();
+    const newBizId = generateUUID();
+    const email = (
+      user.primaryEmailAddress?.emailAddress ||
+      user.emailAddresses?.[0]?.emailAddress ||
+      user.email ||
+      ''
+    ).toLowerCase().trim();
+    const phone = (
+      user.primaryPhoneNumber?.phoneNumber ||
+      user.phoneNumbers?.[0]?.phoneNumber ||
+      user.phone ||
+      ''
+    ).trim();
+    const username = (user.username || '').toLowerCase().trim();
+    const fullName =
+      user.fullName ||
+      [user.firstName, user.lastName].filter(Boolean).join(' ') ||
+      params.businessName.trim();
+
+    const cleanUrl = cleanMapsUrl(params.googleMapsUrl);
+
+    const bizPayload = {
+      id: newBizId,
+      owner_id: user.id,
+      business_name: params.businessName.trim(),
+      business_type: params.businessType || 'restaurant',
+      city: params.city.trim() || 'Casablanca',
+      delivery_address: params.deliveryAddress.trim() || 'Casablanca',
+      contact_name: fullName,
+      phone,
+      email,
+      google_maps_url: cleanUrl || null,
+      username,
+      approval_status: 'approved',
+      updated_at: nowIso,
+    };
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { error } = await supabase.from('businesses').upsert(bizPayload);
+        if (error) {
+          await fetch('https://qovqogxhvugtgvjxxsbc.supabase.co/rest/v1/businesses', {
+            method: 'POST',
+            headers: {
+              apikey: 'sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
+              Authorization: 'Bearer sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
+              'Content-Type': 'application/json',
+              Prefer: 'resolution=merge-duplicates',
+            },
+            body: JSON.stringify(bizPayload),
+          });
+        }
+      } catch (e) {
+        console.warn('Supabase DB business creation error:', e);
+      }
+    }
+
+    await this.syncSessionFromClerkUser(user);
+    return { success: true };
+  }
+
   // --- AUTH METHODS (100% SUPABASE AUTH - NATIVE CLOUD) ---
   public async syncSessionFromSupabaseUser(user: any): Promise<void> {
     if (!user || !user.id) return;
@@ -1027,6 +1218,11 @@ class StoreService {
         // ignorer
       }
     }
+    try {
+      if (typeof window !== 'undefined' && (window as any).Clerk) {
+        await (window as any).Clerk.signOut();
+      }
+    } catch {}
     this.currentUser = null;
     this.currentBusiness = null;
     sessionStorage.removeItem(KEY_SESSION_USER);

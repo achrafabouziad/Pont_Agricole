@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { SignIn, SignUp } from '@clerk/clerk-react';
 import { store } from '../services/store';
 import { BusinessType } from '../types';
 import { UserCheck, AlertTriangle, ExternalLink, ArrowRight, KeyRound, MessageCircle, PhoneCall, X } from 'lucide-react';
@@ -49,6 +50,7 @@ const WORLD_COUNTRY_CODES = [
 
 export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 'register' }) => {
   const [isLoginMode, setIsLoginMode] = useState<boolean>(initialMode === 'login');
+  const [useDirectForm, setUseDirectForm] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successNotice, setSuccessNotice] = useState<string | null>(null);
@@ -384,9 +386,88 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
             </div>
           )}
 
-          {/* LOGIN FORM */}
-          {isLoginMode ? (
-            <form onSubmit={handleLoginSubmit}>
+          {/* CLERK OFFICIAL AUTHENTICATION (DEFAULT) */}
+          {!useDirectForm ? (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', marginBottom: '1.25rem' }}>
+              {isLoginMode ? (
+                <SignIn
+                  routing="hash"
+                  appearance={{
+                    variables: {
+                      colorPrimary: '#15803d',
+                      colorTextOnPrimaryBackground: '#ffffff',
+                      borderRadius: '0.625rem',
+                    },
+                    elements: {
+                      rootBox: { width: '100%' },
+                      card: { boxShadow: 'none', border: '1.5px solid #e2e8f0', padding: '1.25rem', borderRadius: '14px', width: '100%' },
+                      formButtonPrimary: { backgroundColor: '#15803d', '&:hover': { backgroundColor: '#166534' } },
+                      footerAction: { display: 'none' },
+                    },
+                  }}
+                />
+              ) : (
+                <SignUp
+                  routing="hash"
+                  appearance={{
+                    variables: {
+                      colorPrimary: '#15803d',
+                      colorTextOnPrimaryBackground: '#ffffff',
+                      borderRadius: '0.625rem',
+                    },
+                    elements: {
+                      rootBox: { width: '100%' },
+                      card: { boxShadow: 'none', border: '1.5px solid #e2e8f0', padding: '1.25rem', borderRadius: '14px', width: '100%' },
+                      formButtonPrimary: { backgroundColor: '#15803d', '&:hover': { backgroundColor: '#166534' } },
+                      footerAction: { display: 'none' },
+                    },
+                  }}
+                />
+              )}
+
+              <div style={{ marginTop: '1rem', textAlign: 'center' }}>
+                <button
+                  type="button"
+                  onClick={() => setUseDirectForm(true)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#64748b',
+                    fontSize: '0.78rem',
+                    cursor: 'pointer',
+                    textDecoration: 'underline',
+                  }}
+                >
+                  {isLoginMode
+                    ? 'Ou se connecter avec un ancien identifiant direct'
+                    : 'Ou inscription par formulaire direct'}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div style={{ marginBottom: '1rem', textAlign: 'center' }}>
+                <button
+                  type="button"
+                  onClick={() => setUseDirectForm(false)}
+                  style={{
+                    background: '#dcfce7',
+                    border: '1px solid #bbf7d0',
+                    color: '#15803d',
+                    padding: '0.35rem 0.85rem',
+                    borderRadius: '20px',
+                    fontSize: '0.78rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  🔒 Utiliser la connexion sécurisée Clerk
+                </button>
+              </div>
+
+              {/* LOGIN FORM */}
+              {isLoginMode ? (
+                <form onSubmit={handleLoginSubmit}>
               <div style={{ marginBottom: '1.2rem' }}>
                 <label className="auth-minimal-label">
                   <span>Identifiant (Nom d'utilisateur ou Téléphone) *</span>
@@ -798,6 +879,8 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
               </div>
             </form>
           )}
+          </>
+        )}
         </div>
 
         {/* RIGHT COLUMN: EDITORIAL VISUAL PANEL (MATCHING REFERENCE IMAGE) */}
