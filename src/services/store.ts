@@ -253,22 +253,34 @@ class StoreService {
       setStored(KEY_ORDERS, cleanOrders);
     }
 
+    // Assainissement B2B multi-appareils : Vider les fantômes de test et comptes rejetés du cache local
+    const ghostNames = [
+      'resto achraf', 'le gourmet', 'snack le pont', 'resto test', 'cafe test',
+      'bistrot du port', 'atlas palace', 'bistro marrakech', 'second insert test',
+      'test eviction', 'halawyat bibi', 'le petit olivier', 'brasserie du port',
+      'le bistrot maroc', 'test multi', 'halawyat achraf', 'bio market',
+      'restaurant mobile test', 'snack moha', 'test café device sync', 'riad marrakech',
+      'café atlas marrakech', 'test biz', 'test restaurant', 'rls test', 'test fallback'
+    ];
+    const ghostIds = [
+      'a76916a3', '45b80a7c', '5e499a99', 'a1111111', 'b1111111', 'biz-resto-001',
+      'biz-hotel-002', 'biz-empty-001', 'biz-empty-002', '8b004654', 'ec541db6',
+      'b3c10936', '1c162f20', 'fe89404b', 'ea5fec40', 'f59c4503', '0a89c164',
+      '20ddf161', '7b8b57f1', 'bfa41eae', '785ef6c1', 'ea3ff2e6', 'bfdd88ad',
+      'b14a9db3', 'f99720e4', '265fa37e', '45a3ee61', '6d3ef696', 'c0136fbb', '92437778'
+    ];
+
     const storedBiz = getStored<Business[]>(KEY_BUSINESSES, []);
     const deletedIdsInit = new Set(getStored<string[]>(KEY_DELETED_BIZ, []));
-    const cleanBiz = storedBiz.filter(
-      (b) =>
-        b.approvalStatus !== 'rejected' &&
-        !deletedIdsInit.has(b.id) &&
-        b.id !== 'biz-resto-001' &&
-        b.id !== 'biz-hotel-002' &&
-        b.id !== 'biz-empty-001' &&
-        b.id !== 'biz-empty-002' &&
-        !b.businessName?.includes('Bistrot du Port') &&
-        !b.businessName?.includes('Atlas Palace')
-    );
-    if (cleanBiz.length !== storedBiz.length) {
-      setStored(KEY_BUSINESSES, cleanBiz);
-    }
+    const cleanBiz = storedBiz.filter((b) => {
+      if (b.approvalStatus === 'rejected') return false;
+      if (b.id && deletedIdsInit.has(b.id)) return false;
+      const bName = (b.businessName || '').toLowerCase().trim();
+      if (ghostNames.some((g) => bName.includes(g))) return false;
+      if (ghostIds.some((gid) => b.id && b.id.startsWith(gid))) return false;
+      return true;
+    });
+    setStored(KEY_BUSINESSES, cleanBiz);
 
     // Assainir les coordonnées de l'entreprise : vider les anciens faux numéros et fausses adresses
     const st = getStored<CompanySettings>(KEY_SETTINGS, INITIAL_COMPANY_SETTINGS);
@@ -297,138 +309,35 @@ class StoreService {
       setStored(KEY_SETTINGS, st);
     }
 
-    // Synchronisation automatique des comptes locaux vers Supabase (multi-appareils garanti)
-    if (isSupabaseConfigured && supabase) {
-      setTimeout(async () => {
-        try {
-          const localBizs = getStored<Business[]>(KEY_BUSINESSES, []);
-          const creds = getStored<Record<string, string>>(KEY_USER_CREDS, {});
-          if (!localBizs || localBizs.length === 0) return;
-
-          let remoteBizs: any[] = [];
-          try {
-            const { data } = await supabase.from('businesses').select('*');
-            if (data && Array.isArray(data)) remoteBizs = data;
-          } catch {}
-
-          let localChanged = false;
-          for (const b of localBizs) {
-            if (b.approvalStatus === 'rejected') continue;
-            const bPhone = (b.phone || '').replace(/[^0-9]/g, '');
-            const bUser = (b.username || '').toLowerCase().trim();
-            const exists = remoteBizs.some(
-              (rb: any) =>
-                (b.id && rb.id === b.id) ||
-                (bUser && rb.username && rb.username.toLowerCase().trim() === bUser) ||
-                (bPhone && rb.phone && rb.phone.replace(/[^0-9]/g, '') === bPhone)
-            );
-
-            if (!exists) {
-              const pass =
-                b.password ||
-                (bUser && creds[bUser]) ||
-                (bPhone && creds[bPhone]) ||
-                creds[b.phone || ''] ||
-                decodeAuth(b.googleMapsUrl) ||
-                '123456';
-              const email = b.email || (bUser ? `${bUser}@pontagricole.ma` : `${bPhone || Date.now()}@pontagricole.ma`);
-
-              let uid = 'cfb7edbf-9c6b-4181-afae-2da48ad8a90d';
-              try {
-                const { data: authData } = await supabase.auth.signUp({
-                  email,
-                  password: pass,
-                  options: {
-                    data: {
-                      full_name: b.contactName || b.businessName,
-                      phone: b.phone || '',
-                      username: b.username || '',
-                      business_name: b.businessName,
-                    },
-                  },
-                });
-                if (authData?.user?.id) {
-                  uid = authData.user.id;
-                } else {
-                  const { data: signInData } = await supabase.auth.signInWithPassword({ email, password: pass });
-                  if (signInData?.user?.id) {
-                    uid = signInData.user.id;
-                  }
-                }
-              } catch {}
-
-              if (uid !== 'cfb7edbf-9c6b-4181-afae-2da48ad8a90d') {
-                try {
-                  await supabase.from('profiles').upsert({
-                    id: uid,
-                    full_name: b.contactName || b.businessName,
-                    phone: b.phone || '',
-                    role: 'customer',
-                    email,
-                  });
-                } catch {}
-              }
-
-              const targetBizId = isUUID(b.id) ? b.id : generateUUID();
-              if (b.id !== targetBizId) {
-                b.id = targetBizId;
-                localChanged = true;
-              }
-              b.ownerId = uid;
-
-              const cleanUrl = cleanMapsUrl(b.googleMapsUrl);
-              const authTag = encodeAuth(pass);
-              const syncedUrl = cleanUrl ? `${cleanUrl}#${authTag}` : authTag;
-              b.googleMapsUrl = syncedUrl;
-              b.password = pass;
-
-              const bizRow = {
-                id: targetBizId,
-                owner_id: uid,
-                business_name: b.businessName,
-                business_type: b.businessType || 'restaurant',
-                city: b.city || 'Casablanca',
-                delivery_address: b.deliveryAddress || 'Casablanca',
-                contact_name: b.contactName || b.businessName,
-                phone: b.phone || '',
-                email,
-                username: b.username || '',
-                google_maps_url: syncedUrl,
-                approval_status: 'approved',
-              };
-
-              try {
-                await supabase.from('businesses').upsert(bizRow);
-              } catch {
-                try {
-                  await fetch('https://qovqogxhvugtgvjxxsbc.supabase.co/rest/v1/businesses', {
-                    method: 'POST',
-                    headers: {
-                      apikey: 'sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
-                      Authorization: 'Bearer sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
-                      'Content-Type': 'application/json',
-                      Prefer: 'resolution=merge-duplicates',
-                    },
-                    body: JSON.stringify(bizRow),
-                  });
-                } catch {}
-              }
-            }
-          }
-
-          if (localChanged) {
-            setStored(KEY_BUSINESSES, localBizs);
-          }
-        } catch (e) {
-          console.warn('Auto-sync local to Supabase error:', e);
-        }
-      }, 500);
-    }
-
-    // Sécurité & Confidentialité B2B : Nettoyage impératif de toute persistance locale d'anciens comptes
-    // afin que l'ouverture du lien ne connecte JAMAIS automatiquement un utilisateur au compte précédent.
+    // Sécurité & Confidentialité B2B : Nettoyage impératif de tout mot de passe ou ancien compte local
+    localStorage.removeItem(KEY_USER_CREDS);
     localStorage.removeItem(KEY_USER);
     localStorage.removeItem(KEY_BUSINESS);
+
+    // Initialisation native Supabase Auth (Source Unique de Vérité)
+    if (isSupabaseConfigured && supabase) {
+      try {
+        supabase.auth.getSession().then(({ data }) => {
+          if (data?.session?.user) {
+            this.syncSessionFromSupabaseUser(data.session.user).catch(() => {});
+          }
+        }).catch(() => {});
+
+        supabase.auth.onAuthStateChange(async (event, session) => {
+          if (session?.user && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION')) {
+            await this.syncSessionFromSupabaseUser(session.user);
+          } else if (event === 'SIGNED_OUT') {
+            this.currentUser = null;
+            this.currentBusiness = null;
+            sessionStorage.removeItem(KEY_SESSION_USER);
+            sessionStorage.removeItem(KEY_SESSION_BUSINESS);
+            this.notify();
+          }
+        });
+      } catch (e) {
+        console.warn('Supabase auth init error:', e);
+      }
+    }
 
     // Authentification liée exclusivement à la session du navigateur (sessionStorage)
     this.currentUser = getSessionStored<UserProfile | null>(KEY_SESSION_USER, null);
@@ -618,7 +527,106 @@ class StoreService {
     } catch {}
   }
 
-  // --- AUTH METHODS ---
+  // --- AUTH METHODS (100% SUPABASE AUTH - NATIVE CLOUD) ---
+  public async syncSessionFromSupabaseUser(user: any): Promise<void> {
+    if (!user || !user.id) return;
+    const nowIso = new Date().toISOString();
+    const email = (user.email || '').toLowerCase().trim();
+
+    // 1. Administrateur (Directeur Fondateur)
+    const isAdmin =
+      email === 'admin@pontagricole.ma' ||
+      user.id === 'cfb7edbf-9c6b-4181-afae-2da48ad8a90d' ||
+      user.user_metadata?.role === 'admin';
+
+    if (isAdmin) {
+      this.currentUser = {
+        id: user.id,
+        fullName: 'Achraf Abouziad (Directeur Fondateur)',
+        phone: '0707296123',
+        role: 'admin',
+        createdAt: user.created_at || nowIso,
+        lastSeenAt: nowIso,
+      };
+      this.currentBusiness = null;
+      setSessionStored(KEY_SESSION_USER, this.currentUser);
+      setSessionStored(KEY_SESSION_BUSINESS, null);
+      this.touchPresence(this.currentUser.id, undefined, this.currentUser.phone);
+      this.notify();
+      return;
+    }
+
+    // 2. Client Professionnel
+    let clientBiz: any = null;
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { data: byOwner } = await supabase
+          .from('businesses')
+          .select('*')
+          .eq('owner_id', user.id);
+        if (byOwner && byOwner.length > 0) {
+          clientBiz = byOwner.find((b: any) => b.approval_status !== 'rejected') || byOwner[0];
+        }
+
+        if (!clientBiz && email) {
+          const { data: byEmail } = await supabase
+            .from('businesses')
+            .select('*')
+            .ilike('email', email);
+          if (byEmail && byEmail.length > 0) {
+            clientBiz = byEmail.find((b: any) => b.approval_status !== 'rejected') || byEmail[0];
+          }
+        }
+      } catch {}
+    }
+
+    if (clientBiz?.approval_status === 'rejected') {
+      await this.logout();
+      return;
+    }
+
+    const contactName =
+      clientBiz?.contact_name ||
+      user.user_metadata?.full_name ||
+      clientBiz?.business_name ||
+      'Client Professionnel';
+    const phone = clientBiz?.phone || user.user_metadata?.phone || '';
+    const username = clientBiz?.username || user.user_metadata?.username || email.split('@')[0];
+
+    this.currentUser = {
+      id: user.id,
+      fullName: contactName,
+      phone,
+      role: 'customer',
+      createdAt: user.created_at || nowIso,
+      lastSeenAt: nowIso,
+    };
+
+    if (clientBiz) {
+      this.currentBusiness = {
+        id: clientBiz.id,
+        ownerId: user.id,
+        businessName: clientBiz.business_name || 'Mon Établissement',
+        businessType: clientBiz.business_type || 'restaurant',
+        city: clientBiz.city || 'Casablanca',
+        deliveryAddress: clientBiz.delivery_address || 'Casablanca',
+        approvalStatus: clientBiz.approval_status || 'approved',
+        createdAt: clientBiz.created_at || nowIso,
+        contactName,
+        phone,
+        email: clientBiz.email || email,
+        googleMapsUrl: cleanMapsUrl(clientBiz.google_maps_url) || undefined,
+        username,
+        lastSeenAt: nowIso,
+      };
+    }
+
+    setSessionStored(KEY_SESSION_USER, this.currentUser);
+    setSessionStored(KEY_SESSION_BUSINESS, this.currentBusiness);
+    this.touchPresence(this.currentUser.id, this.currentBusiness?.id, this.currentUser.phone);
+    this.notify();
+  }
+
   public getCurrentUser(): UserProfile | null {
     return this.currentUser;
   }
@@ -636,11 +644,20 @@ class StoreService {
       return { success: false, error: 'Veuillez saisir votre mot de passe.' };
     }
 
+    if (!isSupabaseConfigured || !supabase) {
+      return { success: false, error: 'Service Supabase indisponible.' };
+    }
+
     const cleanLower = rawInput.toLowerCase();
     const cleanDigits = rawInput.replace(/[^0-9]/g, '');
+    const slug = cleanLower.replace(/[^a-z0-9_.-]/g, '');
+    const isPureDigits = cleanDigits.length >= 8 && !rawInput.includes('@');
 
-    // 1. COMPTE ADMINISTRATEUR (Nom d'utilisateur: admin, achraf, achrafabouziad, ou tél 0707296123)
-    const isAdminAccount =
+    // 1. Résolution de l'adresse email Supabase Auth
+    const candidateEmails: string[] = [];
+    let matchedBiz: any = null;
+
+    const isAdmin =
       cleanLower === 'admin' ||
       cleanLower === 'achraf' ||
       cleanLower === 'achrafabouziad' ||
@@ -648,360 +665,117 @@ class StoreService {
       cleanDigits === '0707296123' ||
       cleanDigits === '212707296123';
 
-    if (isAdminAccount) {
-      const isMasterPass = pass === 'Achrafgt6313' || pass.toLowerCase() === 'achrafgt6313';
-      if (!isMasterPass) {
-        return {
-          success: false,
-          error: 'Mot de passe incorrect pour le compte administrateur.',
-        };
-      }
-
-      // Connexion Supabase pour initialiser les jetons admin si configuré
-      let adminUid = 'cfb7edbf-9c6b-4181-afae-2da48ad8a90d';
-      if (isSupabaseConfigured && supabase) {
-        try {
-          const { data: authSign } = await supabase.auth.signInWithPassword({
-            email: 'admin@pontagricole.ma',
-            password: 'Achrafgt6313',
-          });
-          if (authSign?.user?.id) {
-            adminUid = authSign.user.id;
-          }
-          if (authSign?.session?.access_token) {
-            this.adminTokenCache = {
-              token: authSign.session.access_token,
-              expiresAt: authSign.session.expires_at || (Math.floor(Date.now() / 1000) + 3600),
-            };
-          }
-        } catch {}
-      }
-
-      // Session Administrateur Autorisée
-      const nowIso = new Date().toISOString();
-      this.currentUser = {
-        id: adminUid,
-        fullName: 'Achraf Abouziad (Directeur Fondateur)',
-        phone: '0707296123',
-        role: 'admin',
-        createdAt: nowIso,
-        lastSeenAt: nowIso,
-      };
-      this.currentBusiness = null;
-      setSessionStored(KEY_SESSION_USER, this.currentUser);
-      setSessionStored(KEY_SESSION_BUSINESS, this.currentBusiness);
-      this.touchPresence(this.currentUser.id, undefined, this.currentUser.phone);
-      this.notify();
-      return { success: true };
-    }
-
-    // 2. CLIENTS PROFESSIONNELS (Par Nom d'utilisateur, Téléphone, Email ou Établissement)
-    const normPhone = normalizePhone(rawInput);
-    const slug = cleanLower.replace(/[^a-z0-9_.-]/g, '');
-    const isPureDigits = cleanDigits.length >= 8 && !rawInput.includes('@');
-    const deletedBizIds = new Set(getStored<string[]>(KEY_DELETED_BIZ, []));
-
-    let matchedBiz: any = null;
-    let rejectedBizFound: any = null;
-
-    // A. Récupérer les établissements depuis Supabase (avec fallback REST direct)
-    let dbBizs: any[] = [];
-    if (isSupabaseConfigured && supabase) {
+    if (isAdmin) {
+      candidateEmails.push('admin@pontagricole.ma');
+    } else if (cleanLower.includes('@')) {
+      candidateEmails.push(cleanLower);
+    } else {
+      // Rechercher l'email dans la table businesses Supabase
       try {
-        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 2500));
-        const queryPromise = supabase.from('businesses').select('*');
-        const res: any = await Promise.race([queryPromise, timeoutPromise]).catch(() => null);
-        if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
-          dbBizs = res.data;
+        const { data: dbBizs } = await supabase
+          .from('businesses')
+          .select('id, owner_id, business_name, contact_name, email, username, phone, google_maps_url, approval_status')
+          .neq('approval_status', 'rejected');
+
+        if (dbBizs && dbBizs.length > 0) {
+          const matched = dbBizs.find((b: any) => {
+            const u = (b.username || '').toLowerCase().trim();
+            const bPhone = (b.phone || '').trim();
+            const bPhoneDigits = bPhone.replace(/[^0-9]/g, '');
+            const bNormPhone = normalizePhone(bPhone);
+            const inNorm = normalizePhone(rawInput);
+
+            if (slug && u && (u === slug || u.replace(/[^a-z0-9]/g, '') === slug.replace(/[^a-z0-9]/g, ''))) {
+              return true;
+            }
+            if (isPureDigits && cleanDigits.length >= 8) {
+              const last8 = cleanDigits.slice(-8);
+              if (bPhoneDigits.endsWith(last8) || cleanDigits.endsWith(bPhoneDigits.slice(-8))) {
+                return true;
+              }
+              if (inNorm && bNormPhone && (bNormPhone === inNorm || bNormPhone.endsWith(inNorm) || inNorm.endsWith(bNormPhone))) {
+                return true;
+              }
+            }
+            return false;
+          });
+
+          if (matched) {
+            matchedBiz = matched;
+            if (matched.email) {
+              candidateEmails.push(matched.email.toLowerCase().trim());
+            }
+            if (matched.username) {
+              candidateEmails.push(`${matched.username.toLowerCase().trim()}@pontagricole.ma`);
+            }
+          }
         }
       } catch {}
 
-      // Fallback REST direct si échec du SDK Supabase
-      if (dbBizs.length === 0) {
-        try {
-          const restRes = await fetch(
-            'https://qovqogxhvugtgvjxxsbc.supabase.co/rest/v1/businesses?select=*',
-            {
-              headers: {
-                apikey: 'sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
-                Authorization: 'Bearer sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
-              },
-              cache: 'no-store',
-            }
-          );
-          if (restRes.ok) {
-            const data = await restRes.json();
-            if (Array.isArray(data) && data.length > 0) {
-              dbBizs = data;
-            }
-          }
-        } catch {}
+      if (slug) {
+        candidateEmails.push(`${slug}@pontagricole.ma`);
+      }
+      if (cleanDigits.length >= 9) {
+        candidateEmails.push(`${cleanDigits}@pontagricole.ma`);
       }
     }
 
-    const checkMatches = (b: any) => {
-      const bUser = (b.username || '').toLowerCase().trim();
-      const bPhone = (b.phone || '').trim();
-      const bPhoneDigits = bPhone.replace(/[^0-9]/g, '');
-      const bNormPhone = normalizePhone(bPhone);
-      const bEmail = (b.email || '').toLowerCase().trim();
-      const bName = (b.business_name || b.businessName || '').toLowerCase().trim();
-
-      // 1. Nom d'utilisateur (exact ou nettoyé)
-      if (slug && bUser) {
-        if (bUser === slug || bUser.replace(/[^a-z0-9]/g, '') === slug.replace(/[^a-z0-9]/g, '')) {
-          return true;
-        }
-      }
-
-      // 2. Numéro de téléphone (derniers 8-9 chiffres ou format normalisé)
-      if (isPureDigits && cleanDigits.length >= 8) {
-        const last8 = cleanDigits.slice(-8);
-        if (bPhoneDigits.endsWith(last8) || cleanDigits.endsWith(bPhoneDigits.slice(-8))) {
-          return true;
-        }
-        if (normPhone && bNormPhone && (bNormPhone === normPhone || bNormPhone.endsWith(normPhone) || normPhone.endsWith(bNormPhone))) {
-          return true;
-        }
-      }
-
-      // 3. Email
-      if (cleanLower.includes('@') && bEmail === cleanLower) {
-        return true;
-      }
-
-      // 4. Nom de l'établissement
-      if (slug && slug.length >= 4 && bName) {
-        const bNameSlug = bName.replace(/[^a-z0-9]/g, '');
-        const inSlug = slug.replace(/[^a-z0-9]/g, '');
-        if (bNameSlug === inSlug || (inSlug.length >= 5 && bNameSlug.includes(inSlug))) {
-          return true;
-        }
-      }
-
-      return false;
-    };
-
-    // Chercher d'abord dans Supabase
-    if (dbBizs.length > 0) {
-      const approvedMatch = dbBizs.find(
-        (b: any) => checkMatches(b) && b.approval_status !== 'rejected' && !deletedBizIds.has(b.id)
-      );
-
-      if (approvedMatch) {
-        matchedBiz = approvedMatch;
-      } else {
-        const rejectedMatch = dbBizs.find((b: any) => checkMatches(b));
-        if (rejectedMatch) {
-          rejectedBizFound = rejectedMatch;
-        }
-      }
+    const uniqueEmails = Array.from(new Set(candidateEmails.filter(Boolean)));
+    if (uniqueEmails.length === 0 && !matchedBiz) {
+      return { success: false, error: "Identifiant introuvable. Vérifiez votre nom d'utilisateur ou numéro de téléphone." };
     }
 
-    // Fallback local cache
-    if (!matchedBiz) {
-      const allLocalBiz = getStored<Business[]>(KEY_BUSINESSES, []);
-      const approvedLocal = allLocalBiz.find(
-        (b) => checkMatches(b) && b.approvalStatus !== 'rejected' && !deletedBizIds.has(b.id)
-      );
-
-      if (approvedLocal) {
-        matchedBiz = approvedLocal;
-      } else if (!rejectedBizFound) {
-        const rejectedLocal = allLocalBiz.find((b) => checkMatches(b));
-        if (rejectedLocal) {
-          rejectedBizFound = rejectedLocal;
-        }
-      }
-    }
-
-    // Si le compte a été supprimé ou rejeté par l'administrateur : blocage immédiat
-    if (rejectedBizFound && !matchedBiz) {
-      return {
-        success: false,
-        error: "Ce compte a été supprimé ou désactivé par l'administrateur. Veuillez contacter l'administration Pont Agricole.",
-      };
-    }
-
-    // B. VÉRIFICATION DU MOT DE PASSE SYNCHRONISÉ (MULTI-APPAREILS)
-    let passwordMatches = false;
+    // 2. Authentification directe avec Supabase Auth (GoTrue)
     let authUser: any = null;
 
-    if (matchedBiz) {
-      const dbStoredPass = decodeAuth(matchedBiz.google_maps_url || matchedBiz.googleMapsUrl);
-      if (dbStoredPass && (dbStoredPass === pass || dbStoredPass.trim() === pass.trim())) {
-        passwordMatches = true;
-      }
-    }
+    for (const emailTry of uniqueEmails) {
+      try {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: emailTry,
+          password: pass,
+        });
 
-    // C. Tenter Supabase GoTrue Auth
-    const effectiveUsername = (matchedBiz?.username || (!isPureDigits ? slug : '')).toLowerCase().trim();
-    const candidateEmails: string[] = [];
-    if (effectiveUsername && effectiveUsername.length >= 3) {
-      candidateEmails.push(`${effectiveUsername}@pontagricole.ma`);
-    }
-    if (slug && slug.length >= 3 && slug !== effectiveUsername) {
-      candidateEmails.push(`${slug}@pontagricole.ma`);
-    }
-    if (matchedBiz?.email) {
-      candidateEmails.push(matchedBiz.email.toLowerCase().trim());
-    }
-    if (cleanLower.includes('@')) {
-      candidateEmails.push(cleanLower);
-    }
-    const uniqueCandidates = Array.from(new Set(candidateEmails.filter(Boolean)));
-
-    // C. Initialiser ou vérifier la session Supabase GoTrue Auth
-    if (isSupabaseConfigured && supabase && uniqueCandidates.length > 0) {
-      for (const emailTry of uniqueCandidates) {
-        try {
-          const { data, error } = await supabase.auth.signInWithPassword({
-            email: emailTry,
-            password: pass,
-          });
-          if (!error && data?.user) {
-            authUser = data.user;
-            passwordMatches = true;
-            break;
+        if (!error && data?.user) {
+          authUser = data.user;
+          if (data.session?.access_token && (isAdmin || authUser.id === 'cfb7edbf-9c6b-4181-afae-2da48ad8a90d')) {
+            this.adminTokenCache = {
+              token: data.session.access_token,
+              expiresAt: data.session.expires_at || (Math.floor(Date.now() / 1000) + 3600),
+            };
           }
-        } catch {}
-      }
+          break;
+        }
+      } catch {}
     }
 
-    // D. Si toujours non trouvé, tenter GoTrue auth même sans matchedBiz préalable
-    if (!matchedBiz && !passwordMatches && isSupabaseConfigured && supabase && uniqueCandidates.length > 0) {
-      for (const emailTry of uniqueCandidates) {
-        try {
-          const { data, error } = await supabase.auth.signInWithPassword({
-            email: emailTry,
-            password: pass,
-          });
-          if (!error && data?.user) {
-            authUser = data.user;
-            passwordMatches = true;
-            // Retrouver l'établissement lié
-            try {
-              const { data: userBizs } = await supabase
-                .from('businesses')
-                .select('*')
-                .eq('owner_id', data.user.id);
-              if (userBizs && userBizs.length > 0) {
-                matchedBiz = userBizs.find((b: any) => b.approval_status !== 'rejected') || userBizs[0];
-              }
-            } catch {}
-            break;
-          }
-        } catch {}
-      }
-    }
-
-    // E. Vérifier aussi le cache local d'identifiants si hors ligne
-    if (!passwordMatches && matchedBiz) {
-      const creds = getStored<Record<string, string>>(KEY_USER_CREDS, {});
-      const bUser = (matchedBiz.username || '').toLowerCase().trim();
-      const bDigits = (matchedBiz.phone || '').replace(/[^0-9]/g, '');
-      const localPass = (bUser && creds[bUser]) || (bDigits && creds[bDigits]) || (normPhone && creds[normPhone]) || creds[cleanLower];
-      if (localPass && (localPass === pass || localPass.trim() === pass.trim())) {
-        passwordMatches = true;
-      }
-    }
-
-    // F. SI LE MOT DE PASSE EST CONFIRMÉ (DEPUIS N'IMPORTE QUEL TÉLÉPHONE OU PC)
-    if (passwordMatches && matchedBiz) {
-      if (
-        matchedBiz.approval_status === 'rejected' ||
-        matchedBiz.approvalStatus === 'rejected' ||
-        deletedBizIds.has(matchedBiz.id)
-      ) {
-        return {
-          success: false,
-          error: "Ce compte a été supprimé ou désactivé par l'administrateur. Veuillez contacter l'administration Pont Agricole.",
+    // Sécurité de secours : vérification par mot de passe Cloud Supabase si réinitialisé par Admin
+    if (!authUser && matchedBiz) {
+      const storedPass = decodeAuth(matchedBiz.google_maps_url);
+      if (storedPass && storedPass === pass) {
+        const userEmail = matchedBiz.email || `${matchedBiz.username || cleanDigits}@pontagricole.ma`;
+        authUser = {
+          id: matchedBiz.owner_id || matchedBiz.id,
+          email: userEmail,
+          user_metadata: {
+            full_name: matchedBiz.contact_name || matchedBiz.business_name,
+            phone: matchedBiz.phone,
+            username: matchedBiz.username,
+            role: 'customer',
+          },
         };
       }
-
-      // Si la base n'avait pas encore le token de synchro ou si c'était incomplet, l'enregistrer discrètement pour les autres appareils
-      const cleanUrl = cleanMapsUrl(matchedBiz.google_maps_url || matchedBiz.googleMapsUrl);
-      const authTag = encodeAuth(pass);
-      const syncedUrl = cleanUrl ? `${cleanUrl}#${authTag}` : authTag;
-
-      if (isSupabaseConfigured && supabase && !decodeAuth(matchedBiz.google_maps_url)) {
-        supabase
-          .from('businesses')
-          .update({ google_maps_url: syncedUrl })
-          .eq('id', matchedBiz.id)
-          .then(() => {})
-          .catch(() => {});
-      }
-
-      // Enregistrer les identifiants sur cet appareil pour garantir la continuité
-      const creds = getStored<Record<string, string>>(KEY_USER_CREDS, {});
-      const bUser = (matchedBiz.username || effectiveUsername || '').toLowerCase().trim();
-      const bDigits = (matchedBiz.phone || '').replace(/[^0-9]/g, '');
-      if (bUser) creds[bUser] = pass;
-      if (bDigits) creds[bDigits] = pass;
-      if (normPhone) creds[normPhone] = pass;
-      setStored(KEY_USER_CREDS, creds);
-
-      const nowIso = new Date().toISOString();
-      const userId = matchedBiz.owner_id || matchedBiz.ownerId || authUser?.id || `usr-${Date.now()}`;
-
-      this.currentUser = {
-        id: userId,
-        fullName: matchedBiz.contact_name || matchedBiz.contactName || matchedBiz.business_name || matchedBiz.businessName || 'Client Professionnel',
-        phone: matchedBiz.phone || '',
-        role: 'customer',
-        createdAt: matchedBiz.created_at || matchedBiz.createdAt || nowIso,
-        lastSeenAt: nowIso,
-      };
-
-      this.currentBusiness = {
-        id: matchedBiz.id,
-        ownerId: userId,
-        businessName: matchedBiz.business_name || matchedBiz.businessName || 'Mon Établissement',
-        businessType: matchedBiz.business_type || matchedBiz.businessType || 'restaurant',
-        city: matchedBiz.city || 'Casablanca',
-        deliveryAddress: matchedBiz.delivery_address || matchedBiz.deliveryAddress || '',
-        approvalStatus: matchedBiz.approval_status || matchedBiz.approvalStatus || 'approved',
-        createdAt: matchedBiz.created_at || matchedBiz.createdAt || nowIso,
-        contactName: this.currentUser.fullName,
-        phone: this.currentUser.phone,
-        email: matchedBiz.email || uniqueCandidates[0] || `${effectiveUsername}@pontagricole.ma`,
-        googleMapsUrl: cleanUrl,
-        username: matchedBiz.username || effectiveUsername,
-        password: pass,
-        lastSeenAt: nowIso,
-      };
-
-      // Mettre également à jour la liste locale des établissements sur ce nouvel appareil
-      const allLocal = getStored<Business[]>(KEY_BUSINESSES, []);
-      const exIdx = allLocal.findIndex((b) => b.id === matchedBiz.id || (b.username && b.username.toLowerCase().trim() === bUser));
-      if (exIdx >= 0) {
-        allLocal[exIdx] = { ...allLocal[exIdx], ...this.currentBusiness };
-      } else {
-        allLocal.unshift(this.currentBusiness);
-      }
-      setStored(KEY_BUSINESSES, allLocal);
-
-      setSessionStored(KEY_SESSION_USER, this.currentUser);
-      setSessionStored(KEY_SESSION_BUSINESS, this.currentBusiness);
-      this.touchPresence(this.currentUser.id, this.currentBusiness?.id, this.currentUser.phone);
-      this.notify();
-      return { success: true };
     }
 
-    // G. Si le compte existe mais mot de passe faux
-    if (matchedBiz) {
+    if (!authUser) {
       return {
         success: false,
-        error: 'Mot de passe incorrect pour ce compte. Veuillez vérifier votre saisie.',
+        error: 'Identifiant ou mot de passe incorrect. Vérifiez vos identifiants.',
       };
     }
 
-    // H. Compte introuvable
-    return {
-      success: false,
-      error: "Identifiant ou mot de passe incorrect. Vérifiez votre nom d'utilisateur ou numéro de téléphone.",
-    };
+    // 3. Charger et propager la session utilisateur Supabase
+    await this.syncSessionFromSupabaseUser(authUser);
+    return { success: true };
   }
 
   public async checkAvailability(
@@ -1068,216 +842,120 @@ class StoreService {
       return { success: false, error: 'Le mot de passe doit comporter au moins 6 caractères.' };
     }
 
-    // Nom réservé admin
     const reserved = ['admin', 'achraf', 'achrafabouziad', 'pontagricole', 'root', 'master', 'support'];
     if (reserved.includes(cleanUsername)) {
       return { success: false, error: "Ce nom d'utilisateur est réservé pour l'administration. Veuillez en choisir un autre." };
     }
 
-    // 1. Vérifier si le nom d'utilisateur est déjà utilisé localement
-    const localBizs = getStored<Business[]>(KEY_BUSINESSES, []);
-    const existingSameUsername = localBizs.find((b: any) => {
-      const bUser = (b.username || '').toLowerCase().trim();
-      return bUser && bUser === cleanUsername && b.approvalStatus !== 'rejected';
+    if (!isSupabaseConfigured || !supabase) {
+      return { success: false, error: 'Service Supabase non configuré.' };
+    }
+
+    // Vérifier unicité du nom d'utilisateur dans Supabase businesses
+    try {
+      const { data: dbCheck } = await supabase
+        .from('businesses')
+        .select('id, approval_status')
+        .ilike('username', cleanUsername);
+      const activeRemoteDuplicate = (dbCheck || []).some((b: any) => b.approval_status !== 'rejected');
+      if (activeRemoteDuplicate) {
+        return {
+          success: false,
+          error: "Ce nom d'utilisateur est déjà utilisé par un autre établissement. Veuillez en choisir un autre.",
+        };
+      }
+    } catch {}
+
+    const deterministicEmail = params.email?.trim().toLowerCase() || `${cleanUsername}@pontagricole.ma`;
+
+    // 1. Inscription dans Supabase Auth (GoTrue)
+    const { data: authData, error: authErr } = await supabase.auth.signUp({
+      email: deterministicEmail,
+      password: params.password,
+      options: {
+        data: {
+          full_name: params.fullName.trim(),
+          phone: params.phone.trim(),
+          username: cleanUsername,
+          business_name: params.businessName.trim(),
+        },
+      },
     });
-    if (existingSameUsername) {
-      return {
-        success: false,
-        error: "Ce nom d'utilisateur est déjà utilisé par un autre établissement. Veuillez en choisir un autre.",
-      };
+
+    if (authErr) {
+      if (authErr.message?.includes('already registered')) {
+        return { success: false, error: "Cet email ou nom d'utilisateur est déjà inscrit." };
+      }
+      return { success: false, error: authErr.message };
     }
 
-    // 2. Vérifier aussi dans Supabase pour éviter les doublons entre téléphones
-    if (isSupabaseConfigured && supabase) {
-      try {
-        const { data: dbCheck } = await supabase
-          .from('businesses')
-          .select('id, approval_status')
-          .ilike('username', cleanUsername);
-        const activeRemoteDuplicate = (dbCheck || []).some((b: any) => b.approval_status !== 'rejected');
-        if (activeRemoteDuplicate) {
-          return {
-            success: false,
-            error: "Ce nom d'utilisateur est déjà utilisé par un autre établissement. Veuillez en choisir un autre.",
-          };
-        }
-      } catch {}
+    let authUser = authData?.user;
+    if (!authUser) {
+      const { data: signData } = await supabase.auth.signInWithPassword({
+        email: deterministicEmail,
+        password: params.password,
+      });
+      authUser = signData?.user || null;
     }
 
-    const deterministicEmail = params.email ? params.email.trim().toLowerCase() : `${cleanUsername}@pontagricole.ma`;
+    if (!authUser) {
+      return { success: false, error: "Erreur lors de la création du compte d'authentification Supabase." };
+    }
+
+    const userId = authUser.id;
+    const newBizId = generateUUID();
     const nowIso = new Date().toISOString();
+
+    // 2. Profil utilisateur dans la table profiles
+    try {
+      await supabase.from('profiles').upsert({
+        id: userId,
+        full_name: params.fullName.trim(),
+        phone: params.phone.trim(),
+        role: 'customer',
+        email: deterministicEmail,
+        updated_at: nowIso,
+      });
+    } catch {}
+
+    // 3. Établissement dans la table businesses
     const cleanUrl = cleanMapsUrl(params.googleMapsUrl);
     const authTag = encodeAuth(params.password);
     const syncedMapsUrl = cleanUrl ? `${cleanUrl}#${authTag}` : authTag;
 
-    // Identifiants UUID v4 strictement valides pour PostgreSQL et Supabase
-    const newBizId = generateUUID();
-    let authUserId = generateUUID();
-
-    // 3. Initialiser la session active IMMÉDIATEMENT
-    this.currentUser = {
-      id: authUserId,
-      fullName: params.fullName.trim(),
-      phone: params.phone.trim(),
-      role: 'customer',
-      createdAt: nowIso,
-      lastSeenAt: nowIso,
-    };
-
-    this.currentBusiness = {
+    const bizPayload = {
       id: newBizId,
-      ownerId: authUserId,
-      businessName: params.businessName.trim(),
-      businessType: params.businessType || 'restaurant',
-      city: params.city || 'Casablanca',
-      deliveryAddress: params.deliveryAddress.trim() || 'Casablanca',
-      approvalStatus: 'approved',
-      createdAt: nowIso,
-      contactName: params.fullName.trim(),
+      owner_id: userId,
+      business_name: params.businessName.trim(),
+      business_type: params.businessType || 'restaurant',
+      city: params.city.trim() || 'Casablanca',
+      delivery_address: params.deliveryAddress.trim() || 'Casablanca',
+      contact_name: params.fullName.trim(),
       phone: params.phone.trim(),
       email: deterministicEmail,
-      googleMapsUrl: cleanUrl,
+      google_maps_url: syncedMapsUrl,
       username: cleanUsername,
-      lastSeenAt: nowIso,
-      password: params.password,
-      isVerified: true,
+      approval_status: 'approved',
+      updated_at: nowIso,
     };
 
-    // 4. Sauvegarder immédiatement les identifiants et le compte en cache local
-    const creds = getStored<Record<string, string>>(KEY_USER_CREDS, {});
-    creds[cleanUsername] = params.password;
-    creds[cleanDigits] = params.password;
-    const normPhone = normalizePhone(params.phone);
-    if (normPhone) creds[normPhone] = params.password;
-    setStored(KEY_USER_CREDS, creds);
-
-    const allBiz = getStored<Business[]>(KEY_BUSINESSES, []);
-    const exIdx = allBiz.findIndex((b) => b.id === newBizId || (b.username && b.username.toLowerCase().trim() === cleanUsername));
-    if (exIdx >= 0) allBiz[exIdx] = this.currentBusiness;
-    else allBiz.unshift(this.currentBusiness);
-    setStored(KEY_BUSINESSES, allBiz);
-
-    setSessionStored(KEY_SESSION_USER, this.currentUser);
-    setSessionStored(KEY_SESSION_BUSINESS, this.currentBusiness);
-    this.touchPresence(this.currentUser.id, this.currentBusiness?.id, this.currentUser.phone);
-
-    // 5. Diffuser immédiatement aux autres onglets
-    if (this.broadcastChannel) {
-      try {
-        this.broadcastChannel.postMessage({
-          type: 'STORE_UPDATED',
-          action: 'NEW_CLIENT',
-          client: this.currentBusiness,
-          timestamp: Date.now(),
-        });
-      } catch {}
-    }
-    this.notify();
-
-    // 6. Synchroniser avec le serveur local dev (/api/sync/clients) sans bloquer
-    this.syncBusinessToRemote(this.currentBusiness).catch(() => {});
-
-    // 7. Synchroniser dans le Cloud Supabase (Multi-appareils Garanti)
-    if (isSupabaseConfigured && supabase) {
-      try {
-        const cloudSyncPromise = (async () => {
-          // A. Supabase GoTrue Auth
-          try {
-            const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-              email: deterministicEmail,
-              password: params.password,
-              options: {
-                data: {
-                  full_name: params.fullName.trim(),
-                  phone: params.phone.trim(),
-                  business_name: params.businessName.trim(),
-                  username: cleanUsername,
-                },
-              },
-            });
-
-            if (signUpData?.user?.id) {
-              authUserId = signUpData.user.id;
-            } else if (signUpError) {
-              try {
-                const { data: signInData } = await supabase.auth.signInWithPassword({
-                  email: deterministicEmail,
-                  password: params.password,
-                });
-                if (signInData?.user?.id) {
-                  authUserId = signInData.user.id;
-                } else {
-                  authUserId = 'cfb7edbf-9c6b-4181-afae-2da48ad8a90d';
-                }
-              } catch {
-                authUserId = 'cfb7edbf-9c6b-4181-afae-2da48ad8a90d';
-              }
-            }
-          } catch {
-            authUserId = 'cfb7edbf-9c6b-4181-afae-2da48ad8a90d';
-          }
-
-          // Mettre à jour l'identifiant résolu
-          if (this.currentUser) this.currentUser.id = authUserId;
-          if (this.currentBusiness) this.currentBusiness.ownerId = authUserId;
-          setSessionStored(KEY_SESSION_USER, this.currentUser);
-          setSessionStored(KEY_SESSION_BUSINESS, this.currentBusiness);
-
-          // B. Profiles
-          if (authUserId && authUserId !== 'cfb7edbf-9c6b-4181-afae-2da48ad8a90d') {
-            try {
-              await supabase.from('profiles').upsert({
-                id: authUserId,
-                full_name: params.fullName.trim(),
-                phone: params.phone.trim(),
-                role: 'customer',
-                email: deterministicEmail,
-                updated_at: nowIso,
-              });
-            } catch {}
-          }
-
-          // C. Businesses (avec UUID garanti et #auth: synchronisé)
-          const bizPayload = {
-            id: newBizId,
-            owner_id: authUserId,
-            business_name: params.businessName.trim(),
-            business_type: params.businessType || 'restaurant',
-            city: params.city.trim() || 'Casablanca',
-            delivery_address: params.deliveryAddress.trim() || 'Casablanca',
-            contact_name: params.fullName.trim(),
-            phone: params.phone.trim(),
-            email: deterministicEmail,
-            google_maps_url: syncedMapsUrl,
-            username: cleanUsername,
-            approval_status: 'approved',
-            updated_at: nowIso,
-          };
-
-          const { error: bErr } = await supabase.from('businesses').upsert(bizPayload);
-          if (bErr) {
-            console.warn('Supabase upsert error, attempting direct REST:', bErr);
-            await fetch('https://qovqogxhvugtgvjxxsbc.supabase.co/rest/v1/businesses', {
-              method: 'POST',
-              headers: {
-                apikey: 'sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
-                Authorization: 'Bearer sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
-                'Content-Type': 'application/json',
-                Prefer: 'resolution=merge-duplicates',
-              },
-              body: JSON.stringify(bizPayload),
-            });
-          }
-        })();
-
-        // Attente sécurisée max 2.5 secondes pour assurer la synchronisation cloud sans bloquer
-        const timeoutPromise = new Promise((resolve) => setTimeout(resolve, 2500));
-        await Promise.race([cloudSyncPromise, timeoutPromise]);
-      } catch (e) {
-        console.warn('Background Supabase registration sync warning:', e);
-      }
+    const { error: bErr } = await supabase.from('businesses').upsert(bizPayload);
+    if (bErr) {
+      console.warn('Supabase upsert error, attempting direct REST:', bErr);
+      await fetch('https://qovqogxhvugtgvjxxsbc.supabase.co/rest/v1/businesses', {
+        method: 'POST',
+        headers: {
+          apikey: 'sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
+          Authorization: 'Bearer sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
+          'Content-Type': 'application/json',
+          Prefer: 'resolution=merge-duplicates',
+        },
+        body: JSON.stringify(bizPayload),
+      });
     }
 
+    // 4. Initialisation de la session active Supabase
+    await this.syncSessionFromSupabaseUser(authUser);
     return { success: true };
   }
 
@@ -1298,6 +976,7 @@ class StoreService {
     sessionStorage.removeItem(KEY_SESSION_BUSINESS);
     localStorage.removeItem(KEY_USER);
     localStorage.removeItem(KEY_BUSINESS);
+    localStorage.removeItem(KEY_USER_CREDS);
     this.notify();
   }
 
@@ -2586,6 +2265,7 @@ class StoreService {
         const queryPromise = supabase
           .from('businesses')
           .select('*')
+          .neq('approval_status', 'rejected')
           .order('created_at', { ascending: false });
 
         const result: any = await Promise.race([queryPromise, timeoutPromise]);
@@ -2715,32 +2395,6 @@ class StoreService {
     // Mettre à jour le cache local avec tous les clients synchronisés
     setStored(KEY_BUSINESSES, list);
 
-    // Mettre à jour automatiquement le dictionnaire local de mots de passe
-    const creds = getStored<Record<string, string>>(KEY_USER_CREDS, {});
-    let credsModified = false;
-    for (const b of list) {
-      if (b.password) {
-        const u = (b.username || '').toLowerCase().trim();
-        const d = (b.phone || '').replace(/[^0-9]/g, '');
-        const n = normalizePhone(b.phone || '');
-        if (u && creds[u] !== b.password) {
-          creds[u] = b.password;
-          credsModified = true;
-        }
-        if (d && creds[d] !== b.password) {
-          creds[d] = b.password;
-          credsModified = true;
-        }
-        if (n && creds[n] !== b.password) {
-          creds[n] = b.password;
-          credsModified = true;
-        }
-      }
-    }
-    if (credsModified) {
-      setStored(KEY_USER_CREDS, creds);
-    }
-
     return list;
   }
 
@@ -2857,13 +2511,7 @@ class StoreService {
       lastSeenAt: nowIso,
     };
 
-    // 2. Sauvegarder les identifiants en cache local
-    const creds = getStored<Record<string, string>>(KEY_USER_CREDS, {});
-    if (nameSlug) creds[nameSlug] = defaultPassword;
-    if (cleanDigits) creds[cleanDigits] = defaultPassword;
-    setStored(KEY_USER_CREDS, creds);
-
-    // 3. Sauvegarder dans le cache local
+    // 2. Sauvegarder dans le cache local
     const all = getStored<Business[]>(KEY_BUSINESSES, []);
     all.unshift(newBiz);
     setStored(KEY_BUSINESSES, all);
@@ -3053,19 +2701,6 @@ class StoreService {
 
     b.password = cleanPass;
     setStored(KEY_BUSINESSES, businesses);
-
-    const creds = getStored<Record<string, string>>(KEY_USER_CREDS, {});
-    const norm = normalizePhone(b.phone || '');
-    const digits = (b.phone || '').replace(/[^0-9]/g, '');
-    const user = (b.username || '').toLowerCase().trim();
-    const email = (b.email || '').toLowerCase().trim();
-
-    if (norm) creds[norm] = cleanPass;
-    if (digits) creds[digits] = cleanPass;
-    if (user) creds[user] = cleanPass;
-    if (email) creds[email] = cleanPass;
-    if (b.ownerId) creds[b.ownerId] = cleanPass;
-    setStored(KEY_USER_CREDS, creds);
 
     // Synchronisation mot de passe dans Supabase (multi-appareils garanti)
     if (isSupabaseConfigured && supabase) {
