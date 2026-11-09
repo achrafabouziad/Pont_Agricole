@@ -72,7 +72,7 @@ export const EstablishmentSetupModal: React.FC<EstablishmentSetupModalProps> = (
       return;
     }
     if (!deliveryAddress.trim()) {
-      setErrorMsg("Veuillez renseigner votre adresse de livraison.");
+      setErrorMsg("Veuillez renseigner l'adresse de votre établissement.");
       return;
     }
 
@@ -216,7 +216,7 @@ export const EstablishmentSetupModal: React.FC<EstablishmentSetupModalProps> = (
 
             <div>
               <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#374151', marginBottom: '0.35rem' }}>
-                Ville de Livraison
+                Ville
               </label>
               <select
                 value={city}
@@ -243,7 +243,7 @@ export const EstablishmentSetupModal: React.FC<EstablishmentSetupModalProps> = (
           <div style={{ marginBottom: '1.25rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
               <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#374151' }}>
-                Adresse Complète de Livraison *
+                Adresse de l'Établissement *
               </label>
               <button
                 type="button"

@@ -30,7 +30,7 @@ export const Hero: React.FC<HeroProps> = ({ onExploreCatalog }) => {
             {/* Authentic B2B Subtitle */}
             <p className="hero-banner-sub">
               Approvisionnement direct de la Halle aux Primeurs pour Cafés, Restaurants et Hôtels au Maroc.
-              Sélectionné chaque nuit au carreau, livré dès l'aube à vos cuisines.
+              Sélectionné chaque nuit au carreau pour la fraîcheur de vos cuisines.
             </p>
 
             {/* Human Crafted Action Button */}

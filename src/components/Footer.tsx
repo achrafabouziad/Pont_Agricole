@@ -118,7 +118,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
                 <span className="footer-static-item">Calibrage & Tri Conforme Cuisines</span>
               </li>
               <li>
-                <span className="footer-static-item">Livraisons Dédiées CHR</span>
+                <span className="footer-static-item">Approvisionnement Direct CHR</span>
               </li>
               <li>
                 <span className="footer-static-item">Tarifs de Gros Stables en MAD</span>

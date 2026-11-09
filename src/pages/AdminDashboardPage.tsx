@@ -1424,7 +1424,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
                       <th>N° Commande</th>
                       <th>Établissement / Contact</th>
                       <th>Ville</th>
-                      <th>Date Livraison</th>
+                      <th>Date Souhaitée</th>
                       <th>Total</th>
                       <th>Statut Actuel</th>
                       <th>Actions Rapides</th>
@@ -1462,8 +1462,8 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
                               <option value="pending">En attente</option>
                               <option value="confirmed">Confirmer</option>
                               <option value="preparing">En préparation</option>
-                              <option value="delivering">En livraison</option>
-                              <option value="delivered">Livrée</option>
+                              <option value="delivering">Prête</option>
+                              <option value="delivered">Finalisée</option>
                               <option value="cancelled">Annuler</option>
                             </select>
 
@@ -1755,7 +1755,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
                     <th>N° Commande</th>
                     <th>Établissement</th>
                     <th>Articles & Snapshots</th>
-                    <th>Livraison & Date</th>
+                    <th>Date & Coordonnées</th>
                     <th>Total MAD</th>
                     <th>Statut</th>
                     <th>Action</th>
@@ -1798,9 +1798,6 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
                         <strong style={{ fontSize: '1rem', color: 'var(--primary-900)' }}>
                           {ord.total.toFixed(2)} DH
                         </strong>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--primary-700)', fontWeight: 600 }}>
-                          (Livraison gratuite)
-                        </div>
                       </td>
                       <td>
                         <span className={`badge badge-status-${ord.status}`}>{ord.status}</span>
@@ -1816,8 +1813,8 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
                             <option value="pending">En attente</option>
                             <option value="confirmed">Confirmer</option>
                             <option value="preparing">En préparation</option>
-                            <option value="delivering">En livraison</option>
-                            <option value="delivered">Livrée</option>
+                            <option value="delivering">Prête</option>
+                            <option value="delivered">Finalisée</option>
                             <option value="cancelled">Annuler</option>
                           </select>
 
@@ -3210,7 +3207,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.4rem', borderBottom: '1px solid var(--border-light)', paddingBottom: '0.75rem' }}>
                   <Clock size={17} color="var(--primary-700)" />
                   <h3 style={{ fontSize: '1.05rem', fontWeight: 700, margin: 0, color: 'var(--primary-900)' }}>
-                    Paramètres de Commandes & Seuils de Livraison
+                    Paramètres des Commandes B2B
                   </h3>
                 </div>
                 <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '1.25rem' }}>
@@ -3249,7 +3246,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
 
                   <div>
                     <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--primary-900)', marginBottom: '0.35rem' }}>
-                      Seuil de Livraison Gratuite (MAD)
+                      Remise Commande en Gros (MAD)
                     </label>
                     <input
                       type="number"
@@ -3816,7 +3813,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
 
                 <div className="form-group" style={{ gridColumn: 'span 2' }}>
                   <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>
-                    Adresse de livraison précise *
+                    Adresse de l'établissement *
                   </label>
                   <input
                     type="text"

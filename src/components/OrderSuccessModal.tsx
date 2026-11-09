@@ -61,14 +61,14 @@ export const OrderSuccessModal: React.FC<OrderSuccessModalProps> = ({
 
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.85rem' }}>
             <span style={{ color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-              <Calendar size={14} /> Date de livraison :
+              <Calendar size={14} /> Date :
             </span>
             <span style={{ fontWeight: 600 }}>{order.requestedDeliveryDate}</span>
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.85rem' }}>
             <span style={{ color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-              <MapPin size={14} /> Destination :
+              <MapPin size={14} /> Ville :
             </span>
             <span style={{ fontWeight: 600 }}>{order.deliveryCity}</span>
           </div>

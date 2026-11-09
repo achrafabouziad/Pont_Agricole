@@ -429,7 +429,7 @@ export const CreateAdminOrderModal: React.FC<CreateAdminOrderModalProps> = ({
                 </span>
               </h2>
               <p style={{ margin: '0.2rem 0 0', fontSize: '0.82rem', color: '#64748b' }}>
-                Créez une commande pour un client indisponible ou par téléphone, et ouvrez immédiatement sa Facture / Bon de livraison.
+                Créez une commande pour un client indisponible ou par téléphone, et ouvrez immédiatement sa Facture commerciale.
               </p>
             </div>
           </div>
@@ -686,7 +686,7 @@ export const CreateAdminOrderModal: React.FC<CreateAdminOrderModalProps> = ({
 
                 <div>
                   <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#334155', marginBottom: '0.3rem' }}>
-                    Ville de Livraison *
+                    Ville *
                   </label>
                   <select
                     value={deliveryCity}
@@ -708,7 +708,7 @@ export const CreateAdminOrderModal: React.FC<CreateAdminOrderModalProps> = ({
 
                 <div style={{ gridColumn: '1 / -1' }}>
                   <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#334155', marginBottom: '0.3rem' }}>
-                    Adresse de Livraison Exacte
+                    Adresse de l'Établissement
                   </label>
                   <input
                     type="text"
@@ -728,7 +728,7 @@ export const CreateAdminOrderModal: React.FC<CreateAdminOrderModalProps> = ({
             )}
           </div>
 
-          {/* SECTION 2: DÉTAILS DE LA COMMANDE & LIVRAISON */}
+          {/* SECTION 2: DÉTAILS DE LA COMMANDE */}
           <div
             style={{
               backgroundColor: '#ffffff',
@@ -747,7 +747,7 @@ export const CreateAdminOrderModal: React.FC<CreateAdminOrderModalProps> = ({
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#334155', marginBottom: '0.3rem' }}>
-                  Date de Livraison Souhaitée *
+                  Date Souhaitée *
                 </label>
                 <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
                   <input
@@ -802,18 +802,18 @@ export const CreateAdminOrderModal: React.FC<CreateAdminOrderModalProps> = ({
                   <option value="confirmed">Confirmée (Direct en préparation)</option>
                   <option value="preparing">En cours de préparation</option>
                   <option value="pending">En attente de confirmation</option>
-                  <option value="delivering">En cours de livraison</option>
-                  <option value="delivered">Déjà livrée</option>
+                  <option value="delivering">Prête</option>
+                  <option value="delivered">Finalisée</option>
                 </select>
               </div>
 
               <div style={{ gridColumn: '1 / -1' }}>
                 <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#334155', marginBottom: '0.3rem' }}>
-                  Notes ou Instructions de Livraison (Optionnel)
+                  Remarques ou Instructions (Optionnel)
                 </label>
                 <input
                   type="text"
-                  placeholder="Ex: Livrer avant 09h00 du matin, réception par le chef cuisinier..."
+                  placeholder="Ex: Préciser calibre, heure de préparation, etc."
                   value={customerNotes}
                   onChange={(e) => setCustomerNotes(e.target.value)}
                   style={{
@@ -1162,31 +1162,6 @@ export const CreateAdminOrderModal: React.FC<CreateAdminOrderModalProps> = ({
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', color: '#475569' }}>
               <span>Sous-total HT des articles :</span>
               <strong style={{ color: '#0f172a' }}>{subtotal.toFixed(2)} MAD</strong>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', color: '#475569', alignItems: 'center' }}>
-              <span>Frais de livraison :</span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <span style={{ color: '#16a34a', fontWeight: 700, fontSize: '0.82rem' }}>
-                  {deliveryFee === 0 ? 'Offerte (0 DH)' : ''}
-                </span>
-                <input
-                  type="number"
-                  min="0"
-                  step="5"
-                  value={deliveryFee}
-                  onChange={(e) => setDeliveryFee(Math.max(0, Number(e.target.value)))}
-                  style={{
-                    width: '65px',
-                    textAlign: 'right',
-                    padding: '0.2rem 0.35rem',
-                    borderRadius: '4px',
-                    border: '1px solid #cbd5e1',
-                    fontSize: '0.85rem',
-                  }}
-                />
-                <span style={{ fontSize: '0.8rem' }}>DH</span>
-              </div>
             </div>
 
             <div

@@ -2304,7 +2304,7 @@ class StoreService {
 
     // 4. Cart subtotal and Free Delivery
     const subtotal = this.getCartSubtotal();
-    const deliveryFee = 0; // Livraison 100% gratuite et offerte
+    const deliveryFee = 0; // Frais 0 DH
     const total = subtotal;
 
     // 5. Generate unique Moroccan B2B order identifier

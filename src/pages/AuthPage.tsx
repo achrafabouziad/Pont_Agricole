@@ -717,7 +717,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
 
                 <div className="auth-field-col">
                   <label className="auth-minimal-label">
-                    <span>Ville de Livraison</span>
+                    <span>Ville</span>
                   </label>
                   <select
                     className="auth-minimal-input"
@@ -777,7 +777,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
                     />
                   </div>
                   <div style={{ fontSize: '0.69rem', color: '#64748b', marginTop: '0.2rem' }}>
-                    Pour les commandes & alertes de livraison.
+                    Pour le suivi des commandes & contact commercial.
                   </div>
                 </div>
 
@@ -803,7 +803,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
                 </div>
               </div>
 
-              {/* ROW 4: Mot de passe & Adresse Complète de Livraison */}
+              {/* ROW 4: Mot de passe & Adresse */}
               <div className="auth-fields-grid">
                 <div className="auth-field-col">
                   <label className="auth-minimal-label">
@@ -825,7 +825,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
 
                 <div className="auth-field-col">
                   <label className="auth-minimal-label">
-                    <span style={{ fontWeight: 700, color: '#0f172a' }}>Adresse Complète de Livraison *</span>
+                    <span style={{ fontWeight: 700, color: '#0f172a' }}>Adresse de l'Établissement *</span>
                     <button
                       type="button"
                       onClick={handleAutoLocate}

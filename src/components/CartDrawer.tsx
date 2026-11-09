@@ -129,16 +129,16 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     }
 
     const effectiveAddress = isPickupDirectOrder
-      ? 'Vente directe / Retrait sur place'
+      ? 'Vente directe au comptoir / Retrait sur place'
       : deliveryAddress.trim();
 
     if (!effectiveAddress) {
-      setErrorMessage('Veuillez renseigner votre adresse de livraison complète ou cocher "Vente directe / Retrait sur place".');
+      setErrorMessage("Veuillez renseigner l'adresse de votre établissement ou choisir la vente directe.");
       return;
     }
 
     if (!requestedDate) {
-      setErrorMessage('Veuillez choisir une date de livraison.');
+      setErrorMessage('Veuillez choisir une date souhaitée pour votre commande.');
       return;
     }
 
@@ -626,24 +626,24 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                         const checked = e.target.checked;
                         setIsPickupDirectOrder(checked);
                         if (checked) {
-                          setDeliveryAddress('Vente directe / Retrait sur place');
+                          setDeliveryAddress('Vente directe au comptoir / Retrait sur place');
                         } else {
                           setDeliveryAddress('');
                         }
                       }}
                       style={{ accentColor: '#166534', width: '16px', height: '16px' }}
                     />
-                    <span>Vente directe / Retrait sur place (Pas de livraison)</span>
+                    <span>Vente directe au comptoir / Retrait sur place</span>
                   </label>
                 </div>
               )}
 
               {/* Order Options */}
               <div className="cart-details-card">
-                <div className="cart-details-title">Détails de Livraison</div>
+                <div className="cart-details-title">Coordonnées & Date de Commande</div>
 
                 <div className="form-group">
-                  <label className="form-label">Ville de livraison</label>
+                  <label className="form-label">Ville de l'établissement</label>
                   <select
                     className="form-select"
                     value={selectedCity}
@@ -669,7 +669,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">Date de livraison souhaitée</label>
+                  <label className="form-label">Date souhaitée</label>
                   <input
                     type="date"
                     className="form-input"
@@ -679,10 +679,10 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                 </div>
 
                 <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Instructions cuisine ou déchargement</label>
+                  <label className="form-label">Remarques ou instructions pour la commande</label>
                   <textarea
                     className="form-textarea"
-                    placeholder="Ex: Déposer quai de réception arrière avant 08h30"
+                    placeholder="Ex: Précision sur les calibres, heure de passage, etc."
                     rows={2}
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
@@ -724,13 +724,6 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
             <div className="cart-total-line">
               <span>Sous-total HT</span>
               <strong>{subtotal.toFixed(2)} DH</strong>
-            </div>
-
-            <div className="cart-total-line">
-              <span>Frais de livraison ({selectedCity})</span>
-              <span className="cart-total-line free" style={{ margin: 0 }}>
-                Gratuits (0 DH)
-              </span>
             </div>
 
             <div className="cart-total-line grand">

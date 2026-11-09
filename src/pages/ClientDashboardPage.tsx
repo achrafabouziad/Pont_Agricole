@@ -55,9 +55,9 @@ export const ClientDashboardPage: React.FC<ClientDashboardPageProps> = ({ onNavi
       case 'preparing':
         return <span className="badge badge-status-preparing">En préparation</span>;
       case 'delivering':
-        return <span className="badge badge-status-delivering">En cours de livraison</span>;
+        return <span className="badge badge-status-delivering">Prête</span>;
       case 'delivered':
-        return <span className="badge badge-status-delivered">Livrée</span>;
+        return <span className="badge badge-status-delivered">Finalisée / Clôturée</span>;
       case 'cancelled':
         return <span className="badge badge-status-cancelled">Annulée</span>;
       default:
@@ -173,7 +173,7 @@ export const ClientDashboardPage: React.FC<ClientDashboardPageProps> = ({ onNavi
               Historique des Commandes ({orders.length})
             </h2>
             <span className="client-history-sub">
-              Suivi en temps réel des livraisons
+              Suivi en temps réel de vos commandes
             </span>
           </div>
 
@@ -308,7 +308,7 @@ export const ClientDashboardPage: React.FC<ClientDashboardPageProps> = ({ onNavi
                   {/* Order info details */}
                   <div className="client-order-meta-grid">
                     <div>
-                      <span className="client-meta-label">Date de livraison prévue</span>
+                      <span className="client-meta-label">Date souhaitée</span>
                       <strong className="client-meta-val">
                         <Calendar size={14} color="var(--primary-600)" /> {order.requestedDeliveryDate}
                       </strong>
