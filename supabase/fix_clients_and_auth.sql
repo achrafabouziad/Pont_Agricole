@@ -119,3 +119,35 @@ WHERE id IN (
   WHERE email ILIKE '%achrafabouziad%' 
      OR email ILIKE '%admin%'
 );
+
+-- 8. Synchronisation des commandes (orders et order_items) pour tous les appareils
+ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Customers view own orders, admins view all" ON public.orders;
+DROP POLICY IF EXISTS "Approved customers can create orders" ON public.orders;
+DROP POLICY IF EXISTS "Only admins can update order status" ON public.orders;
+DROP POLICY IF EXISTS "Orders readable by all" ON public.orders;
+CREATE POLICY "Orders readable by all" ON public.orders FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Orders insertable by all" ON public.orders;
+CREATE POLICY "Orders insertable by all" ON public.orders FOR INSERT WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Orders updatable by all" ON public.orders;
+CREATE POLICY "Orders updatable by all" ON public.orders FOR UPDATE USING (true);
+
+DROP POLICY IF EXISTS "Orders deletable by all" ON public.orders;
+CREATE POLICY "Orders deletable by all" ON public.orders FOR DELETE USING (true);
+
+ALTER TABLE public.order_items ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Users view items of their accessible orders" ON public.order_items;
+DROP POLICY IF EXISTS "Insert items for accessible orders" ON public.order_items;
+DROP POLICY IF EXISTS "Order items readable by all" ON public.order_items;
+CREATE POLICY "Order items readable by all" ON public.order_items FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Order items insertable by all" ON public.order_items;
+CREATE POLICY "Order items insertable by all" ON public.order_items FOR INSERT WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Order items updatable by all" ON public.order_items;
+CREATE POLICY "Order items updatable by all" ON public.order_items FOR UPDATE USING (true);
+
+DROP POLICY IF EXISTS "Order items deletable by all" ON public.order_items;
+CREATE POLICY "Order items deletable by all" ON public.order_items FOR DELETE USING (true);

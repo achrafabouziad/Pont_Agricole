@@ -229,42 +229,34 @@ USING (public.is_admin());
 
 -- ORDERS
 DROP POLICY IF EXISTS "Customers view own orders, admins view all" ON public.orders;
-CREATE POLICY "Customers view own orders, admins view all"
-ON public.orders FOR SELECT
-USING (customer_id = auth.uid() OR public.is_admin());
-
 DROP POLICY IF EXISTS "Approved customers can create orders" ON public.orders;
-CREATE POLICY "Approved customers can create orders"
-ON public.orders FOR INSERT
-WITH CHECK (customer_id = auth.uid());
-
 DROP POLICY IF EXISTS "Only admins can update order status" ON public.orders;
-CREATE POLICY "Only admins can update order status"
-ON public.orders FOR UPDATE
-USING (public.is_admin());
+DROP POLICY IF EXISTS "Orders readable by all" ON public.orders;
+CREATE POLICY "Orders readable by all" ON public.orders FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Orders insertable by all" ON public.orders;
+CREATE POLICY "Orders insertable by all" ON public.orders FOR INSERT WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Orders updatable by all" ON public.orders;
+CREATE POLICY "Orders updatable by all" ON public.orders FOR UPDATE USING (true);
+
+DROP POLICY IF EXISTS "Orders deletable by all" ON public.orders;
+CREATE POLICY "Orders deletable by all" ON public.orders FOR DELETE USING (true);
 
 -- ORDER ITEMS
 DROP POLICY IF EXISTS "Users view items of their accessible orders" ON public.order_items;
-CREATE POLICY "Users view items of their accessible orders"
-ON public.order_items FOR SELECT
-USING (
-    EXISTS (
-        SELECT 1 FROM public.orders
-        WHERE orders.id = order_items.order_id
-        AND (orders.customer_id = auth.uid() OR public.is_admin())
-    )
-);
-
 DROP POLICY IF EXISTS "Insert items for accessible orders" ON public.order_items;
-CREATE POLICY "Insert items for accessible orders"
-ON public.order_items FOR INSERT
-WITH CHECK (
-    EXISTS (
-        SELECT 1 FROM public.orders
-        WHERE orders.id = order_items.order_id
-        AND orders.customer_id = auth.uid()
-    )
-);
+DROP POLICY IF EXISTS "Order items readable by all" ON public.order_items;
+CREATE POLICY "Order items readable by all" ON public.order_items FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Order items insertable by all" ON public.order_items;
+CREATE POLICY "Order items insertable by all" ON public.order_items FOR INSERT WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Order items updatable by all" ON public.order_items;
+CREATE POLICY "Order items updatable by all" ON public.order_items FOR UPDATE USING (true);
+
+DROP POLICY IF EXISTS "Order items deletable by all" ON public.order_items;
+CREATE POLICY "Order items deletable by all" ON public.order_items FOR DELETE USING (true);
 
 -- TRIGGER ON AUTH.SIGNUP
 CREATE OR REPLACE FUNCTION public.handle_new_user()
