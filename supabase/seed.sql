@@ -3,6 +3,7 @@
 -- ========================================================================
 
 -- Catégories
+
 INSERT INTO public.categories (id, name, slug, description, image_url, display_order)
 VALUES
 ('cat-legumes', 'Légumes Frais', 'legumes', 'Légumes maraîchers de première fraîcheur, calibrés pour la restauration.', 'https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=800&q=80', 1),

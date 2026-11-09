@@ -145,6 +145,82 @@ export function cleanMapsUrl(str?: string | null): string {
   return str.replace(/#auth:[A-Za-z0-9+/=]+/g, '').replace(/auth:[A-Za-z0-9+/=]+/g, '').trim();
 }
 
+// --- CLIENT METADATA ENCODING IN NOTES (CROSS-DEVICE GUARANTEE) ---
+export function formatOrderCustomerNotes(params: {
+  customerNotes?: string;
+  customerName?: string;
+  businessName?: string;
+  customerPhone?: string;
+  customerIce?: string;
+}): string | undefined {
+  const metaParts: string[] = [];
+  if (params.customerName?.trim()) metaParts.push(`name:${encodeURIComponent(params.customerName.trim())}`);
+  if (params.businessName?.trim()) metaParts.push(`biz:${encodeURIComponent(params.businessName.trim())}`);
+  if (params.customerPhone?.trim()) metaParts.push(`tel:${encodeURIComponent(params.customerPhone.trim())}`);
+  if (params.customerIce?.trim()) metaParts.push(`ice:${encodeURIComponent(params.customerIce.trim())}`);
+
+  if (metaParts.length === 0) {
+    return params.customerNotes?.trim() || undefined;
+  }
+
+  const metaHeader = `<!--META:${metaParts.join('|')}-->`;
+  if (params.customerNotes?.trim()) {
+    return `${metaHeader}\n${params.customerNotes.trim()}`;
+  }
+  return metaHeader;
+}
+
+export function parseOrderCustomerNotes(rawNotes?: string | null): {
+  cleanNotes?: string;
+  customerName?: string;
+  businessName?: string;
+  customerPhone?: string;
+  customerIce?: string;
+} {
+  if (!rawNotes) return {};
+  const metaMatch = rawNotes.match(/<!--META:(.*?)-->/);
+  if (!metaMatch) {
+    return { cleanNotes: rawNotes };
+  }
+
+  const result: {
+    cleanNotes?: string;
+    customerName?: string;
+    businessName?: string;
+    customerPhone?: string;
+    customerIce?: string;
+  } = {};
+
+  const metaContent = metaMatch[1];
+  metaContent.split('|').forEach((part) => {
+    const colonIdx = part.indexOf(':');
+    if (colonIdx > 0) {
+      const key = part.slice(0, colonIdx);
+      const val = decodeURIComponent(part.slice(colonIdx + 1));
+      if (key === 'name') result.customerName = val;
+      if (key === 'biz') result.businessName = val;
+      if (key === 'tel') result.customerPhone = val;
+      if (key === 'ice') result.customerIce = val;
+    }
+  });
+
+  const clean = rawNotes.replace(/<!--META:(.*?)-->\n?/, '').trim();
+  result.cleanNotes = clean || undefined;
+  return result;
+}
+
+export interface PlaceOrderParams {
+  deliveryCity: string;
+  deliveryAddress: string;
+  requestedDeliveryDate: string;
+  customerNotes?: string;
+  // Admin custom client parameters
+  customCustomerName?: string;
+  customBusinessName?: string;
+  customPhone?: string;
+  customIce?: string;
+  targetBusinessId?: string;
+}
 
 // Global Store Manager
 class StoreService {
@@ -2016,7 +2092,14 @@ class StoreService {
         (x) => x.id === o.id || (x.orderNumber && o.orderNumber && x.orderNumber === o.orderNumber)
       );
       if (existingIdx >= 0) {
-        list[existingIdx] = { ...list[existingIdx], ...o };
+        list[existingIdx] = {
+          ...list[existingIdx],
+          ...o,
+          customerName: o.customerName || list[existingIdx].customerName,
+          businessName: o.businessName || list[existingIdx].businessName,
+          customerPhone: o.customerPhone || list[existingIdx].customerPhone,
+          customerIce: o.customerIce || list[existingIdx].customerIce,
+        };
       } else {
         list.push(o);
         seenIds.add(o.id);
@@ -2067,12 +2150,38 @@ class StoreService {
         }
 
         if (data && Array.isArray(data)) {
+          // Utiliser la liste des entreprises pour enrichir instantanément les commandes
+          const cachedBiz = getStored<Business[]>(KEY_BUSINESSES, []);
+          const bizMap = new Map<string, Business>();
+          cachedBiz.forEach((b) => bizMap.set(b.id, b));
+
           data.forEach((o: any) => {
+            const meta = parseOrderCustomerNotes(o.customer_notes);
+            const matchedBiz = o.business_id ? bizMap.get(o.business_id) : undefined;
+            const customerName =
+              meta.customerName ||
+              matchedBiz?.contactName ||
+              matchedBiz?.businessName ||
+              (o.customer_id === 'cfb7edbf-9c6b-4181-afae-2da48ad8a90d' ? 'Vente Directe / Client Pro' : undefined);
+            const businessName =
+              meta.businessName ||
+              matchedBiz?.businessName ||
+              meta.customerName ||
+              matchedBiz?.contactName;
+            const customerPhone = meta.customerPhone || matchedBiz?.phone;
+            const customerUsername = matchedBiz?.username;
+            const customerIce = meta.customerIce || matchedBiz?.ice;
+
             addOrUpdateOrder({
               id: o.id,
               orderNumber: o.order_number,
               customerId: o.customer_id,
               businessId: o.business_id,
+              customerName,
+              businessName,
+              customerPhone,
+              customerUsername,
+              customerIce,
               status: o.status,
               deliveryAddress: o.delivery_address,
               deliveryCity: o.delivery_city,
@@ -2080,7 +2189,7 @@ class StoreService {
               subtotal: Number(o.subtotal),
               deliveryFee: Number(o.delivery_fee),
               total: Number(o.total),
-              customerNotes: o.customer_notes,
+              customerNotes: meta.cleanNotes,
               rejectionReason: o.rejection_reason,
               items: (o.order_items || []).map((i: any) => ({
                 id: i.id,
@@ -2148,12 +2257,9 @@ class StoreService {
     return list;
   }
 
-  public async placeOrder(params: {
-    deliveryCity: string;
-    deliveryAddress: string;
-    requestedDeliveryDate: string;
-    customerNotes?: string;
-  }): Promise<{ success: boolean; order?: Order; error?: string }> {
+  public async placeOrder(
+    params: PlaceOrderParams
+  ): Promise<{ success: boolean; order?: Order; error?: string }> {
     // 1. Validation de la session en direct (si le compte a été supprimé ou rejeté par l'admin)
     const isSessionValid = await this.validateSession();
     if (!isSessionValid || !this.currentUser) {
@@ -2197,26 +2303,79 @@ class StoreService {
     }));
 
     const newOrderId = generateUUID();
+    const isAdminUser = this.currentUser?.role === 'admin';
+
     // Déterminer le customer_id pour Supabase (clé étrangère profiles.id)
     let orderCustomerId = 'cfb7edbf-9c6b-4181-afae-2da48ad8a90d';
-    if (this.currentBusiness?.ownerId && isUUID(this.currentBusiness.ownerId)) {
+    let targetBiz: Business | undefined;
+
+    if (isAdminUser && params.targetBusinessId) {
+      try {
+        const cachedBiz = getStored<Business[]>(KEY_BUSINESSES, []);
+        targetBiz = cachedBiz.find((b) => b.id === params.targetBusinessId);
+        if (!targetBiz) {
+          const bizList = await this.getBusinesses();
+          targetBiz = bizList.find((b) => b.id === params.targetBusinessId);
+        }
+        if (targetBiz?.ownerId && isUUID(targetBiz.ownerId)) {
+          orderCustomerId = targetBiz.ownerId;
+        }
+      } catch {}
+    } else if (this.currentBusiness?.ownerId && isUUID(this.currentBusiness.ownerId)) {
       orderCustomerId = this.currentBusiness.ownerId;
     } else if (this.currentUser?.id && isUUID(this.currentUser.id)) {
       orderCustomerId = this.currentUser.id;
     }
-    const orderBusinessId = isUUID(this.currentBusiness?.id) ? this.currentBusiness?.id : undefined;
+
+    const orderBusinessId = params.targetBusinessId
+      ? (isUUID(params.targetBusinessId) ? params.targetBusinessId : undefined)
+      : (isUUID(this.currentBusiness?.id) ? this.currentBusiness?.id : undefined);
+
+    let resolvedCustomerName = this.currentUser.fullName || this.currentBusiness?.contactName || 'Client Pro';
+    let resolvedBusinessName = this.currentBusiness?.businessName;
+    let resolvedCustomerPhone = this.currentUser.phone || this.currentBusiness?.phone || '';
+    let resolvedCustomerIce = this.currentBusiness?.ice || '';
+
+    if (isAdminUser) {
+      if (params.customCustomerName?.trim() || params.customBusinessName?.trim()) {
+        resolvedCustomerName = (params.customCustomerName || params.customBusinessName || 'Client Particulier').trim();
+        resolvedBusinessName = (params.customBusinessName || params.customCustomerName || 'Vente Directe').trim();
+      } else if (targetBiz) {
+        resolvedCustomerName = targetBiz.contactName || targetBiz.businessName;
+        resolvedBusinessName = targetBiz.businessName;
+      }
+      if (params.customPhone?.trim()) {
+        resolvedCustomerPhone = params.customPhone.trim();
+      } else if (targetBiz?.phone) {
+        resolvedCustomerPhone = targetBiz.phone;
+      }
+      if (params.customIce?.trim()) {
+        resolvedCustomerIce = params.customIce.trim();
+      } else if (targetBiz?.ice) {
+        resolvedCustomerIce = targetBiz.ice;
+      }
+    }
+
+    const encodedCustomerNotes = formatOrderCustomerNotes({
+      customerNotes: params.customerNotes,
+      customerName: resolvedCustomerName,
+      businessName: resolvedBusinessName,
+      customerPhone: resolvedCustomerPhone,
+      customerIce: resolvedCustomerIce,
+    });
 
     const newOrder: Order = {
       id: newOrderId,
       orderNumber,
       customerId: orderCustomerId,
-      customerName: this.currentUser.fullName || this.currentBusiness?.contactName || 'Client Pro',
-      customerPhone: this.currentUser.phone || this.currentBusiness?.phone || '',
-      customerUsername: this.currentBusiness?.username,
+      customerName: resolvedCustomerName,
+      customerPhone: resolvedCustomerPhone,
+      customerUsername: targetBiz?.username || this.currentBusiness?.username,
+      customerIce: resolvedCustomerIce,
       businessId: orderBusinessId,
-      businessName: this.currentBusiness?.businessName,
-      businessType: this.currentBusiness?.businessType,
-      status: 'pending',
+      businessName: resolvedBusinessName,
+      businessType: targetBiz?.businessType || this.currentBusiness?.businessType,
+      status: isAdminUser ? 'confirmed' : 'pending',
       deliveryAddress: params.deliveryAddress,
       deliveryCity: params.deliveryCity,
       requestedDeliveryDate: params.requestedDeliveryDate,
@@ -2238,14 +2397,14 @@ class StoreService {
           order_number: newOrder.orderNumber,
           customer_id: orderCustomerId,
           business_id: orderBusinessId || null,
-          status: 'pending',
+          status: newOrder.status,
           delivery_address: newOrder.deliveryAddress,
           delivery_city: newOrder.deliveryCity,
           requested_delivery_date: newOrder.requestedDeliveryDate,
           subtotal: newOrder.subtotal,
           delivery_fee: newOrder.deliveryFee,
           total: newOrder.total,
-          customer_notes: newOrder.customerNotes || null,
+          customer_notes: encodedCustomerNotes || null,
         };
 
         const { data: dbOrder, error: oErr } = await supabase
@@ -2419,6 +2578,14 @@ class StoreService {
       updatedAt: new Date().toISOString(),
     };
 
+    const encodedManualNotes = formatOrderCustomerNotes({
+      customerNotes: params.customerNotes,
+      customerName: newOrder.customerName,
+      businessName: newOrder.businessName,
+      customerPhone: newOrder.customerPhone,
+      customerIce: newOrder.customerIce,
+    });
+
     // 1. Sauvegarde dans Supabase
     if (isSupabaseConfigured && supabase) {
       try {
@@ -2435,7 +2602,7 @@ class StoreService {
           subtotal,
           delivery_fee: deliveryFee,
           total,
-          customer_notes: params.customerNotes || null,
+          customer_notes: encodedManualNotes || null,
         };
 
         const { data: dbOrder, error: oErr } = await supabase

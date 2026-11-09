@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { X, Trash2, Plus, Minus, AlertTriangle, ArrowRight, ShoppingBag, ArrowLeft } from 'lucide-react';
+import { X, Trash2, Plus, Minus, AlertTriangle, ArrowRight, ShoppingBag, ArrowLeft, FileText, User, Building } from 'lucide-react';
 import { store } from '../services/store';
-import { CartItem, DeliveryZone, Order, Product } from '../types';
+import { CartItem, DeliveryZone, Order, Product, Business } from '../types';
 
 interface CartDrawerProps {
   isOpen: boolean;
@@ -28,6 +28,38 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
 
   const currentUser = store.getCurrentUser();
   const currentBusiness = store.getCurrentBusiness();
+  const isAdmin = currentUser?.role === 'admin';
+
+  // Admin Client Designation States
+  const [adminClientMode, setAdminClientMode] = useState<'unregistered' | 'registered'>('unregistered');
+  const [customClientName, setCustomClientName] = useState<string>('');
+  const [customPhone, setCustomPhone] = useState<string>('');
+  const [customIce, setCustomIce] = useState<string>('');
+  const [selectedRegisteredBizId, setSelectedRegisteredBizId] = useState<string>('');
+  const [allBusinesses, setAllBusinesses] = useState<Business[]>([]);
+  const [isPickupDirectOrder, setIsPickupDirectOrder] = useState<boolean>(false);
+
+  // Load registered businesses for admin
+  useEffect(() => {
+    if (isOpen && isAdmin) {
+      store.getBusinesses().then((bizList) => {
+        setAllBusinesses(bizList.filter((b) => b.approvalStatus !== 'rejected'));
+      });
+    }
+  }, [isOpen, isAdmin]);
+
+  const handleSelectRegisteredClient = (bizId: string) => {
+    setSelectedRegisteredBizId(bizId);
+    if (!bizId) return;
+    const found = allBusinesses.find((b) => b.id === bizId);
+    if (found) {
+      setCustomClientName(found.contactName || found.businessName);
+      if (found.phone) setCustomPhone(found.phone);
+      if (found.ice) setCustomIce(found.ice);
+      if (found.city) setSelectedCity(found.city);
+      if (found.deliveryAddress) setDeliveryAddress(found.deliveryAddress);
+    }
+  };
 
   // Load cart & products to offer quick add recommendations directly inside the cart
   useEffect(() => {
@@ -89,8 +121,19 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
       return;
     }
 
-    if (!deliveryAddress.trim()) {
-      setErrorMessage('Veuillez renseigner votre adresse de livraison complète.');
+    if (isAdmin) {
+      if (!customClientName.trim()) {
+        setErrorMessage("Veuillez renseigner le nom du client ou de l'établissement pour la facture.");
+        return;
+      }
+    }
+
+    const effectiveAddress = isPickupDirectOrder
+      ? 'Vente directe / Retrait sur place'
+      : deliveryAddress.trim();
+
+    if (!effectiveAddress) {
+      setErrorMessage('Veuillez renseigner votre adresse de livraison complète ou cocher "Vente directe / Retrait sur place".');
       return;
     }
 
@@ -103,9 +146,14 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     try {
       const result = await store.placeOrder({
         deliveryCity: selectedCity,
-        deliveryAddress: deliveryAddress.trim(),
+        deliveryAddress: effectiveAddress,
         requestedDeliveryDate: requestedDate,
         customerNotes: notes.trim(),
+        customCustomerName: isAdmin ? customClientName.trim() : undefined,
+        customBusinessName: isAdmin ? customClientName.trim() : undefined,
+        customPhone: isAdmin ? customPhone.trim() : undefined,
+        customIce: isAdmin ? customIce.trim() : undefined,
+        targetBusinessId: isAdmin && adminClientMode === 'registered' ? selectedRegisteredBizId : undefined,
       });
 
       if (result.success && result.order) {
@@ -391,6 +439,205 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                 </div>
               )}
 
+              {/* Admin Client Designation Card */}
+              {isAdmin && (
+                <div
+                  style={{
+                    backgroundColor: '#f0fdf4',
+                    border: '1.5px solid #86efac',
+                    borderRadius: '12px',
+                    padding: '1rem',
+                    marginBottom: '0.85rem',
+                  }}
+                >
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      marginBottom: '0.65rem',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                      <span
+                        style={{
+                          backgroundColor: '#166534',
+                          color: '#ffffff',
+                          fontSize: '0.68rem',
+                          fontWeight: 800,
+                          padding: '0.2rem 0.5rem',
+                          borderRadius: '6px',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.04em',
+                        }}
+                      >
+                        Mode Admin
+                      </span>
+                      <strong style={{ fontSize: '0.92rem', color: '#14532d' }}>
+                        Facturé à / Destinataire
+                      </strong>
+                    </div>
+                    <span style={{ fontSize: '0.74rem', color: '#166534', fontWeight: 600 }}>
+                      Facture instantanée
+                    </span>
+                  </div>
+
+                  {/* Mode tabs */}
+                  <div
+                    style={{
+                      display: 'flex',
+                      gap: '0.4rem',
+                      background: '#dcfce7',
+                      padding: '3px',
+                      borderRadius: '8px',
+                      marginBottom: '0.85rem',
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setAdminClientMode('unregistered')}
+                      style={{
+                        flex: 1,
+                        padding: '0.45rem 0.6rem',
+                        fontSize: '0.78rem',
+                        fontWeight: adminClientMode === 'unregistered' ? 800 : 600,
+                        backgroundColor: adminClientMode === 'unregistered' ? '#ffffff' : 'transparent',
+                        color: adminClientMode === 'unregistered' ? '#166534' : '#15803d',
+                        border: 'none',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        boxShadow: adminClientMode === 'unregistered' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                      }}
+                    >
+                      ✏️ Client non-inscrit / Direct
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAdminClientMode('registered')}
+                      style={{
+                        flex: 1,
+                        padding: '0.45rem 0.6rem',
+                        fontSize: '0.78rem',
+                        fontWeight: adminClientMode === 'registered' ? 800 : 600,
+                        backgroundColor: adminClientMode === 'registered' ? '#ffffff' : 'transparent',
+                        color: adminClientMode === 'registered' ? '#166534' : '#15803d',
+                        border: 'none',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        boxShadow: adminClientMode === 'registered' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                      }}
+                    >
+                      🏢 Client inscrit ({allBusinesses.length})
+                    </button>
+                  </div>
+
+                  {/* If registered mode: dropdown to select */}
+                  {adminClientMode === 'registered' && (
+                    <div className="form-group" style={{ marginBottom: '0.75rem' }}>
+                      <label className="form-label" style={{ color: '#14532d', fontWeight: 700 }}>
+                        Sélectionner un client inscrit *
+                      </label>
+                      <select
+                        className="form-select"
+                        value={selectedRegisteredBizId}
+                        onChange={(e) => handleSelectRegisteredClient(e.target.value)}
+                        style={{ borderColor: '#86efac' }}
+                      >
+                        <option value="">-- Choisir parmi les clients enregistrés --</option>
+                        {allBusinesses.map((b) => (
+                          <option key={b.id} value={b.id}>
+                            {b.businessName} - {b.contactName || 'Responsable'} ({b.city || 'Maroc'})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {/* Client name input (Always editable, prefilled if registered) */}
+                  <div className="form-group" style={{ marginBottom: '0.75rem' }}>
+                    <label className="form-label" style={{ color: '#14532d', fontWeight: 700 }}>
+                      Nom du Client / Établissement (sur la facture) *
+                    </label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      required
+                      placeholder="Ex: Restaurant Marina, Chef Hassan, Snack Oasis..."
+                      value={customClientName}
+                      onChange={(e) => setCustomClientName(e.target.value)}
+                      style={{
+                        borderColor: !customClientName.trim() ? '#fca5a5' : '#86efac',
+                        backgroundColor: '#ffffff',
+                      }}
+                    />
+                    <div style={{ fontSize: '0.72rem', color: '#166534', marginTop: '0.2rem' }}>
+                      Ce nom figurera en grand sur l'en-tête de la facture commerciale.
+                    </div>
+                  </div>
+
+                  {/* Two column: Phone & ICE */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                    <div>
+                      <label className="form-label" style={{ fontSize: '0.78rem', color: '#14532d', fontWeight: 600 }}>
+                        Téléphone client
+                      </label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        placeholder="06XXXXXXXX"
+                        value={customPhone}
+                        onChange={(e) => setCustomPhone(e.target.value)}
+                        style={{ fontSize: '0.85rem', padding: '0.5rem', backgroundColor: '#ffffff' }}
+                      />
+                    </div>
+                    <div>
+                      <label className="form-label" style={{ fontSize: '0.78rem', color: '#14532d', fontWeight: 600 }}>
+                        ICE (optionnel)
+                      </label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        placeholder="Ex: 002345678..."
+                        value={customIce}
+                        onChange={(e) => setCustomIce(e.target.value)}
+                        style={{ fontSize: '0.85rem', padding: '0.5rem', backgroundColor: '#ffffff' }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Quick toggle for Pickup / Walk-in */}
+                  <label
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      cursor: 'pointer',
+                      fontSize: '0.82rem',
+                      color: '#166534',
+                      fontWeight: 700,
+                      marginTop: '0.4rem',
+                      padding: '0.35rem 0',
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isPickupDirectOrder}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setIsPickupDirectOrder(checked);
+                        if (checked) {
+                          setDeliveryAddress('Vente directe / Retrait sur place');
+                        } else {
+                          setDeliveryAddress('');
+                        }
+                      }}
+                      style={{ accentColor: '#166534', width: '16px', height: '16px' }}
+                    />
+                    <span>Vente directe / Retrait sur place (Pas de livraison)</span>
+                  </label>
+                </div>
+              )}
+
               {/* Order Options */}
               <div className="cart-details-card">
                 <div className="cart-details-title">Détails de Livraison</div>
@@ -494,13 +741,26 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
             {/* Checkout Action */}
             <button
               onClick={handleCheckout}
-              disabled={submitting || !currentUser}
+              disabled={submitting || !currentUser || (isAdmin && !customClientName.trim())}
               className="btn btn-primary cart-checkout-btn"
+              style={
+                isAdmin
+                  ? {
+                      background: 'linear-gradient(135deg, #15803d 0%, #166534 100%)',
+                      boxShadow: '0 4px 14px rgba(22, 101, 52, 0.35)',
+                    }
+                  : undefined
+              }
             >
               {submitting ? (
-                <span>Validation en cours...</span>
+                <span>{isAdmin ? 'Génération de la facture...' : 'Validation en cours...'}</span>
               ) : !currentUser ? (
                 <span>Se connecter pour commander</span>
+              ) : isAdmin ? (
+                <>
+                  <FileText size={20} />
+                  <span>Valider la commande & Ouvrir la Facture</span>
+                </>
               ) : (
                 <>
                   <span>Confirmer la commande en gros</span>

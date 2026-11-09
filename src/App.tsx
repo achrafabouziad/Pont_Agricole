@@ -4,6 +4,7 @@ import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
 import { CartDrawer } from './components/CartDrawer';
 import { OrderSuccessModal } from './components/OrderSuccessModal';
+import { InvoiceModal } from './components/InvoiceModal';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { EstablishmentSetupModal } from './components/EstablishmentSetupModal';
 import { HomePage } from './pages/HomePage';
@@ -23,6 +24,7 @@ export function App() {
   const [selectedCatalogCategory, setSelectedCatalogCategory] = useState<string>('all');
   const [isCartOpen, setIsCartOpen] = useState<boolean>(false);
   const [lastPlacedOrder, setLastPlacedOrder] = useState<Order | null>(null);
+  const [invoiceModalOrder, setInvoiceModalOrder] = useState<Order | null>(null);
 
   // Synchronisation automatique de la session Clerk vers le Store Pont Agricole & Supabase Database
   useEffect(() => {
@@ -177,7 +179,11 @@ export function App() {
   };
 
   const handleOrderSuccess = (order: Order) => {
-    setLastPlacedOrder(order);
+    if (currentUser?.role === 'admin') {
+      setInvoiceModalOrder(order);
+    } else {
+      setLastPlacedOrder(order);
+    }
   };
 
   // Chargement initial Clerk
@@ -324,6 +330,14 @@ export function App() {
           handleNavigate('client-dashboard');
         }}
       />
+
+      {/* Admin Invoice Modal (Directly opened after checkout in Admin mode) */}
+      {invoiceModalOrder && (
+        <InvoiceModal
+          order={invoiceModalOrder}
+          onClose={() => setInvoiceModalOrder(null)}
+        />
+      )}
 
       {/* Footer */}
       <Footer onNavigate={handleNavigate} />
