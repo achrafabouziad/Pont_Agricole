@@ -50,7 +50,7 @@ const WORLD_COUNTRY_CODES = [
 
 export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 'register' }) => {
   const [isLoginMode, setIsLoginMode] = useState<boolean>(initialMode === 'login');
-  const [useDirectForm, setUseDirectForm] = useState<boolean>(false);
+  const [useDirectForm, setUseDirectForm] = useState<boolean>(true);
   const [loading, setLoading] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successNotice, setSuccessNotice] = useState<string | null>(null);
@@ -425,43 +425,51 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
                 />
               )}
 
-              <div style={{ marginTop: '1rem', textAlign: 'center' }}>
+              <div style={{ marginTop: '1.25rem', textAlign: 'center' }}>
                 <button
                   type="button"
                   onClick={() => setUseDirectForm(true)}
                   style={{
-                    background: 'none',
-                    border: 'none',
-                    color: '#64748b',
-                    fontSize: '0.78rem',
+                    background: '#f0fdf4',
+                    border: '1.5px solid #86efac',
+                    color: '#166534',
+                    fontSize: '0.82rem',
+                    fontWeight: 700,
+                    padding: '0.45rem 1rem',
+                    borderRadius: '20px',
                     cursor: 'pointer',
-                    textDecoration: 'underline',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.4rem',
                   }}
                 >
-                  {isLoginMode
-                    ? 'Ou se connecter avec un ancien identifiant direct'
-                    : 'Ou inscription par formulaire direct'}
+                  ⚡ {isLoginMode
+                    ? 'Connexion directe (Admin & Clients)'
+                    : 'Inscription directe par formulaire'}
                 </button>
               </div>
             </div>
           ) : (
             <>
-              <div style={{ marginBottom: '1rem', textAlign: 'center' }}>
+              <div style={{ marginBottom: '1.1rem', textAlign: 'center' }}>
                 <button
                   type="button"
                   onClick={() => setUseDirectForm(false)}
                   style={{
-                    background: '#dcfce7',
-                    border: '1px solid #bbf7d0',
-                    color: '#15803d',
-                    padding: '0.35rem 0.85rem',
+                    background: '#f8fafc',
+                    border: '1px solid #cbd5e1',
+                    color: '#475569',
+                    padding: '0.4rem 0.95rem',
                     borderRadius: '20px',
                     fontSize: '0.78rem',
                     fontWeight: 600,
                     cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
                   }}
                 >
-                  🔒 Utiliser la connexion sécurisée Clerk
+                  🔒 {isLoginMode ? 'Optionnel : Connexion avec Clerk' : 'Optionnel : Inscription avec Clerk'}
                 </button>
               </div>
 

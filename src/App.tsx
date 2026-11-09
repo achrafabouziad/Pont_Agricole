@@ -203,6 +203,7 @@ export function App() {
             initialMode="login"
             onSuccess={() => {
               const u = store.getCurrentUser();
+              setCurrentUser(u);
               if (u?.role === 'admin') {
                 handleNavigate('admin');
               } else {

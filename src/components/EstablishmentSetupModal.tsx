@@ -321,3 +321,4 @@ export const EstablishmentSetupModal: React.FC<EstablishmentSetupModalProps> = (
     </div>
   );
 };
+

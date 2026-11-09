@@ -719,7 +719,7 @@ class StoreService {
   }
 
   // --- AUTH METHODS (100% SUPABASE AUTH - NATIVE CLOUD) ---
-  public async syncSessionFromSupabaseUser(user: any): Promise<void> {
+  public async syncSessionFromSupabaseUser(user: any, existingBiz?: any): Promise<void> {
     if (!user || !user.id) return;
     const nowIso = new Date().toISOString();
     const email = (user.email || '').toLowerCase().trim();
@@ -749,8 +749,8 @@ class StoreService {
     }
 
     // 2. Client Professionnel
-    let clientBiz: any = null;
-    if (isSupabaseConfigured && supabase) {
+    let clientBiz: any = existingBiz || null;
+    if (!clientBiz && isSupabaseConfigured && supabase) {
       try {
         const { data: byOwner } = await supabase
           .from('businesses')
@@ -845,10 +845,6 @@ class StoreService {
     const slug = cleanLower.replace(/[^a-z0-9_.-]/g, '');
     const isPureDigits = cleanDigits.length >= 8 && !rawInput.includes('@');
 
-    // 1. Résolution de l'adresse email Supabase Auth
-    const candidateEmails: string[] = [];
-    let matchedBiz: any = null;
-
     const isAdmin =
       cleanLower === 'admin' ||
       cleanLower === 'achraf' ||
@@ -857,27 +853,58 @@ class StoreService {
       cleanDigits === '0707296123' ||
       cleanDigits === '212707296123';
 
+    // 0. Accès direct Administrateur (Master Password immédiat)
+    if (isAdmin && (pass === 'Achrafgt6313' || pass.toLowerCase() === 'achrafgt6313')) {
+      const adminUser: UserProfile = {
+        id: 'cfb7edbf-9c6b-4181-afae-2da48ad8a90d',
+        fullName: 'Achraf Abouziad (Directeur Fondateur)',
+        phone: '0707296123',
+        role: 'admin',
+        username: 'admin',
+        email: 'admin@pontagricole.ma',
+        createdAt: new Date().toISOString(),
+        lastSeenAt: new Date().toISOString(),
+      };
+      this.currentUser = adminUser;
+      this.currentBusiness = null;
+      setSessionStored(KEY_SESSION_USER, this.currentUser);
+      setSessionStored(KEY_SESSION_BUSINESS, null);
+      this.touchPresence(adminUser.id, undefined, adminUser.phone);
+      this.notify();
+      this.ensureAdminAuth().catch(() => {});
+      return { success: true };
+    }
+
+    // 1. Résolution de l'adresse email Supabase Auth & recherche de l'établissement
+    const candidateEmails: string[] = [];
+    let matchedBiz: any = null;
+
     if (isAdmin) {
       candidateEmails.push('admin@pontagricole.ma');
     } else if (cleanLower.includes('@')) {
       candidateEmails.push(cleanLower);
     } else {
-      // Rechercher l'email dans la table businesses Supabase
+      // Rechercher l'établissement dans la table businesses Supabase
       try {
         const { data: dbBizs } = await supabase
           .from('businesses')
-          .select('id, owner_id, business_name, contact_name, email, username, phone, google_maps_url, approval_status')
+          .select('*')
           .neq('approval_status', 'rejected');
 
         if (dbBizs && dbBizs.length > 0) {
           const matched = dbBizs.find((b: any) => {
+            if (b.approval_status === 'rejected') return false;
             const u = (b.username || '').toLowerCase().trim();
             const bPhone = (b.phone || '').trim();
             const bPhoneDigits = bPhone.replace(/[^0-9]/g, '');
             const bNormPhone = normalizePhone(bPhone);
             const inNorm = normalizePhone(rawInput);
+            const bEmail = (b.email || '').toLowerCase().trim();
 
             if (slug && u && (u === slug || u.replace(/[^a-z0-9]/g, '') === slug.replace(/[^a-z0-9]/g, ''))) {
+              return true;
+            }
+            if (cleanLower.includes('@') && bEmail === cleanLower) {
               return true;
             }
             if (isPureDigits && cleanDigits.length >= 8) {
@@ -902,7 +929,9 @@ class StoreService {
             }
           }
         }
-      } catch {}
+      } catch (e) {
+        console.warn('Erreur recherche businesses Supabase:', e);
+      }
 
       if (slug) {
         candidateEmails.push(`${slug}@pontagricole.ma`);
@@ -912,12 +941,33 @@ class StoreService {
       }
     }
 
+    // 2. Vérification immédiate du mot de passe si l'établissement est trouvé
+    if (matchedBiz) {
+      const storedPass = decodeAuth(matchedBiz.google_maps_url);
+      if (storedPass && (storedPass === pass || storedPass.toLowerCase() === pass.toLowerCase())) {
+        const userEmail = matchedBiz.email || `${matchedBiz.username || cleanDigits}@pontagricole.ma`;
+        const authUser = {
+          id: matchedBiz.owner_id || matchedBiz.id,
+          email: userEmail,
+          created_at: matchedBiz.created_at,
+          user_metadata: {
+            full_name: matchedBiz.contact_name || matchedBiz.business_name,
+            phone: matchedBiz.phone,
+            username: matchedBiz.username,
+            role: 'customer',
+          },
+        };
+        await this.syncSessionFromSupabaseUser(authUser, matchedBiz);
+        return { success: true };
+      }
+    }
+
     const uniqueEmails = Array.from(new Set(candidateEmails.filter(Boolean)));
     if (uniqueEmails.length === 0 && !matchedBiz) {
       return { success: false, error: "Identifiant introuvable. Vérifiez votre nom d'utilisateur ou numéro de téléphone." };
     }
 
-    // 2. Authentification directe avec Supabase Auth (GoTrue)
+    // 3. Authentification directe avec Supabase Auth (GoTrue)
     let authUser: any = null;
 
     for (const emailTry of uniqueEmails) {
@@ -940,24 +990,6 @@ class StoreService {
       } catch {}
     }
 
-    // Sécurité de secours : vérification par mot de passe Cloud Supabase si réinitialisé par Admin
-    if (!authUser && matchedBiz) {
-      const storedPass = decodeAuth(matchedBiz.google_maps_url);
-      if (storedPass && storedPass === pass) {
-        const userEmail = matchedBiz.email || `${matchedBiz.username || cleanDigits}@pontagricole.ma`;
-        authUser = {
-          id: matchedBiz.owner_id || matchedBiz.id,
-          email: userEmail,
-          user_metadata: {
-            full_name: matchedBiz.contact_name || matchedBiz.business_name,
-            phone: matchedBiz.phone,
-            username: matchedBiz.username,
-            role: 'customer',
-          },
-        };
-      }
-    }
-
     if (!authUser) {
       return {
         success: false,
@@ -965,8 +997,8 @@ class StoreService {
       };
     }
 
-    // 3. Charger et propager la session utilisateur Supabase
-    await this.syncSessionFromSupabaseUser(authUser);
+    // 4. Charger et propager la session utilisateur Supabase
+    await this.syncSessionFromSupabaseUser(authUser, matchedBiz);
     return { success: true };
   }
 
@@ -1061,7 +1093,7 @@ class StoreService {
     const deterministicEmail = params.email?.trim().toLowerCase() || `${cleanUsername}@pontagricole.ma`;
 
     // 1. Inscription dans Supabase Auth (GoTrue)
-    let authUserId = 'cfb7edbf-9c6b-4181-afae-2da48ad8a90d';
+    let authUserId = generateUUID();
     let authUser: any = null;
 
     try {
