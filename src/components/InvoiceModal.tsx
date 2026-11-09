@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Order, CompanySettings, Business } from '../types';
 import {
   Printer,
@@ -13,7 +13,7 @@ import {
   Eye,
   Layers,
 } from 'lucide-react';
-import { store } from '../services/store';
+import { store, generateUUID } from '../services/store';
 
 export interface InvoiceModalProps {
   order?: Order | null;
@@ -24,13 +24,14 @@ export interface InvoiceModalProps {
   initialMode?: 'global' | 'single';
 }
 
-interface InvoiceRowItem {
+export interface InvoiceRowItem {
   id: string;
   designation: string;
   caisses: number;
   qteKg: number;
   puKg: number;
   montantHt: number;
+  unit?: string;
 }
 
 export const InvoiceModal: React.FC<InvoiceModalProps> = ({
@@ -79,6 +80,10 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
   const [remiseGratuit, setRemiseGratuit] = useState<number>(0);
   const [totalTva, setTotalTva] = useState<number>(0);
 
+  // User modification tracking refs
+  const hasUserEditedRef = useRef<boolean>(false);
+  const lastInitializedKeyRef = useRef<string | null>(null);
+
   // Active orders based on selected mode
   const activeOrders: Order[] = invoiceMode === 'single'
     ? (allOrders.filter((o) => o.id === selectedSingleId).length > 0
@@ -87,9 +92,40 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
     : allOrders;
 
   // Initialize and auto-populate all fields from active orders
-  const initInvoice = () => {
+  const initInvoice = (forceReset = false) => {
     if (activeOrders.length === 0) return;
     const baseOrd = activeOrders[0];
+
+    const storageKey =
+      activeOrders.length === 1
+        ? `pont_invoice_custom_${baseOrd.id}`
+        : `pont_global_invoice_${activeOrders.map((o) => o.id).join('_')}`;
+
+    // Si des modifications personnalisées ont été sauvegardées et qu'on ne force pas le reset
+    if (!forceReset) {
+      try {
+        const savedRaw = localStorage.getItem(storageKey);
+        if (savedRaw) {
+          const s = JSON.parse(savedRaw);
+          if (s && s.rows && Array.isArray(s.rows) && s.rows.length > 0) {
+            setInvoiceNumber(s.invoiceNumber || '');
+            if (s.invoicePhone) setInvoicePhone(s.invoicePhone);
+            setInvoiceDate(s.invoiceDate || '');
+            setBusinessName(s.businessName || '');
+            setDeliveryAddress(s.deliveryAddress || '');
+            setCustomerPhone(s.customerPhone || '');
+            setCustomerIce(s.customerIce || '');
+            setDeliveryCity(s.deliveryCity || 'Casablanca');
+            setCustomerCode(s.customerCode || '');
+            setRows(s.rows);
+            setRemiseLegumes(Number(s.remiseLegumes) || 0);
+            setRemiseGratuit(Number(s.remiseGratuit) || 0);
+            setTotalTva(Number(s.totalTva) || 0);
+            return;
+          }
+        }
+      } catch {}
+    }
 
     if (!propsSettings) {
       store.getCompanySettings().then((st) => {
@@ -171,6 +207,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
               qteKg: qte,
               puKg: item.unitPriceSnapshot || 0,
               montantHt: Math.round(lineTot * 100) / 100,
+              unit: item.unitSnapshot || (isCaisse ? 'caisse' : 'kg'),
             });
           }
         });
@@ -192,6 +229,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
             qteKg: qte,
             puKg: item.unitPriceSnapshot || 0,
             montantHt: item.lineTotal || 0,
+            unit: item.unitSnapshot || (isCaisse ? 'caisse' : 'kg'),
           });
         });
       });
@@ -204,8 +242,15 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
   };
 
   useEffect(() => {
-    initInvoice();
-  }, [order, orders, invoiceMode, selectedSingleId, viewGrouping, propsSettings, clientBusiness]);
+    const currentKey = `${invoiceMode}_${selectedSingleId}_${viewGrouping}_${allOrders.map((o) => o.id).join(',')}`;
+    // Si l'utilisateur est en train de modifier CETTE facture ou l'a déjà modifiée, NE JAMAIS l'écraser automatiquement !
+    if (lastInitializedKeyRef.current === currentKey && (isEditing || hasUserEditedRef.current)) {
+      return;
+    }
+    lastInitializedKeyRef.current = currentKey;
+    hasUserEditedRef.current = false;
+    initInvoice(false);
+  }, [allOrders.map((o) => o.id).join(','), invoiceMode, selectedSingleId, viewGrouping]);
 
   if (allOrders.length === 0) return null;
 
@@ -240,6 +285,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
 
   // Row update handlers
   const handleRowChange = (index: number, field: keyof InvoiceRowItem, val: any) => {
+    hasUserEditedRef.current = true;
     setRows((prev) => {
       const next = [...prev];
       const cur = { ...next[index], [field]: val };
@@ -247,6 +293,8 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
         const qte = field === 'qteKg' ? Number(val) || 0 : Number(cur.qteKg) || 0;
         const pu = field === 'puKg' ? Number(val) || 0 : Number(cur.puKg) || 0;
         cur.montantHt = Math.round(qte * pu * 100) / 100;
+      } else if (field === 'montantHt') {
+        cur.montantHt = Number(val) || 0;
       }
       next[index] = cur;
       return next;
@@ -254,70 +302,90 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
   };
 
   const handleAddRow = () => {
+    hasUserEditedRef.current = true;
     setRows((prev) => [
       ...prev,
       {
-        id: `custom-${Date.now()}`,
+        id: `custom-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
         designation: '',
         caisses: 1,
         qteKg: 10,
         puKg: 0,
         montantHt: 0,
+        unit: 'kg',
       },
     ]);
   };
 
   const handleRemoveRow = (index: number) => {
+    hasUserEditedRef.current = true;
     setRows((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleSaveToOrder = async () => {
     if (activeOrders.length === 0) return;
     try {
+      hasUserEditedRef.current = true;
+      const baseOrd = activeOrders[0];
+      const storageKey =
+        activeOrders.length === 1
+          ? `pont_invoice_custom_${baseOrd.id}`
+          : `pont_global_invoice_${activeOrders.map((o) => o.id).join('_')}`;
+
+      const snapshot = {
+        invoiceNumber,
+        invoicePhone,
+        invoiceDate,
+        businessName,
+        deliveryAddress,
+        customerPhone,
+        customerIce,
+        deliveryCity,
+        customerCode,
+        rows,
+        totalHT,
+        totalTTC,
+        totalTva,
+        remiseLegumes,
+        remiseGratuit,
+        updatedAt: new Date().toISOString(),
+      };
+
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(snapshot));
+      } catch {}
+
       if (activeOrders.length === 1) {
         const targetOrd = activeOrders[0];
         const updatedOrder: Order = {
           ...targetOrd,
-          businessName,
-          deliveryAddress,
-          customerPhone,
-          deliveryCity,
-          customerIce,
+          customerName: businessName || targetOrd.customerName,
+          businessName: businessName || targetOrd.businessName,
+          deliveryAddress: deliveryAddress || targetOrd.deliveryAddress,
+          customerPhone: customerPhone || targetOrd.customerPhone,
+          deliveryCity: deliveryCity || targetOrd.deliveryCity,
+          customerIce: customerIce || targetOrd.customerIce,
           subtotal: totalHT,
           total: totalTTC,
-          items: rows.map((r) => ({
-            productId: r.id,
-            productNameSnapshot: r.designation,
-            unitSnapshot: 'caisse',
-            unitPriceSnapshot: r.puKg,
-            quantity: r.caisses,
-            lineTotal: r.montantHt,
-          })),
+          items: rows.map((r, rIdx) => {
+            const isPerKg = (r.qteKg > 0 && Math.abs((r.qteKg * r.puKg) - r.montantHt) < 0.1) || r.unit === 'kg';
+            const qty = isPerKg ? (r.qteKg || r.caisses || 1) : (r.caisses || r.qteKg || 1);
+            const unit = isPerKg ? 'kg' : (r.unit || 'caisse');
+            return {
+              id: r.id.startsWith('custom-') ? generateUUID() : r.id,
+              orderId: targetOrd.id,
+              productId: r.id.startsWith('custom-') ? generateUUID() : r.id,
+              productNameSnapshot: r.designation || `Article ${rIdx + 1}`,
+              unitSnapshot: unit,
+              unitPriceSnapshot: Number(r.puKg) || 0,
+              quantity: Number(qty) || 1,
+              lineTotal: Number(r.montantHt) || 0,
+            };
+          }),
         };
         await store.updateOrder(updatedOrder);
         setSavingNotice('Facture de commande modifiée et enregistrée avec succès !');
       } else {
-        const customInvoice = {
-          invoiceNumber,
-          invoiceDate,
-          businessName,
-          deliveryAddress,
-          customerPhone,
-          customerIce,
-          deliveryCity,
-          customerCode,
-          rows,
-          totalHT,
-          totalTTC,
-          totalTva,
-          remiseLegumes,
-          remiseGratuit,
-          orderIds: activeOrders.map((o) => o.id),
-          updatedAt: new Date().toISOString(),
-        };
-        try {
-          localStorage.setItem(`pont_global_invoice_${invoiceNumber}`, JSON.stringify(customInvoice));
-        } catch {}
         setSavingNotice('Facture globale récapitulative enregistrée avec succès !');
       }
       setTimeout(() => setSavingNotice(null), 3500);
@@ -509,11 +577,27 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
                 </button>
                 <button
                   type="button"
-                  onClick={initInvoice}
+                  onClick={() => {
+                    const baseOrd = activeOrders[0];
+                    if (baseOrd) {
+                      const storageKey =
+                        activeOrders.length === 1
+                          ? `pont_invoice_custom_${baseOrd.id}`
+                          : `pont_global_invoice_${activeOrders.map((o) => o.id).join('_')}`;
+                      try {
+                        localStorage.removeItem(storageKey);
+                      } catch {}
+                    }
+                    hasUserEditedRef.current = false;
+                    initInvoice(true);
+                    setSavingNotice("Données d'origine rétablies.");
+                    setTimeout(() => setSavingNotice(null), 2500);
+                  }}
                   className="invoice-action-btn"
                   title="Rétablir les données d'origine"
                 >
                   <RotateCcw size={14} />
+                  <span>Réinitialiser</span>
                 </button>
               </>
             )}
@@ -631,7 +715,10 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
                   <input
                     type="text"
                     value={invoiceNumber}
-                    onChange={(e) => setInvoiceNumber(e.target.value)}
+                    onChange={(e) => {
+                      hasUserEditedRef.current = true;
+                      setInvoiceNumber(e.target.value);
+                    }}
                     style={{
                       border: '1px dashed #000',
                       fontWeight: 800,
@@ -651,7 +738,10 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
                   <input
                     type="text"
                     value={invoicePhone}
-                    onChange={(e) => setInvoicePhone(e.target.value)}
+                    onChange={(e) => {
+                      hasUserEditedRef.current = true;
+                      setInvoicePhone(e.target.value);
+                    }}
                     style={{
                       border: '1px dashed #000',
                       fontWeight: 800,
@@ -671,7 +761,10 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
                   <input
                     type="text"
                     value={invoiceDate}
-                    onChange={(e) => setInvoiceDate(e.target.value)}
+                    onChange={(e) => {
+                      hasUserEditedRef.current = true;
+                      setInvoiceDate(e.target.value);
+                    }}
                     style={{
                       border: '1px dashed #000',
                       fontWeight: 800,
@@ -709,7 +802,10 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
                       <input
                         type="text"
                         value={businessName}
-                        onChange={(e) => setBusinessName(e.target.value)}
+                        onChange={(e) => {
+                          hasUserEditedRef.current = true;
+                          setBusinessName(e.target.value);
+                        }}
                         style={{
                           border: '1px dashed #000',
                           fontSize: '0.85rem',
@@ -729,7 +825,10 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
                       <input
                         type="text"
                         value={deliveryAddress}
-                        onChange={(e) => setDeliveryAddress(e.target.value)}
+                        onChange={(e) => {
+                          hasUserEditedRef.current = true;
+                          setDeliveryAddress(e.target.value);
+                        }}
                         style={{
                           border: '1px dashed #000',
                           fontSize: '0.85rem',
@@ -748,7 +847,10 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
                       <input
                         type="text"
                         value={customerPhone}
-                        onChange={(e) => setCustomerPhone(e.target.value)}
+                        onChange={(e) => {
+                          hasUserEditedRef.current = true;
+                          setCustomerPhone(e.target.value);
+                        }}
                         style={{
                           border: '1px dashed #000',
                           fontSize: '0.85rem',
@@ -770,7 +872,10 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
                       <input
                         type="text"
                         value={customerIce}
-                        onChange={(e) => setCustomerIce(e.target.value)}
+                        onChange={(e) => {
+                          hasUserEditedRef.current = true;
+                          setCustomerIce(e.target.value);
+                        }}
                         style={{
                           border: '1px dashed #000',
                           fontSize: '0.85rem',
@@ -789,7 +894,10 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
                       <input
                         type="text"
                         value={deliveryCity}
-                        onChange={(e) => setDeliveryCity(e.target.value)}
+                        onChange={(e) => {
+                          hasUserEditedRef.current = true;
+                          setDeliveryCity(e.target.value);
+                        }}
                         style={{
                           border: '1px dashed #000',
                           fontSize: '0.85rem',
@@ -808,7 +916,10 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
                       <input
                         type="text"
                         value={customerCode}
-                        onChange={(e) => setCustomerCode(e.target.value)}
+                        onChange={(e) => {
+                          hasUserEditedRef.current = true;
+                          setCustomerCode(e.target.value);
+                        }}
                         style={{
                           border: '1px dashed #000',
                           fontSize: '0.85rem',
@@ -994,7 +1105,10 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
                           type="number"
                           step="0.01"
                           value={totalTva}
-                          onChange={(e) => setTotalTva(Number(e.target.value))}
+                          onChange={(e) => {
+                            hasUserEditedRef.current = true;
+                            setTotalTva(Number(e.target.value) || 0);
+                          }}
                           style={{ width: '70px', border: '1px dashed #000', textAlign: 'center', fontWeight: 900 }}
                         />
                       ) : (
@@ -1034,7 +1148,10 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
                           min="0"
                           step="0.5"
                           value={remiseLegumes}
-                          onChange={(e) => setRemiseLegumes(Number(e.target.value))}
+                          onChange={(e) => {
+                            hasUserEditedRef.current = true;
+                            setRemiseLegumes(Number(e.target.value) || 0);
+                          }}
                           style={{ width: '65px', border: '1px dashed #000', textAlign: 'right', fontWeight: 800 }}
                         />
                       ) : (
@@ -1053,7 +1170,10 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
                           min="0"
                           step="0.5"
                           value={remiseGratuit}
-                          onChange={(e) => setRemiseGratuit(Number(e.target.value))}
+                          onChange={(e) => {
+                            hasUserEditedRef.current = true;
+                            setRemiseGratuit(Number(e.target.value) || 0);
+                          }}
                           style={{ width: '65px', border: '1px dashed #000', textAlign: 'right', fontWeight: 800 }}
                         />
                       ) : (

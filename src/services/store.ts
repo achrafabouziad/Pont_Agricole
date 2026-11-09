@@ -2505,18 +2505,81 @@ class StoreService {
   public async updateOrder(updatedOrder: Order): Promise<void> {
     if (isSupabaseConfigured && supabase) {
       try {
-        await supabase
+        const adminToken = await this.ensureAdminAuth();
+        const orderPayload = {
+          subtotal: Number(updatedOrder.subtotal) || 0,
+          total: Number(updatedOrder.total) || 0,
+          delivery_address: updatedOrder.deliveryAddress,
+          delivery_city: updatedOrder.deliveryCity,
+          requested_delivery_date: updatedOrder.requestedDeliveryDate,
+          customer_notes: updatedOrder.customerNotes || null,
+          updated_at: new Date().toISOString(),
+        };
+
+        const { error: ordErr } = await supabase
           .from('orders')
-          .update({
-            subtotal: updatedOrder.subtotal,
-            total: updatedOrder.total,
-            delivery_address: updatedOrder.deliveryAddress,
-            delivery_city: updatedOrder.deliveryCity,
-            customer_name: updatedOrder.customerName,
-            customer_phone: updatedOrder.customerPhone,
-            updated_at: new Date().toISOString(),
-          })
+          .update(orderPayload)
           .eq('id', updatedOrder.id);
+
+        if (ordErr && adminToken) {
+          try {
+            await fetch(`https://qovqogxhvugtgvjxxsbc.supabase.co/rest/v1/orders?id=eq.${updatedOrder.id}`, {
+              method: 'PATCH',
+              headers: {
+                'Content-Type': 'application/json',
+                apikey: 'sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
+                Authorization: `Bearer ${adminToken}`,
+              },
+              body: JSON.stringify(orderPayload),
+            });
+          } catch {}
+        }
+
+        // Mettre à jour les articles (order_items) dans Supabase
+        if (updatedOrder.items && updatedOrder.items.length > 0) {
+          const { error: delErr } = await supabase
+            .from('order_items')
+            .delete()
+            .eq('order_id', updatedOrder.id);
+
+          if (delErr && adminToken) {
+            try {
+              await fetch(`https://qovqogxhvugtgvjxxsbc.supabase.co/rest/v1/order_items?order_id=eq.${updatedOrder.id}`, {
+                method: 'DELETE',
+                headers: {
+                  apikey: 'sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
+                  Authorization: `Bearer ${adminToken}`,
+                },
+              });
+            } catch {}
+          }
+
+          const itemsPayload = updatedOrder.items.map((item) => ({
+            id: isUUID(item.id) ? item.id : generateUUID(),
+            order_id: updatedOrder.id,
+            product_id: item.productId || generateUUID(),
+            product_name_snapshot: item.productNameSnapshot,
+            unit_snapshot: item.unitSnapshot || 'kg',
+            unit_price_snapshot: Number(item.unitPriceSnapshot) || 0,
+            quantity: Number(item.quantity) || 1,
+            line_total: Number(item.lineTotal) || 0,
+          }));
+
+          const { error: insErr } = await supabase.from('order_items').insert(itemsPayload);
+          if (insErr && adminToken) {
+            try {
+              await fetch('https://qovqogxhvugtgvjxxsbc.supabase.co/rest/v1/order_items', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  apikey: 'sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
+                  Authorization: `Bearer ${adminToken}`,
+                },
+                body: JSON.stringify(itemsPayload),
+              });
+            } catch {}
+          }
+        }
       } catch (err) {
         console.warn('Error updating order in Supabase', err);
       }
