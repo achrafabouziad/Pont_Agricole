@@ -56,6 +56,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { InvoiceModal } from '../components/InvoiceModal';
+import { CreateAdminOrderModal } from '../components/CreateAdminOrderModal';
 
 const QUICK_PHOTO_PRESETS = [
   { label: 'Tomates', url: 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?auto=format&fit=crop&w=800&q=80' },
@@ -110,6 +111,15 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
   const [selectedInvoiceOrder, setSelectedInvoiceOrder] = useState<Order | null>(null);
   const [selectedInvoiceOrders, setSelectedInvoiceOrders] = useState<Order[] | null>(null);
   const [selectedInvoiceClient, setSelectedInvoiceClient] = useState<Business | null>(null);
+
+  // Manual admin order creation modal
+  const [isCreateOrderModalOpen, setIsCreateOrderModalOpen] = useState<boolean>(false);
+  const [createOrderTargetClient, setCreateOrderTargetClient] = useState<Business | null>(null);
+
+  const handleOrderCreated = async (createdOrder: Order) => {
+    await loadData();
+    handleOpenInvoiceForOrder(createdOrder);
+  };
 
   const handleOpenGlobalInvoiceForClient = (biz: Business) => {
     const clientOrders = orders.filter((o) => {
@@ -1380,11 +1390,31 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
 
             {/* Recent Orders Overview */}
             <div className="card" style={{ backgroundColor: '#ffffff', padding: '1.5rem', marginBottom: '2rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-                <h3 style={{ fontSize: '1.2rem', color: 'var(--primary-900)' }}>Commandes Récentes</h3>
-                <button onClick={() => setActiveTab('orders')} className="btn btn-secondary btn-sm">
-                  Voir toutes les commandes
-                </button>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+                <h3 style={{ fontSize: '1.2rem', color: 'var(--primary-900)', margin: 0 }}>Commandes Récentes</h3>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <button
+                    onClick={() => {
+                      setCreateOrderTargetClient(null);
+                      setIsCreateOrderModalOpen(true);
+                    }}
+                    className="btn btn-primary btn-sm"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.4rem',
+                      fontWeight: 700,
+                      backgroundColor: '#166534',
+                      padding: '0.45rem 0.95rem',
+                    }}
+                  >
+                    <Plus size={15} />
+                    <span>+ Nouvelle commande client</span>
+                  </button>
+                  <button onClick={() => setActiveTab('orders')} className="btn btn-secondary btn-sm">
+                    Voir toutes les commandes
+                  </button>
+                </div>
               </div>
 
               <div className="table-responsive">
@@ -1622,9 +1652,32 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
         {/* TAB 2: ORDERS MANAGEMENT */}
         {activeTab === 'orders' && (
           <div className="card" style={{ backgroundColor: '#ffffff', padding: '1.5rem' }}>
-            <h3 style={{ fontSize: '1.2rem', color: 'var(--primary-900)', marginBottom: '1.25rem' }}>
-              Gestion des Commandes B2B ({orders.length})
-            </h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+              <h3 style={{ fontSize: '1.2rem', color: 'var(--primary-900)', margin: 0 }}>
+                Gestion des Commandes B2B ({orders.length})
+              </h3>
+              <button
+                onClick={() => {
+                  setCreateOrderTargetClient(null);
+                  setIsCreateOrderModalOpen(true);
+                }}
+                className="btn btn-primary"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  padding: '0.55rem 1.15rem',
+                  borderRadius: '10px',
+                  fontWeight: 700,
+                  fontSize: '0.88rem',
+                  backgroundColor: '#166534',
+                  boxShadow: '0 4px 12px rgba(22, 101, 52, 0.25)',
+                }}
+              >
+                <Plus size={18} />
+                <span>+ Nouvelle commande client (avec facture)</span>
+              </button>
+            </div>
 
             {/* Quick Global Invoice Selector by Client */}
             {businesses.length > 0 && orders.length > 0 && (
@@ -2440,6 +2493,25 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
                                   </button>
                                 )}
                                 <button
+                                  onClick={() => {
+                                    setCreateOrderTargetClient(biz);
+                                    setIsCreateOrderModalOpen(true);
+                                  }}
+                                  className="btn btn-primary btn-sm"
+                                  style={{
+                                    backgroundColor: '#166534',
+                                    fontSize: '0.75rem',
+                                    padding: '0.25rem 0.65rem',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '0.3rem',
+                                    fontWeight: 700,
+                                  }}
+                                  title={`Créer une commande pour ${biz.businessName}`}
+                                >
+                                  <Plus size={13} /> + Commande
+                                </button>
+                                <button
                                   onClick={() => handleOpenGlobalInvoiceForClient(biz)}
                                   className="btn btn-secondary btn-sm"
                                   style={{
@@ -2733,6 +2805,25 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
                               Suspendre
                             </button>
                           )}
+                          <button
+                            onClick={() => {
+                              setCreateOrderTargetClient(biz);
+                              setIsCreateOrderModalOpen(true);
+                            }}
+                            className="btn btn-primary btn-sm"
+                            style={{
+                              backgroundColor: '#166534',
+                              fontSize: '0.75rem',
+                              padding: '0.3rem 0.65rem',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.25rem',
+                              fontWeight: 700,
+                            }}
+                            title={`Créer une commande pour ${biz.businessName}`}
+                          >
+                            <Plus size={12} /> + Commande
+                          </button>
                           <button
                             onClick={() => handleOpenGlobalInvoiceForClient(biz)}
                             className="btn btn-secondary btn-sm"
@@ -3936,6 +4027,21 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
             setSelectedInvoiceClient(null);
           }}
           settings={settings}
+        />
+      )}
+
+      {/* Create Manual Admin Order Modal */}
+      {isCreateOrderModalOpen && (
+        <CreateAdminOrderModal
+          isOpen={isCreateOrderModalOpen}
+          onClose={() => {
+            setIsCreateOrderModalOpen(false);
+            setCreateOrderTargetClient(null);
+          }}
+          businesses={businesses}
+          products={products}
+          initialClient={createOrderTargetClient}
+          onOrderCreated={handleOrderCreated}
         />
       )}
     </div>

@@ -11,6 +11,8 @@ import {
   OrderStatus,
   ApprovalStatus,
   BusinessType,
+  CreateManualOrderParams,
+  CreateManualOrderItem,
 } from '../types';
 import {
   INITIAL_CATEGORIES,
@@ -2276,6 +2278,191 @@ class StoreService {
     this.clearCart();
     this.notify();
 
+    return { success: true, order: newOrder };
+  }
+
+  /**
+   * Création manuelle d'une commande par l'administrateur au nom d'un client
+   * (Pour commandes téléphoniques, directes, ou lorsque le client n'est pas disponible).
+   * Enregistre la commande dans Supabase et renvoie l'objet Order pour affichage immédiat de la Facture / BL.
+   */
+  public async createManualOrder(
+    params: CreateManualOrderParams
+  ): Promise<{ success: boolean; order?: Order; error?: string }> {
+    if (!params.items || params.items.length === 0) {
+      return { success: false, error: 'Veuillez ajouter au moins un produit à la commande.' };
+    }
+    if (!params.customerName && !params.businessName) {
+      return { success: false, error: "Veuillez renseigner le nom du client ou de l'établissement." };
+    }
+
+    const newOrderId = generateUUID();
+    const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const rand = Math.floor(1000 + Math.random() * 9000);
+    const orderNumber = `PA-${dateStr}-${rand}`;
+
+    const orderItems: OrderItem[] = params.items.map((it) => {
+      const q = Math.max(0.1, Number(it.quantity) || 1);
+      const p = Math.max(0, Number(it.unitPrice) || 0);
+      const lineTotal = Number((q * p).toFixed(2));
+      return {
+        id: generateUUID(),
+        orderId: newOrderId,
+        productId: it.productId,
+        productNameSnapshot: it.productName,
+        unitSnapshot: it.unit || 'kg',
+        unitPriceSnapshot: p,
+        quantity: q,
+        lineTotal,
+      };
+    });
+
+    const subtotal = Number(orderItems.reduce((acc, it) => acc + it.lineTotal, 0).toFixed(2));
+    const deliveryFee = Number(params.deliveryFee) || 0;
+    const total = Number((subtotal + deliveryFee).toFixed(2));
+
+    // Déterminer le customer_id pour Supabase (clé étrangère profiles.id)
+    let targetCustomerId = 'cfb7edbf-9c6b-4181-afae-2da48ad8a90d';
+    if (params.businessId) {
+      try {
+        const bizList = await this.getBusinesses();
+        const targetBiz = bizList.find((b) => b.id === params.businessId);
+        if (targetBiz?.ownerId && isUUID(targetBiz.ownerId)) {
+          targetCustomerId = targetBiz.ownerId;
+        }
+      } catch {}
+    }
+
+    const orderStatus: OrderStatus = params.status || 'confirmed';
+    const deliveryCity = (params.deliveryCity || 'Casablanca').trim();
+    const deliveryAddress = (params.deliveryAddress || 'Adresse à confirmer par téléphone').trim();
+    const reqDate = params.requestedDeliveryDate || new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+
+    const newOrder: Order = {
+      id: newOrderId,
+      orderNumber,
+      customerId: targetCustomerId,
+      customerName: params.customerName || params.businessName || 'Client Pro',
+      customerPhone: params.customerPhone || '',
+      customerUsername: params.customerUsername || '',
+      customerIce: params.customerIce || '',
+      businessId: params.businessId || undefined,
+      businessName: params.businessName || params.customerName || 'Client Pro',
+      status: orderStatus,
+      deliveryAddress,
+      deliveryCity,
+      requestedDeliveryDate: reqDate,
+      subtotal,
+      deliveryFee,
+      total,
+      customerNotes: params.customerNotes || undefined,
+      items: orderItems,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    // 1. Sauvegarde dans Supabase
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const adminToken = await this.ensureAdminAuth();
+        const orderPayload = {
+          id: newOrderId,
+          order_number: newOrder.orderNumber,
+          customer_id: targetCustomerId,
+          business_id: params.businessId || null,
+          status: orderStatus,
+          delivery_address: deliveryAddress,
+          delivery_city: deliveryCity,
+          requested_delivery_date: reqDate,
+          subtotal,
+          delivery_fee: deliveryFee,
+          total,
+          customer_notes: params.customerNotes || null,
+        };
+
+        const { data: dbOrder, error: oErr } = await supabase
+          .from('orders')
+          .insert(orderPayload)
+          .select()
+          .single();
+
+        let savedOrderId = dbOrder?.id || newOrderId;
+
+        if (oErr && adminToken) {
+          try {
+            const restRes = await fetch('https://qovqogxhvugtgvjxxsbc.supabase.co/rest/v1/orders', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                apikey: 'sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
+                Authorization: `Bearer ${adminToken}`,
+                Prefer: 'return=representation',
+              },
+              body: JSON.stringify(orderPayload),
+            });
+            if (restRes.ok) {
+              const restData = await restRes.json();
+              if (Array.isArray(restData) && restData[0]?.id) {
+                savedOrderId = restData[0].id;
+              }
+            }
+          } catch {}
+        }
+
+        const itemsPayload = orderItems.map((item) => ({
+          id: item.id || generateUUID(),
+          order_id: savedOrderId,
+          product_id: item.productId,
+          product_name_snapshot: item.productNameSnapshot,
+          unit_snapshot: item.unitSnapshot,
+          unit_price_snapshot: item.unitPriceSnapshot,
+          quantity: item.quantity,
+          line_total: item.lineTotal,
+        }));
+
+        const { error: itemsErr } = await supabase.from('order_items').insert(itemsPayload);
+        if (itemsErr && adminToken) {
+          await fetch('https://qovqogxhvugtgvjxxsbc.supabase.co/rest/v1/order_items', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              apikey: 'sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
+              Authorization: `Bearer ${adminToken}`,
+            },
+            body: JSON.stringify(itemsPayload),
+          });
+        }
+      } catch (err) {
+        console.error('Erreur enregistrement commande manuelle Supabase:', err);
+      }
+    }
+
+    // Synchronisation remote dev si présent
+    await this.syncOrderToRemote(newOrder);
+
+    // Mettre à jour le cache local des commandes
+    const orders = getStored<Order[]>(KEY_ORDERS, []);
+    const existingIdx = orders.findIndex((o) => o.id === newOrder.id);
+    if (existingIdx >= 0) {
+      orders[existingIdx] = newOrder;
+    } else {
+      orders.unshift(newOrder);
+    }
+    setStored(KEY_ORDERS, orders);
+
+    // Diffuser en temps réel via broadcastChannel
+    if (this.broadcastChannel) {
+      try {
+        this.broadcastChannel.postMessage({
+          type: 'STORE_UPDATED',
+          action: 'NEW_ORDER',
+          order: newOrder,
+          timestamp: Date.now(),
+        });
+      } catch {}
+    }
+
+    this.notify();
     return { success: true, order: newOrder };
   }
 

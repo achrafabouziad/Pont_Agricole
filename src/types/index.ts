@@ -142,3 +142,27 @@ export interface CompanySettings {
   rib?: string;
 }
 
+export interface CreateManualOrderItem {
+  productId: string;
+  productName: string;
+  unit: string;
+  unitPrice: number;
+  quantity: number;
+}
+
+export interface CreateManualOrderParams {
+  businessId?: string;
+  businessName?: string;
+  customerName: string;
+  customerPhone: string;
+  customerUsername?: string;
+  customerIce?: string;
+  deliveryAddress: string;
+  deliveryCity: string;
+  requestedDeliveryDate: string;
+  status?: OrderStatus;
+  customerNotes?: string;
+  deliveryFee?: number;
+  items: CreateManualOrderItem[];
+}
+
