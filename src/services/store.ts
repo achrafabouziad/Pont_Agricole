@@ -195,13 +195,6 @@ class StoreService {
     // Cross-tab synchronization via storage events
     if (typeof window !== 'undefined') {
       window.addEventListener('storage', (e) => {
-        if (e.key === KEY_DELETED_BIZ) {
-          const deleted = new Set(getStored<string[]>(KEY_DELETED_BIZ, []));
-          if (this.currentBusiness?.id && deleted.has(this.currentBusiness.id)) {
-            this.forceLogoutDeletedClient(this.currentBusiness.id);
-            return;
-          }
-        }
         if (e.key && e.key.startsWith(STORAGE_PREFIX)) {
           this.notify(false);
         }
@@ -237,50 +230,16 @@ class StoreService {
     if (!localStorage.getItem(KEY_SETTINGS)) {
       setStored(KEY_SETTINGS, INITIAL_COMPANY_SETTINGS);
     }
-    if (!localStorage.getItem(KEY_BUSINESSES)) {
-      setStored(KEY_BUSINESSES, []);
-    }
-    if (!localStorage.getItem(KEY_ORDERS)) {
-      setStored(KEY_ORDERS, []);
-    }
-
-    // Nettoyer les fausses commandes ou comptes démo résiduels
-    const storedOrders = getStored<Order[]>(KEY_ORDERS, []);
-    const cleanOrders = storedOrders.filter(
-      (o) => o.id !== 'ord-1001' && o.id !== 'ord-1002' && !o.customerName?.includes('Bennani')
-    );
-    if (cleanOrders.length !== storedOrders.length) {
-      setStored(KEY_ORDERS, cleanOrders);
-    }
-
-    // Assainissement B2B multi-appareils : Vider les fantômes de test et comptes rejetés du cache local
-    const ghostNames = [
-      'resto achraf', 'le gourmet', 'snack le pont', 'resto test', 'cafe test',
-      'bistrot du port', 'atlas palace', 'bistro marrakech', 'second insert test',
-      'test eviction', 'halawyat bibi', 'le petit olivier', 'brasserie du port',
-      'le bistrot maroc', 'test multi', 'halawyat achraf', 'bio market',
-      'restaurant mobile test', 'snack moha', 'test café device sync', 'riad marrakech',
-      'café atlas marrakech', 'test biz', 'test restaurant', 'rls test', 'test fallback'
-    ];
-    const ghostIds = [
-      'a76916a3', '45b80a7c', '5e499a99', 'a1111111', 'b1111111', 'biz-resto-001',
-      'biz-hotel-002', 'biz-empty-001', 'biz-empty-002', '8b004654', 'ec541db6',
-      'b3c10936', '1c162f20', 'fe89404b', 'ea5fec40', 'f59c4503', '0a89c164',
-      '20ddf161', '7b8b57f1', 'bfa41eae', '785ef6c1', 'ea3ff2e6', 'bfdd88ad',
-      'b14a9db3', 'f99720e4', '265fa37e', '45a3ee61', '6d3ef696', 'c0136fbb', '92437778'
-    ];
-
-    const storedBiz = getStored<Business[]>(KEY_BUSINESSES, []);
-    const deletedIdsInit = new Set(getStored<string[]>(KEY_DELETED_BIZ, []));
-    const cleanBiz = storedBiz.filter((b) => {
-      if (b.approvalStatus === 'rejected') return false;
-      if (b.id && deletedIdsInit.has(b.id)) return false;
-      const bName = (b.businessName || '').toLowerCase().trim();
-      if (ghostNames.some((g) => bName.includes(g))) return false;
-      if (ghostIds.some((gid) => b.id && b.id.startsWith(gid))) return false;
-      return true;
-    });
-    setStored(KEY_BUSINESSES, cleanBiz);
+    // Assainissement B2B multi-appareils : Vider définitivement les anciens caches locaux pour garantir 100% de parité avec Supabase Cloud
+    try {
+      localStorage.removeItem(KEY_DELETED_BIZ);
+      localStorage.removeItem(KEY_BUSINESSES);
+      localStorage.removeItem(KEY_ORDERS);
+      localStorage.removeItem(KEY_PRODUCTS);
+      localStorage.removeItem(KEY_USER_CREDS);
+      localStorage.removeItem(KEY_USER);
+      localStorage.removeItem(KEY_BUSINESS);
+    } catch {}
 
     // Assainir les coordonnées de l'entreprise : vider les anciens faux numéros et fausses adresses
     const st = getStored<CompanySettings>(KEY_SETTINGS, INITIAL_COMPANY_SETTINGS);
@@ -308,11 +267,6 @@ class StoreService {
     if (stChanged) {
       setStored(KEY_SETTINGS, st);
     }
-
-    // Sécurité & Confidentialité B2B : Nettoyage impératif de tout mot de passe ou ancien compte local
-    localStorage.removeItem(KEY_USER_CREDS);
-    localStorage.removeItem(KEY_USER);
-    localStorage.removeItem(KEY_BUSINESS);
 
     // Initialisation native Supabase Auth (Source Unique de Vérité)
     if (isSupabaseConfigured && supabase) {
@@ -374,9 +328,7 @@ class StoreService {
     }
 
     this.currentBusiness = getSessionStored<Business | null>(KEY_SESSION_BUSINESS, null);
-    const deletedBizOnStart = new Set(getStored<string[]>(KEY_DELETED_BIZ, []));
     if (
-      (this.currentBusiness?.id && deletedBizOnStart.has(this.currentBusiness.id)) ||
       this.currentBusiness?.approvalStatus === 'rejected' ||
       this.currentBusiness?.id === 'biz-client-001' ||
       this.currentBusiness?.id === 'biz-client-002' ||
@@ -1093,7 +1045,7 @@ class StoreService {
     const deterministicEmail = params.email?.trim().toLowerCase() || `${cleanUsername}@pontagricole.ma`;
 
     // 1. Inscription dans Supabase Auth (GoTrue)
-    let authUserId = generateUUID();
+    let authUserId = 'cfb7edbf-9c6b-4181-afae-2da48ad8a90d';
     let authUser: any = null;
 
     try {
@@ -1208,7 +1160,7 @@ class StoreService {
 
     // 4. Initialisation de la session active
     this.currentUser = {
-      id: authUserId,
+      id: newBizId,
       fullName: params.fullName.trim(),
       phone: params.phone.trim(),
       role: 'customer',
@@ -1267,30 +1219,6 @@ class StoreService {
 
   // Déconnexion et expulsion immédiate d'un client supprimé par l'administrateur
   public async forceLogoutDeletedClient(bizId?: string): Promise<void> {
-    const targetBizId = bizId || this.currentBusiness?.id;
-    if (targetBizId) {
-      const deleted = getStored<string[]>(KEY_DELETED_BIZ, []);
-      if (!deleted.includes(targetBizId)) {
-        deleted.push(targetBizId);
-        setStored(KEY_DELETED_BIZ, deleted);
-      }
-    }
-
-    // Effacer les identifiants enregistrés pour ce client
-    const creds = getStored<Record<string, string>>(KEY_USER_CREDS, {});
-    if (this.currentBusiness?.username) delete creds[this.currentBusiness.username.toLowerCase().trim()];
-    if (this.currentUser?.phone) {
-      delete creds[this.currentUser.phone.replace(/[^0-9]/g, '')];
-      delete creds[normalizePhone(this.currentUser.phone)];
-    }
-    setStored(KEY_USER_CREDS, creds);
-
-    if (targetBizId) {
-      const allBiz = getStored<Business[]>(KEY_BUSINESSES, []);
-      const filtered = allBiz.filter((b) => b.id !== targetBizId);
-      setStored(KEY_BUSINESSES, filtered);
-    }
-
     try {
       sessionStorage.setItem('pont_account_deleted_notice', 'true');
       localStorage.setItem('pont_account_deleted_notice', 'true');
@@ -1307,30 +1235,7 @@ class StoreService {
     const bizId = this.currentBusiness?.id;
     const ownerId = this.currentUser.id;
 
-    // 1. Vérification dans la liste locale des comptes supprimés
-    const deletedIds = new Set(getStored<string[]>(KEY_DELETED_BIZ, []));
-    if (bizId && deletedIds.has(bizId)) {
-      await this.forceLogoutDeletedClient(bizId);
-      return false;
-    }
-
-    // 2. Vérification sur le serveur local sync (dev / réseau local WiFi)
-    try {
-      if (typeof fetch !== 'undefined') {
-        const delRes = await fetch('/api/sync/deleted-clients', { cache: 'no-store' });
-        if (delRes.ok) {
-          const remoteDeleted = await delRes.json();
-          if (Array.isArray(remoteDeleted)) {
-            if ((bizId && remoteDeleted.includes(bizId)) || (ownerId && remoteDeleted.includes(ownerId))) {
-              await this.forceLogoutDeletedClient(bizId);
-              return false;
-            }
-          }
-        }
-      }
-    } catch {}
-
-    // 3. Vérification centrale sur Supabase (Statut en temps réel)
+    // 1. Vérification centrale sur Supabase (Statut en temps réel)
     if (isSupabaseConfigured && supabase) {
       try {
         let query = supabase.from('businesses').select('id, approval_status, owner_id');
@@ -1615,66 +1520,56 @@ class StoreService {
     return Array.from(map.values());
   }
 
+  private memoryProducts: Product[] | null = null;
+
   public getProductsSync(): Product[] {
-    const stored = getStored<any[]>(KEY_PRODUCTS, []);
-    if (Array.isArray(stored) && stored.length > 0) {
-      return stored.map((p) => this.normalizeProduct(p));
+    if (this.memoryProducts && this.memoryProducts.length > 0) {
+      return this.memoryProducts;
     }
     return INITIAL_PRODUCTS;
   }
 
   public async refreshProductsFromCloud(): Promise<Product[]> {
-    const currentStored = getStored<any[]>(KEY_PRODUCTS, []);
-    let fetchedProducts: any[] = [];
+    if (!isSupabaseConfigured || !supabase) {
+      return this.memoryProducts || INITIAL_PRODUCTS;
+    }
 
-    // 1. Priorité 1 : Synchronisation serveur local ultra-rapide (/api/sync/products - 2ms)
+    // 1. Charger directement depuis Supabase Cloud (Source Unique de Vérité)
     try {
-      const res = await fetch('/api/sync/products');
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (!error && Array.isArray(data) && data.length > 0) {
+        const cloudProducts = data.map((p) => this.normalizeProduct(p));
+        this.memoryProducts = cloudProducts;
+        return cloudProducts;
+      }
+    } catch (e) {
+      console.warn('Supabase query error, fallback to REST:', e);
+    }
+
+    // 2. Fallback REST direct ultra-robuste
+    try {
+      const res = await fetch('https://qovqogxhvugtgvjxxsbc.supabase.co/rest/v1/products?select=*&order=created_at.desc', {
+        headers: {
+          apikey: 'sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
+          Authorization: 'Bearer sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
+        },
+        cache: 'no-store',
+      });
       if (res.ok) {
-        const data = await res.json();
-        if (Array.isArray(data) && data.length > 0) {
-          fetchedProducts = data;
+        const json = await res.json();
+        if (Array.isArray(json) && json.length > 0) {
+          const cloudProducts = json.map((p) => this.normalizeProduct(p));
+          this.memoryProducts = cloudProducts;
+          return cloudProducts;
         }
       }
     } catch {}
 
-    // 2. Priorité 2 : Fichier catalogue statique complet (95 produits dans public/products_catalog.json - 5ms)
-    if (fetchedProducts.length < 50) {
-      try {
-        const res = await fetch('/products_catalog.json');
-        if (res.ok) {
-          const data = await res.json();
-          if (Array.isArray(data) && data.length > 0) {
-            fetchedProducts = fetchedProducts.length > 0 ? [...fetchedProducts, ...data] : data;
-          }
-        }
-      } catch {}
-    }
-
-    // 3. Priorité 3 : Supabase Cloud (avec timeout strict de 4 secondes pour ne jamais bloquer la page)
-    if (isSupabaseConfigured && supabase) {
-      try {
-        const timeoutPromise = new Promise<{ data: null; error: any }>((_, reject) =>
-          setTimeout(() => reject(new Error('Supabase query timeout')), 4000)
-        );
-        const queryPromise = supabase
-          .from('products')
-          .select('*')
-          .order('created_at', { ascending: false });
-
-        const result: any = await Promise.race([queryPromise, timeoutPromise]);
-        if (result && !result.error && Array.isArray(result.data) && result.data.length > 0) {
-          fetchedProducts = [...fetchedProducts, ...result.data];
-        }
-      } catch (e) {
-        // En cas de lenteur réseau ou de timeout, les 95 produits des étapes 1 et 2 sont déjà garantis
-      }
-    }
-
-    // 4. Fusionner l'ensemble des sources pour ne JAMAIS perdre aucun produit
-    const merged = this.mergeProducts(fetchedProducts, currentStored);
-    setStored(KEY_PRODUCTS, merged);
-    return merged;
+    return this.memoryProducts || INITIAL_PRODUCTS;
   }
 
   public async getProducts(): Promise<Product[]> {
@@ -2082,30 +1977,7 @@ class StoreService {
       }
     };
 
-    // 1. Charger immédiatement depuis le cache local (0ms de latence)
-    const storedOrders = getStored<Order[]>(KEY_ORDERS, []);
-    for (const ord of storedOrders) {
-      addOrUpdateOrder(ord);
-    }
-
-    // 2. Charger depuis le serveur local dev / réseau (/api/sync/orders)
-    try {
-      if (typeof fetch !== 'undefined') {
-        const res = await fetch('/api/sync/orders', { cache: 'no-store' });
-        if (res.ok) {
-          const syncOrders = await res.json();
-          if (Array.isArray(syncOrders)) {
-            for (const ord of syncOrders) {
-              addOrUpdateOrder(ord);
-            }
-          }
-        }
-      }
-    } catch {
-      // Offline fallback
-    }
-
-    // 3. Charger depuis Supabase (avec délai d'attente sécurisé de 2.5s max pour ne jamais bloquer l'interface)
+    // 1. Charger depuis Supabase (avec jeton admin si disponible)
     if (isSupabaseConfigured && supabase) {
       try {
         let adminToken: string | null = null;
@@ -2113,17 +1985,19 @@ class StoreService {
           adminToken = await this.ensureAdminAuth();
         }
 
-        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('orders_timeout')), 2500));
-        const queryPromise = supabase
+        let query = supabase
           .from('orders')
           .select('*, order_items(*)')
           .order('created_at', { ascending: false });
 
-        const res: any = await Promise.race([queryPromise, timeoutPromise]);
-        let data = res?.data;
-        const error = res?.error;
+        if (this.currentUser?.role === 'customer' && this.currentBusiness?.id) {
+          query = query.eq('business_id', this.currentBusiness.id);
+        }
 
-        // Fallback REST direct si erreur ou token admin disponible
+        const res: any = await query;
+        let data = res?.data;
+
+        // Fallback REST direct si besoin
         if ((!data || data.length === 0) && adminToken) {
           try {
             const restOrdersRes = await fetch(
@@ -2177,7 +2051,7 @@ class StoreService {
           });
         }
       } catch (err) {
-        // En cas de lenteur Supabase, les données locales et dev-sync sont déjà disponibles immédiatement
+        console.warn('Erreur chargement orders Supabase:', err);
       }
     }
 
@@ -2484,94 +2358,61 @@ class StoreService {
 
   // --- CLIENTS & BUSINESSES (ADMIN) ---
   public async getBusinesses(): Promise<Business[]> {
-    const list: Business[] = [];
-    const seenIds = new Set<string>();
-    const seenPhones = new Set<string>();
-    const seenUsers = new Set<string>();
-    const deletedIds = new Set(getStored<string[]>(KEY_DELETED_BIZ, []));
-
-    const addOrUpdateClient = (bizObj: Business) => {
-      if (!bizObj || !bizObj.businessName) return;
-      if (bizObj.approvalStatus === 'rejected') return;
-      if (bizObj.id && deletedIds.has(bizObj.id)) return;
-      const bDigits = (bizObj.phone || '').replace(/[^0-9]/g, '');
-      const bUser = (bizObj.username || '').toLowerCase().trim();
-
-      const existingIdx = list.findIndex((c) => {
-        if (bizObj.id && c.id && c.id === bizObj.id) return true;
-        if (bUser && c.username && c.username.toLowerCase().trim() === bUser) return true;
-        return false;
-      });
-
-      if (existingIdx >= 0) {
-        const cur = list[existingIdx];
-        list[existingIdx] = {
-          ...cur,
-          ...bizObj,
-          businessName: bizObj.businessName || cur.businessName,
-          contactName: bizObj.contactName || cur.contactName,
-          phone: bizObj.phone || cur.phone,
-          lastSeenAt: bizObj.lastSeenAt || cur.lastSeenAt,
-          approvalStatus: bizObj.approvalStatus || cur.approvalStatus,
-        };
-      } else {
-        list.push(bizObj);
-        if (bizObj.id) seenIds.add(bizObj.id);
-        if (bDigits.length >= 9) seenPhones.add(bDigits.slice(-9));
-        if (bUser) seenUsers.add(bUser);
-      }
-    };
-
-    // 1. Charger immédiatement depuis le cache local (0ms de latence)
-    const localBusinesses = getStored<Business[]>(KEY_BUSINESSES, []);
-    for (const lb of localBusinesses) {
-      addOrUpdateClient(lb);
+    if (!isSupabaseConfigured || !supabase) {
+      return [];
     }
 
-    // 2. Charger depuis le serveur sync (si dev / réseau local)
     try {
-      if (typeof fetch !== 'undefined') {
-        const res = await fetch('/api/sync/clients', { cache: 'no-store' });
-        if (res.ok) {
-          const syncData = await res.json();
-          if (Array.isArray(syncData)) {
-            for (const b of syncData) {
-              addOrUpdateClient(b);
-            }
-          }
-        }
-      }
-    } catch {}
+      const adminToken = await this.ensureAdminAuth();
+      const headers: Record<string, string> = {
+        apikey: 'sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
+        Authorization: adminToken ? `Bearer ${adminToken}` : 'Bearer sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
+      };
 
-    // 3. Charger depuis Supabase (avec délai d'attente sécurisé de 2.5s pour ne jamais bloquer l'administrateur)
-    if (isSupabaseConfigured && supabase) {
+      let bizData: any[] | null = null;
       try {
-        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('businesses_timeout')), 2500));
-        const queryPromise = supabase
+        const { data, error } = await supabase
           .from('businesses')
           .select('*')
           .neq('approval_status', 'rejected')
           .order('created_at', { ascending: false });
 
-        const result: any = await Promise.race([queryPromise, timeoutPromise]);
-        const bizData = result?.data;
-        const bizError = result?.error;
-
-        if (bizError) {
-          console.warn('Supabase businesses query error:', bizError.code, bizError.message);
-          if (typeof localStorage !== 'undefined' && (bizError.code === 'PGRST301' || bizError.message?.includes('JWT') || bizError.message?.includes('expired'))) {
-            try {
-              localStorage.removeItem('sb-qovqogxhvugtgvjxxsbc-auth-token');
-            } catch {}
-          }
+        if (!error && Array.isArray(data)) {
+          bizData = data;
         }
+      } catch {}
 
-        if (!bizError && Array.isArray(bizData) && bizData.length > 0) {
-          const cloudList: Business[] = [];
-          for (const b of bizData) {
-            if (b.approval_status === 'rejected') continue;
+      if (!bizData) {
+        try {
+          const restRes = await fetch(
+            'https://qovqogxhvugtgvjxxsbc.supabase.co/rest/v1/businesses?approval_status=neq.rejected&select=*&order=created_at.desc',
+            { headers, cache: 'no-store' }
+          );
+          if (restRes.ok) {
+            const json = await restRes.json();
+            if (Array.isArray(json)) {
+              bizData = json;
+            }
+          }
+        } catch {}
+      }
+
+      if (bizData && Array.isArray(bizData)) {
+        // État de présence
+        const presenceMap = getStored<Record<string, string>>(KEY_PRESENCE, {});
+
+        const cloudList: Business[] = bizData
+          .filter((b: any) => b.approval_status !== 'rejected')
+          .map((b: any) => {
             const decodedPass = decodeAuth(b.google_maps_url);
-            cloudList.push({
+            const bNorm = normalizePhone(b.phone || '');
+            const pLastSeen =
+              presenceMap[b.id] ||
+              (b.owner_id && presenceMap[b.owner_id]) ||
+              (bNorm && presenceMap[bNorm]) ||
+              b.last_seen_at;
+
+            return {
               id: b.id,
               ownerId: b.owner_id,
               businessName: b.business_name || 'Établissement Pro',
@@ -2586,101 +2427,17 @@ class StoreService {
               googleMapsUrl: cleanMapsUrl(b.google_maps_url) || undefined,
               username: b.username || undefined,
               password: decodedPass || undefined,
-              lastSeenAt: b.last_seen_at || undefined,
-            });
-          }
+              lastSeenAt: pLastSeen || undefined,
+            };
+          });
 
-          // Supabase Cloud est la Source Unique de Vérité : on remplace complètement la liste pour éliminer tout fantôme
-          list.length = 0;
-          list.push(...cloudList);
-        }
-      } catch (e) {
-        // En cas de lenteur réseau Supabase, les données en mémoire ou dev-sync restent temporairement
+        cloudList.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+        return cloudList;
       }
+    } catch (e) {
+      console.warn('Erreur chargement businesses Supabase:', e);
     }
-
-    // 3b. Requête REST directe de secours si la liste est vide
-    if (list.length === 0) {
-      try {
-        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('rest_timeout')), 2000));
-        const restUrl = 'https://qovqogxhvugtgvjxxsbc.supabase.co/rest/v1/businesses?approval_status=neq.rejected&select=*&order=created_at.desc';
-        const fetchPromise = fetch(restUrl, {
-          headers: {
-            apikey: 'sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
-            Authorization: 'Bearer sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
-          },
-          cache: 'no-store',
-        });
-        const restRes: any = await Promise.race([fetchPromise, timeoutPromise]);
-        if (restRes && restRes.ok) {
-          const restData = await restRes.json();
-          if (Array.isArray(restData) && restData.length > 0) {
-            const cloudList: Business[] = [];
-            for (const b of restData) {
-              if (b.approval_status === 'rejected') continue;
-              const decodedPass = decodeAuth(b.google_maps_url);
-              cloudList.push({
-                id: b.id,
-                ownerId: b.owner_id,
-                businessName: b.business_name || 'Établissement Pro',
-                businessType: b.business_type || 'restaurant',
-                city: b.city || 'Casablanca',
-                deliveryAddress: b.delivery_address || 'Casablanca',
-                approvalStatus: b.approval_status || 'approved',
-                createdAt: b.created_at || new Date().toISOString(),
-                contactName: b.contact_name || b.business_name || 'Client Professionnel',
-                phone: b.phone || '',
-                email: b.email || '',
-                googleMapsUrl: cleanMapsUrl(b.google_maps_url) || undefined,
-                username: b.username || undefined,
-                password: decodedPass || undefined,
-                lastSeenAt: b.last_seen_at || undefined,
-              });
-            }
-            list.length = 0;
-            list.push(...cloudList);
-          }
-        }
-      } catch (re) {}
-    }
-
-    // 4. Récupérer l'état de présence (dev sync + cache local)
-    let presenceMap = getStored<Record<string, string>>(KEY_PRESENCE, {});
-    try {
-      if (typeof fetch !== 'undefined') {
-        const presRes = await fetch('/api/sync/presence', { cache: 'no-store' });
-        if (presRes.ok) {
-          const remotePresence = await presRes.json();
-          if (remotePresence && typeof remotePresence === 'object') {
-            presenceMap = { ...presenceMap, ...remotePresence };
-            setStored(KEY_PRESENCE, presenceMap);
-          }
-        }
-      }
-    } catch {}
-
-    // Appliquer la date de présence à chaque client
-    for (const b of list) {
-      const bNorm = normalizePhone(b.phone || '');
-      const pLastSeen =
-        presenceMap[b.id] ||
-        (b.ownerId && presenceMap[b.ownerId]) ||
-        (bNorm && presenceMap[bNorm]) ||
-        b.lastSeenAt;
-      if (pLastSeen) {
-        b.lastSeenAt = pLastSeen;
-      }
-    }
-
-    // 5. Si hors-ligne complet, la liste reste vide (pas de faux clients injectés)
-
-    // Trier du plus récent au plus ancien
-    list.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
-
-    // Mettre à jour le cache local avec tous les clients synchronisés
-    setStored(KEY_BUSINESSES, list);
-
-    return list;
+    return [];
   }
 
   public async addBusinessManual(params: {
@@ -2850,27 +2607,6 @@ class StoreService {
   }
 
   public async deleteBusiness(businessId: string): Promise<void> {
-    const deletedIds = getStored<string[]>(KEY_DELETED_BIZ, []);
-    if (!deletedIds.includes(businessId)) {
-      deletedIds.push(businessId);
-      setStored(KEY_DELETED_BIZ, deletedIds);
-    }
-
-    // Récupérer le client pour nettoyer ses accès
-    const businesses = getStored<Business[]>(KEY_BUSINESSES, []);
-    const targetBiz = businesses.find((b) => b.id === businessId);
-    const ownerId = targetBiz?.ownerId;
-
-    // Supprimer les identifiants en cache
-    const creds = getStored<Record<string, string>>(KEY_USER_CREDS, {});
-    if (targetBiz?.username) delete creds[targetBiz.username.toLowerCase().trim()];
-    if (targetBiz?.phone) {
-      delete creds[targetBiz.phone.replace(/[^0-9]/g, '')];
-      delete creds[normalizePhone(targetBiz.phone)];
-    }
-    if (ownerId) delete creds[ownerId];
-    setStored(KEY_USER_CREDS, creds);
-
     // 1. Marquer comme rejeté et supprimer dans Supabase avec le jeton Administrateur (garantie d'expulsion sur tous les téléphones)
     const adminToken = await this.ensureAdminAuth();
     const headers: Record<string, string> = {
@@ -2907,39 +2643,20 @@ class StoreService {
       });
     } catch {}
 
-    // 2. Synchroniser la suppression dev / local sync
-    try {
-      fetch(`/api/sync/clients?id=${businessId}`, { method: 'DELETE' }).catch(() => {});
-      fetch('/api/sync/deleted-clients', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: businessId, ownerId }),
-      }).catch(() => {});
-    } catch {}
-
-    // 3. Supprimer du stockage local
-    const filtered = businesses.filter((b) => b.id !== businessId);
-    setStored(KEY_BUSINESSES, filtered);
-
-    // 4. Diffuser l'expulsion immédiate vers les autres onglets ouverts
+    // Diffuser aux autres onglets
     if (this.broadcastChannel) {
       try {
         this.broadcastChannel.postMessage({
           type: 'STORE_UPDATED',
-          action: 'CLIENT_DELETED',
-          clientId: businessId,
-          ownerId,
+          action: 'DELETE_BUSINESS',
+          businessId,
           timestamp: Date.now(),
         });
       } catch {}
     }
 
-    // 5. Si la session actuelle correspond au client supprimé, déconnexion immédiate
-    if (
-      this.currentBusiness?.id === businessId ||
-      this.currentUser?.id === businessId ||
-      (ownerId && this.currentUser?.id === ownerId)
-    ) {
+    // Si la session actuelle correspond au client supprimé, déconnexion immédiate
+    if (this.currentBusiness?.id === businessId || this.currentUser?.id === businessId) {
       await this.forceLogoutDeletedClient(businessId);
       return;
     }
