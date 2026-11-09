@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { SignIn, SignUp } from '@clerk/clerk-react';
 import { store } from '../services/store';
 import { BusinessType } from '../types';
-import { UserCheck, AlertTriangle, ExternalLink, ArrowRight, KeyRound, MessageCircle, PhoneCall, X } from 'lucide-react';
+import { UserCheck, AlertTriangle, ExternalLink, ArrowRight, KeyRound, MessageCircle, PhoneCall, X, Eye, EyeOff } from 'lucide-react';
 
 interface AuthPageProps {
   onSuccess: () => void;
@@ -51,6 +51,7 @@ const WORLD_COUNTRY_CODES = [
 export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 'register' }) => {
   const [isLoginMode, setIsLoginMode] = useState<boolean>(initialMode === 'login');
   const [useDirectForm, setUseDirectForm] = useState<boolean>(true);
+  const [showPasswordText, setShowPasswordText] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successNotice, setSuccessNotice] = useState<string | null>(null);
@@ -498,17 +499,40 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
                 <label className="auth-minimal-label">
                   <span>Mot de passe *</span>
                 </label>
-                <input
-                  type="password"
-                  className="auth-minimal-input"
-                  placeholder="••••••••"
-                  value={loginPassword}
-                  onChange={(e) => setLoginPassword(e.target.value)}
-                  autoCapitalize="none"
-                  autoCorrect="off"
-                  spellCheck={false}
-                  required
-                />
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type={showPasswordText ? 'text' : 'password'}
+                    className="auth-minimal-input"
+                    placeholder="••••••••"
+                    value={loginPassword}
+                    onChange={(e) => setLoginPassword(e.target.value)}
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    required
+                    style={{ paddingRight: '2.5rem' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPasswordText(!showPasswordText)}
+                    style={{
+                      position: 'absolute',
+                      right: '0.75rem',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'none',
+                      border: 'none',
+                      color: '#64748b',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      padding: 0,
+                    }}
+                    title={showPasswordText ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+                  >
+                    {showPasswordText ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.45rem' }}>
                   <button
                     type="button"

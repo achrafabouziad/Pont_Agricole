@@ -828,6 +828,7 @@ class StoreService {
     }
 
     // 1. Résolution de l'adresse email Supabase Auth & recherche de l'établissement
+    const cleanPass = (pass || '').trim();
     const candidateEmails: string[] = [];
     let matchedBiz: any = null;
 
@@ -836,53 +837,72 @@ class StoreService {
     } else if (cleanLower.includes('@')) {
       candidateEmails.push(cleanLower);
     } else {
-      // Rechercher l'établissement dans la table businesses Supabase
+      // Rechercher l'établissement dans la table businesses Supabase (REST direct sans pollution de token)
+      let dbBizs: any[] | null = null;
       try {
-        const { data: dbBizs } = await supabase
-          .from('businesses')
-          .select('*')
-          .neq('approval_status', 'rejected');
+        const restRes = await fetch(
+          'https://qovqogxhvugtgvjxxsbc.supabase.co/rest/v1/businesses?approval_status=neq.rejected&select=*',
+          {
+            headers: {
+              apikey: 'sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
+              Authorization: 'Bearer sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
+            },
+            cache: 'no-store',
+          }
+        );
+        if (restRes.ok) {
+          const json = await restRes.json();
+          if (Array.isArray(json)) dbBizs = json;
+        }
+      } catch {}
 
-        if (dbBizs && dbBizs.length > 0) {
-          const matched = dbBizs.find((b: any) => {
-            if (b.approval_status === 'rejected') return false;
-            const u = (b.username || '').toLowerCase().trim();
-            const bPhone = (b.phone || '').trim();
-            const bPhoneDigits = bPhone.replace(/[^0-9]/g, '');
-            const bNormPhone = normalizePhone(bPhone);
-            const inNorm = normalizePhone(rawInput);
-            const bEmail = (b.email || '').toLowerCase().trim();
+      if (!dbBizs && isSupabaseConfigured && supabase) {
+        try {
+          const { data } = await supabase
+            .from('businesses')
+            .select('*')
+            .neq('approval_status', 'rejected');
+          if (data && Array.isArray(data)) dbBizs = data;
+        } catch {}
+      }
 
-            if (slug && u && (u === slug || u.replace(/[^a-z0-9]/g, '') === slug.replace(/[^a-z0-9]/g, ''))) {
+      if (dbBizs && dbBizs.length > 0) {
+        const matched = dbBizs.find((b: any) => {
+          if (b.approval_status === 'rejected') return false;
+          const u = (b.username || '').toLowerCase().trim();
+          const bPhone = (b.phone || '').trim();
+          const bPhoneDigits = bPhone.replace(/[^0-9]/g, '');
+          const bNormPhone = normalizePhone(bPhone);
+          const inNorm = normalizePhone(rawInput);
+          const bEmail = (b.email || '').toLowerCase().trim();
+
+          if (slug && u && (u === slug || u === cleanLower || u.replace(/[^a-z0-9]/g, '') === slug)) {
+            return true;
+          }
+          if (cleanLower.includes('@') && bEmail === cleanLower) {
+            return true;
+          }
+          if (isPureDigits && cleanDigits.length >= 8) {
+            const last8 = cleanDigits.slice(-8);
+            if (bPhoneDigits.endsWith(last8) || cleanDigits.endsWith(bPhoneDigits.slice(-8))) {
               return true;
             }
-            if (cleanLower.includes('@') && bEmail === cleanLower) {
+            if (inNorm && bNormPhone && (bNormPhone === inNorm || bNormPhone.endsWith(inNorm) || inNorm.endsWith(bNormPhone))) {
               return true;
-            }
-            if (isPureDigits && cleanDigits.length >= 8) {
-              const last8 = cleanDigits.slice(-8);
-              if (bPhoneDigits.endsWith(last8) || cleanDigits.endsWith(bPhoneDigits.slice(-8))) {
-                return true;
-              }
-              if (inNorm && bNormPhone && (bNormPhone === inNorm || bNormPhone.endsWith(inNorm) || inNorm.endsWith(bNormPhone))) {
-                return true;
-              }
-            }
-            return false;
-          });
-
-          if (matched) {
-            matchedBiz = matched;
-            if (matched.email) {
-              candidateEmails.push(matched.email.toLowerCase().trim());
-            }
-            if (matched.username) {
-              candidateEmails.push(`${matched.username.toLowerCase().trim()}@pontagricole.ma`);
             }
           }
+          return false;
+        });
+
+        if (matched) {
+          matchedBiz = matched;
+          if (matched.email) {
+            candidateEmails.push(matched.email.toLowerCase().trim());
+          }
+          if (matched.username) {
+            candidateEmails.push(`${matched.username.toLowerCase().trim()}@pontagricole.ma`);
+          }
         }
-      } catch (e) {
-        console.warn('Erreur recherche businesses Supabase:', e);
       }
 
       if (slug) {
@@ -896,10 +916,18 @@ class StoreService {
     // 2. Vérification immédiate du mot de passe si l'établissement est trouvé
     if (matchedBiz) {
       const storedPass = decodeAuth(matchedBiz.google_maps_url);
-      if (storedPass && (storedPass === pass || storedPass.toLowerCase() === pass.toLowerCase())) {
+      const isPasswordMatch =
+        storedPass &&
+        (storedPass === cleanPass ||
+          storedPass === pass ||
+          storedPass.trim() === cleanPass ||
+          storedPass.toLowerCase() === cleanPass.toLowerCase() ||
+          storedPass.trim().toLowerCase() === cleanPass.toLowerCase());
+
+      if (isPasswordMatch) {
         const userEmail = matchedBiz.email || `${matchedBiz.username || cleanDigits}@pontagricole.ma`;
         const authUser = {
-          id: matchedBiz.owner_id || matchedBiz.id,
+          id: matchedBiz.id,
           email: userEmail,
           created_at: matchedBiz.created_at,
           user_metadata: {
