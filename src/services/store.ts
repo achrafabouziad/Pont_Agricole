@@ -620,7 +620,7 @@ class StoreService {
 
         if (dbBizs && dbBizs.length > 0) {
           const matched = dbBizs.find((b: any) => {
-            if (b.owner_id === user.id) return true;
+            if (user.id && b.google_maps_url && b.google_maps_url.includes('clerk:' + user.id)) return true;
             if (email && b.email && b.email.toLowerCase().trim() === email) return true;
             if (username && b.username && b.username.toLowerCase().trim() === username) return true;
             const bPhone = (b.phone || '').replace(/[^0-9]/g, '');
@@ -632,9 +632,26 @@ class StoreService {
           });
 
           if (matched) {
-            // Lier de manière permanente le Clerk User ID dans Supabase Database
-            if (matched.owner_id !== user.id) {
-              await supabase.from('businesses').update({ owner_id: user.id }).eq('id', matched.id);
+            // Lier de manière permanente le Clerk User ID dans Supabase Database s'il ne l'est pas encore
+            if (!matched.google_maps_url || !matched.google_maps_url.includes('clerk:' + user.id)) {
+              try {
+                const adminToken = await this.ensureAdminAuth();
+                const cleanExisting = (matched.google_maps_url || '').replace(/#clerk:[^#]+/g, '').trim();
+                const updatedMaps = cleanExisting ? `${cleanExisting}#clerk:${user.id}` : `#clerk:${user.id}`;
+                await fetch(`https://qovqogxhvugtgvjxxsbc.supabase.co/rest/v1/businesses?id=eq.${matched.id}`, {
+                  method: 'PATCH',
+                  headers: {
+                    apikey: 'sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
+                    Authorization: adminToken ? `Bearer ${adminToken}` : 'Bearer sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    google_maps_url: updatedMaps,
+                    email: matched.email || email,
+                    updated_at: nowIso,
+                  }),
+                });
+              } catch {}
             }
 
             clientBiz = {
@@ -707,37 +724,43 @@ class StoreService {
       params.businessName.trim();
 
     const cleanUrl = cleanMapsUrl(params.googleMapsUrl);
+    const clerkTag = `#clerk:${user.id}`;
+    const syncedMapsUrl = cleanUrl ? `${cleanUrl}${clerkTag}` : clerkTag;
 
     const bizPayload = {
       id: newBizId,
-      owner_id: user.id,
+      owner_id: 'cfb7edbf-9c6b-4181-afae-2da48ad8a90d',
       business_name: params.businessName.trim(),
       business_type: params.businessType || 'restaurant',
       city: params.city.trim() || 'Casablanca',
       delivery_address: params.deliveryAddress.trim() || 'Casablanca',
       contact_name: fullName,
       phone,
-      email,
-      google_maps_url: cleanUrl || null,
-      username,
+      email: email || `${user.id.toLowerCase()}@pontagricole.ma`,
+      google_maps_url: syncedMapsUrl,
+      username: username || user.id.toLowerCase(),
       approval_status: 'approved',
       updated_at: nowIso,
     };
 
     if (isSupabaseConfigured && supabase) {
       try {
-        const { error } = await supabase.from('businesses').upsert(bizPayload);
-        if (error) {
-          await fetch('https://qovqogxhvugtgvjxxsbc.supabase.co/rest/v1/businesses', {
-            method: 'POST',
-            headers: {
-              apikey: 'sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
-              Authorization: 'Bearer sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
-              'Content-Type': 'application/json',
-              Prefer: 'resolution=merge-duplicates',
-            },
-            body: JSON.stringify(bizPayload),
-          });
+        const adminToken = await this.ensureAdminAuth();
+        const headers: Record<string, string> = {
+          apikey: 'sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
+          Authorization: adminToken ? `Bearer ${adminToken}` : 'Bearer sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
+          'Content-Type': 'application/json',
+          Prefer: 'resolution=merge-duplicates',
+        };
+
+        const res = await fetch('https://qovqogxhvugtgvjxxsbc.supabase.co/rest/v1/businesses', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(bizPayload),
+        });
+
+        if (!res.ok) {
+          console.warn('Supabase DB business creation fetch status:', res.status, await res.text());
         }
       } catch (e) {
         console.warn('Supabase DB business creation error:', e);

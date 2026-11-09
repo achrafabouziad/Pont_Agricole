@@ -50,7 +50,7 @@ const WORLD_COUNTRY_CODES = [
 
 export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 'register' }) => {
   const [isLoginMode, setIsLoginMode] = useState<boolean>(initialMode === 'login');
-  const [useDirectForm, setUseDirectForm] = useState<boolean>(true);
+  const [useDirectForm, setUseDirectForm] = useState<boolean>(false);
   const [showPasswordText, setShowPasswordText] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -403,7 +403,6 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
                       rootBox: { width: '100%' },
                       card: { boxShadow: 'none', border: '1.5px solid #e2e8f0', padding: '1.25rem', borderRadius: '14px', width: '100%' },
                       formButtonPrimary: { backgroundColor: '#15803d', '&:hover': { backgroundColor: '#166534' } },
-                      footerAction: { display: 'none' },
                     },
                   }}
                 />
@@ -420,7 +419,6 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
                       rootBox: { width: '100%' },
                       card: { boxShadow: 'none', border: '1.5px solid #e2e8f0', padding: '1.25rem', borderRadius: '14px', width: '100%' },
                       formButtonPrimary: { backgroundColor: '#15803d', '&:hover': { backgroundColor: '#166534' } },
-                      footerAction: { display: 'none' },
                     },
                   }}
                 />
@@ -431,11 +429,11 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
                   type="button"
                   onClick={() => setUseDirectForm(true)}
                   style={{
-                    background: '#f0fdf4',
-                    border: '1.5px solid #86efac',
-                    color: '#166534',
+                    background: '#f8fafc',
+                    border: '1.5px solid #cbd5e1',
+                    color: '#475569',
                     fontSize: '0.82rem',
-                    fontWeight: 700,
+                    fontWeight: 600,
                     padding: '0.45rem 1rem',
                     borderRadius: '20px',
                     cursor: 'pointer',
@@ -445,8 +443,8 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
                   }}
                 >
                   ⚡ {isLoginMode
-                    ? 'Connexion directe (Admin & Clients)'
-                    : 'Inscription directe par formulaire'}
+                    ? 'Connexion rapide avec nom d\'utilisateur (Admin & Secours)'
+                    : 'Inscription directe sans Clerk'}
                 </button>
               </div>
             </div>
@@ -457,20 +455,20 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
                   type="button"
                   onClick={() => setUseDirectForm(false)}
                   style={{
-                    background: '#f8fafc',
-                    border: '1px solid #cbd5e1',
-                    color: '#475569',
-                    padding: '0.4rem 0.95rem',
+                    background: '#f0fdf4',
+                    border: '1.5px solid #86efac',
+                    color: '#166534',
+                    padding: '0.45rem 1rem',
                     borderRadius: '20px',
-                    fontSize: '0.78rem',
-                    fontWeight: 600,
+                    fontSize: '0.82rem',
+                    fontWeight: 700,
                     cursor: 'pointer',
                     display: 'inline-flex',
                     alignItems: 'center',
-                    gap: '0.35rem',
+                    gap: '0.4rem',
                   }}
                 >
-                  🔒 {isLoginMode ? 'Optionnel : Connexion avec Clerk' : 'Optionnel : Inscription avec Clerk'}
+                  🔒 Revenir à la connexion sécurisée Clerk (Recommandé)
                 </button>
               </div>
 
