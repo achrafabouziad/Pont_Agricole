@@ -59,6 +59,7 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({
 
   const handleAddToCart = (product: Product, quantity: number) => {
     store.addToCart(product, quantity);
+    setCart([...store.getCart()]);
   };
 
   const selectedCategoryObj = categories.find((c) => c.id === selectedCategory);

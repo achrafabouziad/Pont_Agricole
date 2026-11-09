@@ -34,24 +34,31 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
   const handleQuickAdd = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!product.isAvailable) return;
-    onAddToCart(product, product.minimumQuantity || 1);
+    const qty = Math.max(1, Number(product.minimumQuantity) || 1);
+    onAddToCart(product, qty);
+    setCartQty(qty);
     setAdded(true);
-    setTimeout(() => setAdded(false), 900);
+    setTimeout(() => setAdded(false), 1200);
   };
 
   const handleIncrement = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!product.isAvailable) return;
-    store.updateCartQuantity(product.id, cartQty + 1);
+    const newQty = cartQty + 1;
+    setCartQty(newQty);
+    store.updateCartQuantity(product.id, newQty);
   };
 
   const handleDecrement = (e: React.MouseEvent) => {
     e.stopPropagation();
-    store.updateCartQuantity(product.id, Math.max(0, cartQty - 1));
+    const newQty = Math.max(0, cartQty - 1);
+    setCartQty(newQty);
+    store.updateCartQuantity(product.id, newQty);
   };
 
   const handleRemoveFromCart = (e: React.MouseEvent) => {
     e.stopPropagation();
+    setCartQty(0);
     store.removeFromCart(product.id);
   };
 

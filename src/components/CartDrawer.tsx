@@ -29,9 +29,10 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   const currentUser = store.getCurrentUser();
   const currentBusiness = store.getCurrentBusiness();
 
-  // Load products to offer quick add recommendations directly inside the cart
+  // Load cart & products to offer quick add recommendations directly inside the cart
   useEffect(() => {
     if (isOpen) {
+      setCart([...store.getCart()]);
       store.getProducts().then(setAllProducts);
     }
   }, [isOpen]);

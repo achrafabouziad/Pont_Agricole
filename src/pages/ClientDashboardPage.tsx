@@ -70,9 +70,27 @@ export const ClientDashboardPage: React.FC<ClientDashboardPageProps> = ({ onNavi
     let addedCount = 0;
 
     order.items.forEach((item) => {
-      const prod = products.find((p) => p.id === item.productId);
+      const prod = products.find(
+        (p) => p.id === item.productId || (item.productNameSnapshot && p.name.toLowerCase() === item.productNameSnapshot.toLowerCase())
+      );
       if (prod && prod.isAvailable) {
         store.addToCart(prod, item.quantity);
+        addedCount++;
+      } else if (item.productNameSnapshot) {
+        const fallbackProd: Product = {
+          id: item.productId || `prod-${Date.now()}`,
+          name: item.productNameSnapshot,
+          unit: (item.unitSnapshot || 'caisse') as any,
+          price: item.unitPriceSnapshot || 0,
+          categoryId: 'cat-legumes',
+          isAvailable: true,
+          minimumQuantity: 1,
+          imageUrl: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=600&q=80',
+          origin: 'Maroc',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        store.addToCart(fallbackProd, item.quantity);
         addedCount++;
       }
     });
@@ -81,7 +99,7 @@ export const ClientDashboardPage: React.FC<ClientDashboardPageProps> = ({ onNavi
     setTimeout(() => {
       setReorderNotice(null);
       onOpenCart();
-    }, 800);
+    }, 600);
   };
 
   const handleDeleteOrder = async (orderId: string, orderRef: string) => {

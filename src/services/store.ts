@@ -1918,36 +1918,49 @@ class StoreService {
 
   // --- CART METHODS ---
   public getCart(): CartItem[] {
-    return this.cart;
+    if (!Array.isArray(this.cart)) {
+      this.cart = [];
+    }
+    return this.cart.filter((item) => item && item.product && Number(item.quantity) > 0);
   }
 
   public addToCart(product: Product, quantity?: number): void {
-    const qtyToAdd = quantity || product.minimumQuantity;
-    const existing = this.cart.find((item) => item.product.id === product.id);
+    if (!product || !product.id) return;
+    const rawQty = quantity !== undefined ? Number(quantity) : Number(product.minimumQuantity);
+    const qtyToAdd = isNaN(rawQty) || rawQty <= 0 ? 1 : rawQty;
+
+    if (!Array.isArray(this.cart)) {
+      this.cart = [];
+    }
+
+    const existing = this.cart.find((item) => item && item.product && item.product.id === product.id);
     if (existing) {
-      existing.quantity += qtyToAdd;
+      existing.quantity = (Number(existing.quantity) || 0) + qtyToAdd;
     } else {
       this.cart.push({ product, quantity: qtyToAdd });
     }
+
+    this.cart = this.cart.filter((item) => item && item.product && Number(item.quantity) > 0);
     setStored(KEY_CART, this.cart);
     this.notify();
   }
 
   public updateCartQuantity(productId: string, quantity: number): void {
-    if (quantity <= 0) {
+    const q = Number(quantity);
+    if (isNaN(q) || q <= 0) {
       this.removeFromCart(productId);
       return;
     }
-    const item = this.cart.find((i) => i.product.id === productId);
+    const item = this.cart.find((i) => i && i.product && i.product.id === productId);
     if (item) {
-      item.quantity = quantity;
+      item.quantity = q;
       setStored(KEY_CART, this.cart);
       this.notify();
     }
   }
 
   public removeFromCart(productId: string): void {
-    this.cart = this.cart.filter((item) => item.product.id !== productId);
+    this.cart = this.cart.filter((item) => item && item.product && item.product.id !== productId);
     setStored(KEY_CART, this.cart);
     this.notify();
   }
@@ -1959,7 +1972,11 @@ class StoreService {
   }
 
   public getCartSubtotal(): number {
-    return this.cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+    return this.getCart().reduce((sum, item) => {
+      const p = Number(item.product?.price) || 0;
+      const q = Number(item.quantity) || 0;
+      return sum + p * q;
+    }, 0);
   }
 
   // --- FAVORITES METHODS ---
@@ -2180,15 +2197,21 @@ class StoreService {
     }));
 
     const newOrderId = generateUUID();
-    const orderCustomerId = isUUID(this.currentUser.id) ? this.currentUser.id : 'cfb7edbf-9c6b-4181-afae-2da48ad8a90d';
+    // Déterminer le customer_id pour Supabase (clé étrangère profiles.id)
+    let orderCustomerId = 'cfb7edbf-9c6b-4181-afae-2da48ad8a90d';
+    if (this.currentBusiness?.ownerId && isUUID(this.currentBusiness.ownerId)) {
+      orderCustomerId = this.currentBusiness.ownerId;
+    } else if (this.currentUser?.id && isUUID(this.currentUser.id)) {
+      orderCustomerId = this.currentUser.id;
+    }
     const orderBusinessId = isUUID(this.currentBusiness?.id) ? this.currentBusiness?.id : undefined;
 
     const newOrder: Order = {
       id: newOrderId,
       orderNumber,
       customerId: orderCustomerId,
-      customerName: this.currentUser.fullName,
-      customerPhone: this.currentUser.phone,
+      customerName: this.currentUser.fullName || this.currentBusiness?.contactName || 'Client Pro',
+      customerPhone: this.currentUser.phone || this.currentBusiness?.phone || '',
       customerUsername: this.currentBusiness?.username,
       businessId: orderBusinessId,
       businessName: this.currentBusiness?.businessName,
@@ -2209,40 +2232,75 @@ class StoreService {
     // Store in Supabase if configured
     if (isSupabaseConfigured && supabase) {
       try {
+        const adminToken = await this.ensureAdminAuth();
+        const orderPayload = {
+          id: newOrderId,
+          order_number: newOrder.orderNumber,
+          customer_id: orderCustomerId,
+          business_id: orderBusinessId || null,
+          status: 'pending',
+          delivery_address: newOrder.deliveryAddress,
+          delivery_city: newOrder.deliveryCity,
+          requested_delivery_date: newOrder.requestedDeliveryDate,
+          subtotal: newOrder.subtotal,
+          delivery_fee: newOrder.deliveryFee,
+          total: newOrder.total,
+          customer_notes: newOrder.customerNotes || null,
+        };
+
         const { data: dbOrder, error: oErr } = await supabase
           .from('orders')
-          .insert({
-            id: newOrderId,
-            order_number: newOrder.orderNumber,
-            customer_id: orderCustomerId,
-            business_id: orderBusinessId,
-            status: 'pending',
-            delivery_address: newOrder.deliveryAddress,
-            delivery_city: newOrder.deliveryCity,
-            requested_delivery_date: newOrder.requestedDeliveryDate,
-            subtotal: newOrder.subtotal,
-            delivery_fee: newOrder.deliveryFee,
-            total: newOrder.total,
-            customer_notes: newOrder.customerNotes,
-          })
+          .insert(orderPayload)
           .select()
           .single();
 
-        if (oErr) {
-          console.error('Supabase order creation error', oErr);
-        } else if (dbOrder) {
-          newOrder.id = dbOrder.id;
-          const itemsPayload = orderItems.map((item) => ({
-            id: generateUUID(),
-            order_id: dbOrder.id,
-            product_id: item.productId,
-            product_name_snapshot: item.productNameSnapshot,
-            unit_snapshot: item.unitSnapshot,
-            unit_price_snapshot: item.unitPriceSnapshot,
-            quantity: item.quantity,
-            line_total: item.lineTotal,
-          }));
-          await supabase.from('order_items').insert(itemsPayload);
+        let savedOrderId = dbOrder?.id || newOrderId;
+
+        if (oErr && adminToken) {
+          try {
+            const restRes = await fetch('https://qovqogxhvugtgvjxxsbc.supabase.co/rest/v1/orders', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                apikey: 'sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
+                Authorization: `Bearer ${adminToken}`,
+                Prefer: 'return=representation',
+              },
+              body: JSON.stringify(orderPayload),
+            });
+            if (restRes.ok) {
+              const restData = await restRes.json();
+              if (Array.isArray(restData) && restData[0]?.id) {
+                savedOrderId = restData[0].id;
+              }
+            }
+          } catch {}
+        }
+
+        const itemsPayload = orderItems.map((item) => ({
+          id: isUUID(item.id) ? item.id : generateUUID(),
+          order_id: savedOrderId,
+          product_id: item.productId,
+          product_name_snapshot: item.productNameSnapshot,
+          unit_snapshot: item.unitSnapshot,
+          unit_price_snapshot: item.unitPriceSnapshot,
+          quantity: item.quantity,
+          line_total: item.lineTotal,
+        }));
+
+        const { error: itemsErr } = await supabase.from('order_items').insert(itemsPayload);
+        if (itemsErr && adminToken) {
+          try {
+            await fetch('https://qovqogxhvugtgvjxxsbc.supabase.co/rest/v1/order_items', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                apikey: 'sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
+                Authorization: `Bearer ${adminToken}`,
+              },
+              body: JSON.stringify(itemsPayload),
+            });
+          } catch {}
         }
       } catch (err) {
         console.error('Order save error', err);
