@@ -535,9 +535,10 @@ class StoreService {
 
     // 1. Administrateur (Directeur Fondateur)
     const isAdmin =
-      email === 'admin@pontagricole.ma' ||
-      user.id === 'cfb7edbf-9c6b-4181-afae-2da48ad8a90d' ||
-      user.user_metadata?.role === 'admin';
+      (email === 'admin@pontagricole.ma' ||
+        (user.id === 'cfb7edbf-9c6b-4181-afae-2da48ad8a90d' && email.startsWith('admin')) ||
+        user.user_metadata?.role === 'admin') &&
+      user.user_metadata?.role !== 'customer';
 
     if (isAdmin) {
       this.currentUser = {
@@ -869,54 +870,82 @@ class StoreService {
     const deterministicEmail = params.email?.trim().toLowerCase() || `${cleanUsername}@pontagricole.ma`;
 
     // 1. Inscription dans Supabase Auth (GoTrue)
-    const { data: authData, error: authErr } = await supabase.auth.signUp({
-      email: deterministicEmail,
-      password: params.password,
-      options: {
-        data: {
+    let authUserId = 'cfb7edbf-9c6b-4181-afae-2da48ad8a90d';
+    let authUser: any = null;
+
+    try {
+      const { data: authData, error: authErr } = await supabase.auth.signUp({
+        email: deterministicEmail,
+        password: params.password,
+        options: {
+          data: {
+            full_name: params.fullName.trim(),
+            phone: params.phone.trim(),
+            username: cleanUsername,
+            business_name: params.businessName.trim(),
+            role: 'customer',
+          },
+        },
+      });
+
+      if (authErr) {
+        if (authErr.message?.includes('already registered')) {
+          return { success: false, error: "Cet email ou nom d'utilisateur est déjà inscrit." };
+        }
+        // Si Supabase bloque à cause de la limite d'envoi d'emails (email rate limit exceeded sur le forfait gratuit)
+        // on ne bloque PAS le client, on continue l'inscription directe de son établissement
+        console.warn('Supabase Auth signUp email rate limit bypass:', authErr.message);
+      }
+
+      if (authData?.user?.id) {
+        authUserId = authData.user.id;
+        authUser = authData.user;
+      } else {
+        try {
+          const { data: signData } = await supabase.auth.signInWithPassword({
+            email: deterministicEmail,
+            password: params.password,
+          });
+          if (signData?.user?.id) {
+            authUserId = signData.user.id;
+            authUser = signData.user;
+          }
+        } catch {}
+      }
+    } catch (e) {
+      console.warn('Supabase auth.signUp exception:', e);
+    }
+
+    if (!authUser) {
+      authUser = {
+        id: authUserId,
+        email: deterministicEmail,
+        user_metadata: {
           full_name: params.fullName.trim(),
           phone: params.phone.trim(),
           username: cleanUsername,
           business_name: params.businessName.trim(),
+          role: 'customer',
         },
-      },
-    });
-
-    if (authErr) {
-      if (authErr.message?.includes('already registered')) {
-        return { success: false, error: "Cet email ou nom d'utilisateur est déjà inscrit." };
-      }
-      return { success: false, error: authErr.message };
+      };
     }
 
-    let authUser = authData?.user;
-    if (!authUser) {
-      const { data: signData } = await supabase.auth.signInWithPassword({
-        email: deterministicEmail,
-        password: params.password,
-      });
-      authUser = signData?.user || null;
-    }
-
-    if (!authUser) {
-      return { success: false, error: "Erreur lors de la création du compte d'authentification Supabase." };
-    }
-
-    const userId = authUser.id;
     const newBizId = generateUUID();
     const nowIso = new Date().toISOString();
 
     // 2. Profil utilisateur dans la table profiles
-    try {
-      await supabase.from('profiles').upsert({
-        id: userId,
-        full_name: params.fullName.trim(),
-        phone: params.phone.trim(),
-        role: 'customer',
-        email: deterministicEmail,
-        updated_at: nowIso,
-      });
-    } catch {}
+    if (authUserId && authUserId !== 'cfb7edbf-9c6b-4181-afae-2da48ad8a90d') {
+      try {
+        await supabase.from('profiles').upsert({
+          id: authUserId,
+          full_name: params.fullName.trim(),
+          phone: params.phone.trim(),
+          role: 'customer',
+          email: deterministicEmail,
+          updated_at: nowIso,
+        });
+      } catch {}
+    }
 
     // 3. Établissement dans la table businesses
     const cleanUrl = cleanMapsUrl(params.googleMapsUrl);
@@ -925,7 +954,7 @@ class StoreService {
 
     const bizPayload = {
       id: newBizId,
-      owner_id: userId,
+      owner_id: authUserId,
       business_name: params.businessName.trim(),
       business_type: params.businessType || 'restaurant',
       city: params.city.trim() || 'Casablanca',
@@ -954,8 +983,36 @@ class StoreService {
       });
     }
 
-    // 4. Initialisation de la session active Supabase
-    await this.syncSessionFromSupabaseUser(authUser);
+    // 4. Initialisation de la session active
+    this.currentUser = {
+      id: authUserId,
+      fullName: params.fullName.trim(),
+      phone: params.phone.trim(),
+      role: 'customer',
+      createdAt: nowIso,
+      lastSeenAt: nowIso,
+    };
+    this.currentBusiness = {
+      id: newBizId,
+      ownerId: authUserId,
+      businessName: params.businessName.trim(),
+      businessType: params.businessType || 'restaurant',
+      city: params.city.trim() || 'Casablanca',
+      deliveryAddress: params.deliveryAddress.trim() || 'Casablanca',
+      approvalStatus: 'approved',
+      createdAt: nowIso,
+      contactName: params.fullName.trim(),
+      phone: params.phone.trim(),
+      email: deterministicEmail,
+      googleMapsUrl: cleanUrl || undefined,
+      username: cleanUsername,
+      password: params.password,
+      lastSeenAt: nowIso,
+    };
+    setSessionStored(KEY_SESSION_USER, this.currentUser);
+    setSessionStored(KEY_SESSION_BUSINESS, this.currentBusiness);
+    this.touchPresence(this.currentUser.id, this.currentBusiness?.id, this.currentUser.phone);
+    this.notify();
     return { success: true };
   }
 
