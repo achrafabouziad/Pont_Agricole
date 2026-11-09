@@ -938,16 +938,18 @@ class StoreService {
     } else if (cleanLower.includes('@')) {
       candidateEmails.push(cleanLower);
     } else {
-      // Rechercher l'établissement dans la table businesses Supabase (REST direct sans pollution de token)
+      // Rechercher l'établissement dans la table businesses Supabase (REST direct avec adminToken pour visibilité complète)
       let dbBizs: any[] | null = null;
       try {
+        const adminToken = await this.ensureAdminAuth();
+        const headers: Record<string, string> = {
+          apikey: 'sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
+          Authorization: adminToken ? `Bearer ${adminToken}` : 'Bearer sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
+        };
         const restRes = await fetch(
           'https://qovqogxhvugtgvjxxsbc.supabase.co/rest/v1/businesses?approval_status=neq.rejected&select=*',
           {
-            headers: {
-              apikey: 'sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
-              Authorization: 'Bearer sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
-            },
+            headers,
             cache: 'no-store',
           }
         );
@@ -1238,15 +1240,27 @@ class StoreService {
     const nowIso = new Date().toISOString();
 
     // 2. Profil utilisateur dans la table profiles
+    const adminToken = await this.ensureAdminAuth();
+    const headers: Record<string, string> = {
+      apikey: 'sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
+      Authorization: adminToken ? `Bearer ${adminToken}` : 'Bearer sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
+      'Content-Type': 'application/json',
+      Prefer: 'resolution=merge-duplicates',
+    };
+
     if (authUserId && authUserId !== 'cfb7edbf-9c6b-4181-afae-2da48ad8a90d') {
       try {
-        await supabase.from('profiles').upsert({
-          id: authUserId,
-          full_name: params.fullName.trim(),
-          phone: params.phone.trim(),
-          role: 'customer',
-          email: deterministicEmail,
-          updated_at: nowIso,
+        await fetch('https://qovqogxhvugtgvjxxsbc.supabase.co/rest/v1/profiles', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            id: authUserId,
+            full_name: params.fullName.trim(),
+            phone: params.phone.trim(),
+            role: 'customer',
+            email: deterministicEmail,
+            updated_at: nowIso,
+          }),
         });
       } catch {}
     }
@@ -1272,19 +1286,17 @@ class StoreService {
       updated_at: nowIso,
     };
 
-    const { error: bErr } = await supabase.from('businesses').upsert(bizPayload);
-    if (bErr) {
-      console.warn('Supabase upsert error, attempting direct REST:', bErr);
-      await fetch('https://qovqogxhvugtgvjxxsbc.supabase.co/rest/v1/businesses', {
+    try {
+      const res = await fetch('https://qovqogxhvugtgvjxxsbc.supabase.co/rest/v1/businesses', {
         method: 'POST',
-        headers: {
-          apikey: 'sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
-          Authorization: 'Bearer sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
-          'Content-Type': 'application/json',
-          Prefer: 'resolution=merge-duplicates',
-        },
+        headers,
         body: JSON.stringify(bizPayload),
       });
+      if (!res.ok) {
+        console.warn('Supabase DB business direct REST insert status:', res.status, await res.text());
+      }
+    } catch (e) {
+      console.warn('Supabase DB business direct REST insert error:', e);
     }
 
     // 4. Initialisation de la session active
