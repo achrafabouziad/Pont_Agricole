@@ -152,12 +152,25 @@ export function formatOrderCustomerNotes(params: {
   businessName?: string;
   customerPhone?: string;
   customerIce?: string;
+  items?: OrderItem[];
 }): string | undefined {
   const metaParts: string[] = [];
   if (params.customerName?.trim()) metaParts.push(`name:${encodeURIComponent(params.customerName.trim())}`);
   if (params.businessName?.trim()) metaParts.push(`biz:${encodeURIComponent(params.businessName.trim())}`);
   if (params.customerPhone?.trim()) metaParts.push(`tel:${encodeURIComponent(params.customerPhone.trim())}`);
   if (params.customerIce?.trim()) metaParts.push(`ice:${encodeURIComponent(params.customerIce.trim())}`);
+
+  if (params.items && params.items.length > 0) {
+    const compactItems = params.items.map((it) => ({
+      p: it.productId,
+      n: it.productNameSnapshot,
+      u: it.unitSnapshot,
+      pr: it.unitPriceSnapshot,
+      q: it.quantity,
+      t: it.lineTotal,
+    }));
+    metaParts.push(`items:${encodeURIComponent(JSON.stringify(compactItems))}`);
+  }
 
   if (metaParts.length === 0) {
     return params.customerNotes?.trim() || undefined;
@@ -176,6 +189,7 @@ export function parseOrderCustomerNotes(rawNotes?: string | null): {
   businessName?: string;
   customerPhone?: string;
   customerIce?: string;
+  items?: OrderItem[];
 } {
   if (!rawNotes) return {};
   const metaMatch = rawNotes.match(/<!--META:(.*?)-->/);
@@ -189,6 +203,7 @@ export function parseOrderCustomerNotes(rawNotes?: string | null): {
     businessName?: string;
     customerPhone?: string;
     customerIce?: string;
+    items?: OrderItem[];
   } = {};
 
   const metaContent = metaMatch[1];
@@ -201,6 +216,22 @@ export function parseOrderCustomerNotes(rawNotes?: string | null): {
       if (key === 'biz') result.businessName = val;
       if (key === 'tel') result.customerPhone = val;
       if (key === 'ice') result.customerIce = val;
+      if (key === 'items') {
+        try {
+          const parsed = JSON.parse(val);
+          if (Array.isArray(parsed)) {
+            result.items = parsed.map((it: any) => ({
+              id: generateUUID(),
+              productId: it.p,
+              productNameSnapshot: it.n,
+              unitSnapshot: it.u || 'kg',
+              unitPriceSnapshot: Number(it.pr) || 0,
+              quantity: Number(it.q) || 1,
+              lineTotal: Number(it.t) || 0,
+            }));
+          }
+        } catch {}
+      }
     }
   });
 
@@ -2228,16 +2259,38 @@ class StoreService {
               total: Number(o.total),
               customerNotes: meta.cleanNotes,
               rejectionReason: o.rejection_reason,
-              items: (o.order_items || []).map((i: any) => ({
-                id: i.id,
-                orderId: i.order_id,
-                productId: i.product_id,
-                productNameSnapshot: i.product_name_snapshot,
-                unitSnapshot: i.unit_snapshot,
-                unitPriceSnapshot: Number(i.unit_price_snapshot),
-                quantity: i.quantity,
-                lineTotal: Number(i.line_total),
-              })),
+              items: (() => {
+                const rawDbItems = (o.order_items || []).map((i: any) => ({
+                  id: i.id,
+                  orderId: i.order_id,
+                  productId: i.product_id,
+                  productNameSnapshot: i.product_name_snapshot,
+                  unitSnapshot: i.unit_snapshot,
+                  unitPriceSnapshot: Number(i.unit_price_snapshot),
+                  quantity: Number(i.quantity),
+                  lineTotal: Number(i.line_total),
+                }));
+
+                if (meta.items && meta.items.length > 0) {
+                  return meta.items;
+                }
+                if (rawDbItems.length > 0) {
+                  return rawDbItems;
+                }
+                if (Number(o.total) > 0) {
+                  return [{
+                    id: generateUUID(),
+                    orderId: o.id,
+                    productId: 'prod-1794160767833',
+                    productNameSnapshot: 'Articles & Produits frais commandés',
+                    unitSnapshot: 'colis',
+                    unitPriceSnapshot: Number(o.total),
+                    quantity: 1,
+                    lineTotal: Number(o.total),
+                  }];
+                }
+                return [];
+              })(),
               createdAt: o.created_at,
               updatedAt: o.updated_at,
             });
@@ -2417,6 +2470,7 @@ class StoreService {
       businessName: resolvedBusinessName,
       customerPhone: resolvedCustomerPhone,
       customerIce: resolvedCustomerIce,
+      items: orderItems,
     });
 
     const newOrder: Order = {
@@ -2491,31 +2545,52 @@ class StoreService {
         // Récupérer les IDs de produits valides pour éviter les violations de clé étrangère
         let validProductIds = new Set<string>();
         try {
-          const { data: dbProds } = await supabase.from('products').select('id');
-          if (dbProds && Array.isArray(dbProds)) {
-            dbProds.forEach((p) => validProductIds.add(p.id));
+          const prodRes = await fetch('https://qovqogxhvugtgvjxxsbc.supabase.co/rest/v1/products?select=id', {
+            headers: {
+              apikey: 'sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
+              Authorization: adminToken ? `Bearer ${adminToken}` : 'Bearer sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
+            },
+          });
+          if (prodRes.ok) {
+            const dbProds = await prodRes.json();
+            if (Array.isArray(dbProds)) {
+              dbProds.forEach((p: any) => validProductIds.add(p.id));
+            }
           }
         } catch {}
         const fallbackProductId = validProductIds.values().next().value || 'prod-1794160767833';
 
-        const itemsPayload = orderItems.map((item) => ({
-          id: isUUID(item.id) ? item.id : generateUUID(),
-          order_id: savedOrderId,
-          product_id: validProductIds.has(item.productId) ? item.productId : fallbackProductId,
-          product_name_snapshot: item.productNameSnapshot,
-          unit_snapshot: item.unitSnapshot,
-          unit_price_snapshot: item.unitPriceSnapshot,
-          quantity: item.quantity,
-          line_total: item.lineTotal,
-        }));
+        const itemsPayload = orderItems.map((item) => {
+          const rawQty = Number(item.quantity) || 1;
+          const intQty = Math.max(1, Math.round(rawQty));
+          const unitPrice = Number(item.unitPriceSnapshot) || 0;
+          const lineTotal = Number(item.lineTotal) || Number((rawQty * unitPrice).toFixed(2));
+          const nameSnapshot = rawQty !== intQty ? `${item.productNameSnapshot} (${rawQty} ${item.unitSnapshot || 'kg'})` : item.productNameSnapshot;
+
+          return {
+            id: isUUID(item.id) ? item.id : generateUUID(),
+            order_id: savedOrderId,
+            product_id: validProductIds.has(item.productId) ? item.productId : fallbackProductId,
+            product_name_snapshot: nameSnapshot,
+            unit_snapshot: item.unitSnapshot || 'kg',
+            unit_price_snapshot: unitPrice,
+            quantity: intQty,
+            line_total: lineTotal,
+          };
+        });
 
         try {
-          await fetch('https://qovqogxhvugtgvjxxsbc.supabase.co/rest/v1/order_items', {
+          const itemsRes = await fetch('https://qovqogxhvugtgvjxxsbc.supabase.co/rest/v1/order_items', {
             method: 'POST',
             headers,
             body: JSON.stringify(itemsPayload),
           });
-        } catch {}
+          if (!itemsRes.ok) {
+            console.warn('Erreur insertion order_items:', itemsRes.status, await itemsRes.text());
+          }
+        } catch (e) {
+          console.warn('Erreur fetch order_items:', e);
+        }
       } catch (err) {
         console.error('Order save error', err);
       }
@@ -2639,6 +2714,7 @@ class StoreService {
       businessName: newOrder.businessName,
       customerPhone: newOrder.customerPhone,
       customerIce: newOrder.customerIce,
+      items: orderItems,
     });
 
     // 1. Sauvegarde dans Supabase
@@ -2684,31 +2760,52 @@ class StoreService {
 
         let validProductIds = new Set<string>();
         try {
-          const { data: dbProds } = await supabase.from('products').select('id');
-          if (dbProds && Array.isArray(dbProds)) {
-            dbProds.forEach((p) => validProductIds.add(p.id));
+          const prodRes = await fetch('https://qovqogxhvugtgvjxxsbc.supabase.co/rest/v1/products?select=id', {
+            headers: {
+              apikey: 'sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
+              Authorization: adminToken ? `Bearer ${adminToken}` : 'Bearer sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
+            },
+          });
+          if (prodRes.ok) {
+            const dbProds = await prodRes.json();
+            if (Array.isArray(dbProds)) {
+              dbProds.forEach((p: any) => validProductIds.add(p.id));
+            }
           }
         } catch {}
         const fallbackProductId = validProductIds.values().next().value || 'prod-1794160767833';
 
-        const itemsPayload = orderItems.map((item) => ({
-          id: item.id || generateUUID(),
-          order_id: savedOrderId,
-          product_id: validProductIds.has(item.productId) ? item.productId : fallbackProductId,
-          product_name_snapshot: item.productNameSnapshot,
-          unit_snapshot: item.unitSnapshot,
-          unit_price_snapshot: item.unitPriceSnapshot,
-          quantity: item.quantity,
-          line_total: item.lineTotal,
-        }));
+        const itemsPayload = orderItems.map((item) => {
+          const rawQty = Number(item.quantity) || 1;
+          const intQty = Math.max(1, Math.round(rawQty));
+          const unitPrice = Number(item.unitPriceSnapshot) || 0;
+          const lineTotal = Number(item.lineTotal) || Number((rawQty * unitPrice).toFixed(2));
+          const nameSnapshot = rawQty !== intQty ? `${item.productNameSnapshot} (${rawQty} ${item.unitSnapshot || 'kg'})` : item.productNameSnapshot;
+
+          return {
+            id: isUUID(item.id) ? item.id : generateUUID(),
+            order_id: savedOrderId,
+            product_id: validProductIds.has(item.productId) ? item.productId : fallbackProductId,
+            product_name_snapshot: nameSnapshot,
+            unit_snapshot: item.unitSnapshot || 'kg',
+            unit_price_snapshot: unitPrice,
+            quantity: intQty,
+            line_total: lineTotal,
+          };
+        });
 
         try {
-          await fetch('https://qovqogxhvugtgvjxxsbc.supabase.co/rest/v1/order_items', {
+          const itemsRes = await fetch('https://qovqogxhvugtgvjxxsbc.supabase.co/rest/v1/order_items', {
             method: 'POST',
             headers,
             body: JSON.stringify(itemsPayload),
           });
-        } catch {}
+          if (!itemsRes.ok) {
+            console.warn('Erreur insertion order_items manuelle:', itemsRes.status, await itemsRes.text());
+          }
+        } catch (e) {
+          console.warn('Erreur fetch order_items manuelle:', e);
+        }
       } catch (err) {
         console.error('Erreur enregistrement commande manuelle Supabase:', err);
       }
@@ -2890,6 +2987,21 @@ class StoreService {
 
     if (isSupabaseConfigured && supabase) {
       try {
+        const adminToken = await this.ensureAdminAuth();
+        const headers: Record<string, string> = {
+          apikey: 'sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
+          Authorization: adminToken ? `Bearer ${adminToken}` : 'Bearer sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
+        };
+        // 1. Supprimer les articles de la commande
+        await fetch(`https://qovqogxhvugtgvjxxsbc.supabase.co/rest/v1/order_items?order_id=eq.${orderId}`, {
+          method: 'DELETE',
+          headers,
+        });
+        // 2. Supprimer la commande
+        await fetch(`https://qovqogxhvugtgvjxxsbc.supabase.co/rest/v1/orders?id=eq.${orderId}`, {
+          method: 'DELETE',
+          headers,
+        });
         await supabase.from('orders').delete().eq('id', orderId);
       } catch (e) {
         console.warn('Error deleting order from Supabase', e);

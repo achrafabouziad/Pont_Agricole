@@ -212,7 +212,20 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
           }
         });
       });
-      setRows(Array.from(productMap.values()));
+      const resList = Array.from(productMap.values());
+      if (resList.length === 0 && activeOrders.some((o) => (o.total || 0) > 0)) {
+        const totalSum = activeOrders.reduce((sum, o) => sum + (o.total || 0), 0);
+        resList.push({
+          id: `fallback-${Date.now()}`,
+          designation: 'Articles & Produits frais commandés',
+          caisses: 1,
+          qteKg: 1,
+          puKg: totalSum,
+          montantHt: totalSum,
+          unit: 'colis',
+        });
+      }
+      setRows(resList);
     } else {
       const mappedRows: InvoiceRowItem[] = [];
       activeOrders.forEach((ord) => {
@@ -233,6 +246,18 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
           });
         });
       });
+      if (mappedRows.length === 0 && activeOrders.some((o) => (o.total || 0) > 0)) {
+        const totalSum = activeOrders.reduce((sum, o) => sum + (o.total || 0), 0);
+        mappedRows.push({
+          id: `fallback-${Date.now()}`,
+          designation: 'Articles & Produits frais commandés',
+          caisses: 1,
+          qteKg: 1,
+          puKg: totalSum,
+          montantHt: totalSum,
+          unit: 'colis',
+        });
+      }
       setRows(mappedRows);
     }
 

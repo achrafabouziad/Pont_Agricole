@@ -485,6 +485,13 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
     await loadData();
   };
 
+  const handleDeleteOrder = async (orderId: string, orderNumber: string) => {
+    if (window.confirm(`Êtes-vous sûr de vouloir annuler et supprimer définitivement la commande ${orderNumber} ?`)) {
+      await store.deleteOrder(orderId);
+      await loadData();
+    }
+  };
+
   const handleUpdateBusinessStatus = async (businessId: string, status: ApprovalStatus) => {
     await store.updateBusinessApproval(businessId, status);
     await loadData();
@@ -1487,6 +1494,30 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
                               <FileText size={13} />
                               <span>Facture</span>
                             </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteOrder(ord.id, ord.orderNumber)}
+                              className="btn btn-sm"
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.25rem',
+                                fontSize: '0.78rem',
+                                padding: '0.35rem 0.55rem',
+                                backgroundColor: '#fef2f2',
+                                border: '1px solid #fecaca',
+                                color: '#991b1b',
+                                fontWeight: 700,
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                whiteSpace: 'nowrap',
+                              }}
+                              title="Annuler et supprimer définitivement cette commande"
+                            >
+                              <Trash2 size={13} />
+                              <span>Supprimer</span>
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -1837,6 +1868,30 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
                           >
                             <FileText size={13} />
                             <span>Facture / BL</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteOrder(ord.id, ord.orderNumber)}
+                            className="btn btn-sm"
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '0.35rem',
+                              fontSize: '0.78rem',
+                              padding: '0.35rem 0.65rem',
+                              backgroundColor: '#fef2f2',
+                              border: '1px solid #fecaca',
+                              color: '#991b1b',
+                              fontWeight: 700,
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                            }}
+                            title="Annuler et supprimer définitivement cette commande"
+                          >
+                            <Trash2 size={13} />
+                            <span>Annuler / Supprimer</span>
                           </button>
                         </div>
                       </td>
