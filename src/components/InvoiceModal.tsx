@@ -13,7 +13,7 @@ import {
   Eye,
   Layers,
 } from 'lucide-react';
-import { store, generateUUID } from '../services/store';
+import { store, generateUUID, parseOrderCustomerNotes } from '../services/store';
 
 export interface InvoiceModalProps {
   order?: Order | null;
@@ -54,6 +54,21 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
     order?.id || allOrders[0]?.id || ''
   );
   const [viewGrouping, setViewGrouping] = useState<'consolidated' | 'detailed'>('consolidated');
+
+  // Sync mode and selected single order ID if props change
+  useEffect(() => {
+    if (initialMode) {
+      setInvoiceMode(initialMode);
+    }
+  }, [initialMode]);
+
+  useEffect(() => {
+    if (order?.id) {
+      setSelectedSingleId(order.id);
+    } else if (allOrders[0]?.id && !allOrders.some((o) => o.id === selectedSingleId)) {
+      setSelectedSingleId(allOrders[0].id);
+    }
+  }, [order?.id, allOrders]);
 
   const [liveSettings, setLiveSettings] = useState<CompanySettings | null>(propsSettings || null);
   const [isEditing, setIsEditing] = useState<boolean>(false);
@@ -101,13 +116,36 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
         ? `pont_invoice_custom_${baseOrd.id}`
         : `pont_global_invoice_${activeOrders.map((o) => o.id).join('_')}`;
 
+    // Helper: récupérer les items avec fallback direct sur customerNotes (snapshot métadonnées)
+    const getOrderItemsWithFallback = (ord: Order) => {
+      if (ord.items && ord.items.length > 0) {
+        return ord.items;
+      }
+      const meta = parseOrderCustomerNotes(ord.customerNotes);
+      if (meta.items && meta.items.length > 0) {
+        return meta.items;
+      }
+      return [];
+    };
+
     // Si des modifications personnalisées ont été sauvegardées et qu'on ne force pas le reset
     if (!forceReset) {
       try {
         const savedRaw = localStorage.getItem(storageKey);
         if (savedRaw) {
           const s = JSON.parse(savedRaw);
-          if (s && s.rows && Array.isArray(s.rows) && s.rows.length > 0) {
+          const hasValidCustomRows =
+            s &&
+            Array.isArray(s.rows) &&
+            s.rows.length > 0 &&
+            s.rows.some(
+              (r: any) =>
+                r &&
+                typeof r.designation === 'string' &&
+                r.designation.trim() !== '' &&
+                !r.id?.startsWith('fallback-')
+            );
+          if (hasValidCustomRows) {
             setInvoiceNumber(s.invoiceNumber || '');
             if (s.invoicePhone) setInvoicePhone(s.invoicePhone);
             setInvoiceDate(s.invoiceDate || '');
@@ -187,12 +225,15 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
     if (activeOrders.length > 1 && viewGrouping === 'consolidated') {
       const productMap = new Map<string, InvoiceRowItem>();
       activeOrders.forEach((ord) => {
-        (ord.items || []).forEach((item, idx) => {
-          const key = (item.productId || item.productNameSnapshot || `item-${idx}`).trim().toLowerCase();
+        const ordItems = getOrderItemsWithFallback(ord);
+        ordItems.forEach((item, idx) => {
+          const desig = (item.productNameSnapshot || `Article ${idx + 1}`).trim();
+          const key = (item.productId || desig || `item-${idx}`).trim().toLowerCase();
           const isCaisse = item.unitSnapshot === 'caisse' || item.unitSnapshot === 'carton';
-          const caissesCount = isCaisse ? item.quantity : 1;
-          const qte = item.unitSnapshot === 'kg' ? item.quantity : item.quantity * 10;
-          const lineTot = item.lineTotal || (item.unitPriceSnapshot * item.quantity);
+          const caissesCount = isCaisse ? (Number(item.quantity) || 1) : 0;
+          const qte = Number(item.quantity) || 1;
+          const pu = Number(item.unitPriceSnapshot) || 0;
+          const lineTot = Number(item.lineTotal) || Math.round(qte * pu * 100) / 100;
 
           if (productMap.has(key)) {
             const cur = productMap.get(key)!;
@@ -202,11 +243,11 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
           } else {
             productMap.set(key, {
               id: item.productId || `prod-${key}`,
-              designation: item.productNameSnapshot || '',
+              designation: desig,
               caisses: caissesCount,
               qteKg: qte,
-              puKg: item.unitPriceSnapshot || 0,
-              montantHt: Math.round(lineTot * 100) / 100,
+              puKg: pu,
+              montantHt: lineTot,
               unit: item.unitSnapshot || (isCaisse ? 'caisse' : 'kg'),
             });
           }
@@ -218,7 +259,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
         resList.push({
           id: `fallback-${Date.now()}`,
           designation: 'Articles & Produits frais commandés',
-          caisses: 1,
+          caisses: 0,
           qteKg: 1,
           puKg: totalSum,
           montantHt: totalSum,
@@ -231,17 +272,21 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
       activeOrders.forEach((ord) => {
         const ordRef = ord.orderNumber ? ord.orderNumber.replace('#', '').slice(-8) : '';
         const nameSuffix = activeOrders.length > 1 ? ` (Cde ${ordRef})` : '';
-        (ord.items || []).forEach((item, idx) => {
+        const ordItems = getOrderItemsWithFallback(ord);
+        ordItems.forEach((item, idx) => {
           const isCaisse = item.unitSnapshot === 'caisse' || item.unitSnapshot === 'carton';
-          const caissesCount = isCaisse ? item.quantity : 1;
-          const qte = item.unitSnapshot === 'kg' ? item.quantity : item.quantity * 10;
+          const caissesCount = isCaisse ? (Number(item.quantity) || 1) : 0;
+          const qte = Number(item.quantity) || 1;
+          const pu = Number(item.unitPriceSnapshot) || 0;
+          const lineTot = Number(item.lineTotal) || Math.round(qte * pu * 100) / 100;
+          const desig = (item.productNameSnapshot || `Article ${idx + 1}`).trim();
           mappedRows.push({
             id: `${ord.id}-${item.productId || idx}`,
-            designation: `${item.productNameSnapshot}${nameSuffix}`,
+            designation: `${desig}${nameSuffix}`,
             caisses: caissesCount,
             qteKg: qte,
-            puKg: item.unitPriceSnapshot || 0,
-            montantHt: item.lineTotal || 0,
+            puKg: pu,
+            montantHt: lineTot,
             unit: item.unitSnapshot || (isCaisse ? 'caisse' : 'kg'),
           });
         });
@@ -251,7 +296,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
         mappedRows.push({
           id: `fallback-${Date.now()}`,
           designation: 'Articles & Produits frais commandés',
-          caisses: 1,
+          caisses: 0,
           qteKg: 1,
           puKg: totalSum,
           montantHt: totalSum,

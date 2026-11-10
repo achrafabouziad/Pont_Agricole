@@ -111,6 +111,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
   const [selectedInvoiceOrder, setSelectedInvoiceOrder] = useState<Order | null>(null);
   const [selectedInvoiceOrders, setSelectedInvoiceOrders] = useState<Order[] | null>(null);
   const [selectedInvoiceClient, setSelectedInvoiceClient] = useState<Business | null>(null);
+  const [invoiceModalMode, setInvoiceModalMode] = useState<'single' | 'global'>('single');
 
   // Manual admin order creation modal
   const [isCreateOrderModalOpen, setIsCreateOrderModalOpen] = useState<boolean>(false);
@@ -143,36 +144,39 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
       return;
     }
 
+    setInvoiceModalMode('global');
     setSelectedInvoiceOrder(clientOrders[0]);
     setSelectedInvoiceOrders(clientOrders);
     setSelectedInvoiceClient(biz);
   };
 
   const handleOpenInvoiceForOrder = (ord: Order) => {
+    const freshOrd = orders.find((o) => o.id === ord.id) || ord;
     const clientOrders = orders.filter((o) => {
-      if (ord.businessId && o.businessId) {
-        return o.businessId === ord.businessId;
+      if (freshOrd.businessId && o.businessId) {
+        return o.businessId === freshOrd.businessId;
       }
-      if (ord.customerUsername && o.customerUsername) {
-        return o.customerUsername.toLowerCase().trim() === ord.customerUsername.toLowerCase().trim();
+      if (freshOrd.customerUsername && o.customerUsername) {
+        return o.customerUsername.toLowerCase().trim() === freshOrd.customerUsername.toLowerCase().trim();
       }
-      const oPhoneNorm = normalizePhone(ord.customerPhone || '');
+      const oPhoneNorm = normalizePhone(freshOrd.customerPhone || '');
       const phoneNorm = normalizePhone(o.customerPhone || '');
       if (oPhoneNorm && phoneNorm && oPhoneNorm === phoneNorm) return true;
       return false;
     });
 
     const matchBiz = businesses.find((b) => {
-      if (ord.businessId && b.id === ord.businessId) return true;
-      if (ord.customerUsername && b.username && b.username.toLowerCase().trim() === ord.customerUsername.toLowerCase().trim()) return true;
-      const oPhoneNorm = normalizePhone(ord.customerPhone || '');
+      if (freshOrd.businessId && b.id === freshOrd.businessId) return true;
+      if (freshOrd.customerUsername && b.username && b.username.toLowerCase().trim() === freshOrd.customerUsername.toLowerCase().trim()) return true;
+      const oPhoneNorm = normalizePhone(freshOrd.customerPhone || '');
       const bPhoneNorm = normalizePhone(b.phone || '');
       if (oPhoneNorm && bPhoneNorm && oPhoneNorm === bPhoneNorm) return true;
       return false;
     });
 
-    setSelectedInvoiceOrder(ord);
-    setSelectedInvoiceOrders(clientOrders.length > 0 ? clientOrders : [ord]);
+    setInvoiceModalMode('single');
+    setSelectedInvoiceOrder(freshOrd);
+    setSelectedInvoiceOrders(clientOrders.length > 0 ? clientOrders : [freshOrd]);
     setSelectedInvoiceClient(matchBiz || null);
   };
 
@@ -1808,11 +1812,17 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
                       </td>
                       <td>
                         <div style={{ fontSize: '0.8rem', maxWidth: '320px' }}>
-                          {ord.items.map((item, idx) => (
-                            <div key={idx} style={{ marginBottom: '0.2rem' }}>
-                              • <strong>{item.quantity}x</strong> {item.productNameSnapshot} ({item.unitPriceSnapshot} DH/{item.unitSnapshot}) = {item.lineTotal.toFixed(2)} DH
+                          {ord.items && ord.items.length > 0 ? (
+                            ord.items.map((item, idx) => (
+                              <div key={idx} style={{ marginBottom: '0.2rem' }}>
+                                • <strong>{item.quantity}x</strong> {item.productNameSnapshot} ({item.unitPriceSnapshot} DH/{item.unitSnapshot}) = {item.lineTotal.toFixed(2)} DH
+                              </div>
+                            ))
+                          ) : (
+                            <div style={{ color: '#166534', fontWeight: 600 }}>
+                              • <strong>1x</strong> Articles & Produits frais ({ord.total.toFixed(2)} DH)
                             </div>
-                          ))}
+                          )}
                           {ord.customerNotes && (
                             <div style={{ marginTop: '0.4rem', color: 'var(--amber-600)', fontStyle: 'italic', fontSize: '0.78rem' }}>
                               Note : "{ord.customerNotes}"
@@ -4073,6 +4083,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
           order={selectedInvoiceOrder}
           orders={selectedInvoiceOrders}
           clientBusiness={selectedInvoiceClient}
+          initialMode={invoiceModalMode}
           onClose={() => {
             setSelectedInvoiceOrder(null);
             setSelectedInvoiceOrders(null);

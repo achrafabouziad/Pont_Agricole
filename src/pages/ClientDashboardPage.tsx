@@ -403,7 +403,7 @@ export const ClientDashboardPage: React.FC<ClientDashboardPageProps> = ({ onNavi
           orders={orders}
           order={invoiceOrder || orders[0]}
           clientBusiness={business}
-          initialMode={isGlobalInvoiceOpen ? 'global' : 'global'}
+          initialMode={isGlobalInvoiceOpen ? 'global' : 'single'}
           onClose={() => {
             setInvoiceOrder(null);
             setIsGlobalInvoiceOpen(false);
