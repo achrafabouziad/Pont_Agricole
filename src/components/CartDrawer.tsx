@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Trash2, Plus, Minus, AlertTriangle, ArrowRight, ShoppingBag, ArrowLeft, FileText, User, Building } from 'lucide-react';
+import { X, Plus, Minus, AlertTriangle, ArrowRight, ShoppingBag, ArrowLeft, FileText, User, Building } from 'lucide-react';
 import { store } from '../services/store';
 import { CartItem, DeliveryZone, Order, Product, Business } from '../types';
 
@@ -249,25 +249,10 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                       type="button"
                       onClick={() => handleRemove(item.product.id)}
                       className="cart-remove-btn"
-                      title="Supprimer ce produit (Kerwa)"
+                      title="Retirer du panier"
                       aria-label={`Supprimer ${item.product.name} du panier`}
-                      style={{
-                        backgroundColor: '#fef2f2',
-                        color: '#dc2626',
-                        border: '1.5px solid #fecaca',
-                        borderRadius: '10px',
-                        padding: '0.35rem 0.65rem',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.35rem',
-                        fontSize: '0.78rem',
-                        fontWeight: 700,
-                        cursor: 'pointer',
-                        boxShadow: '0 1px 3px rgba(220, 38, 38, 0.08)',
-                      }}
                     >
-                      <X size={15} strokeWidth={2.8} />
-                      <span>Supprimer</span>
+                      <X size={16} strokeWidth={2.5} style={{ flexShrink: 0 }} />
                     </button>
                   </div>
 
