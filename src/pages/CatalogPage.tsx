@@ -6,8 +6,6 @@ import {
   Check,
   X,
   Heart,
-  SlidersHorizontal,
-  ArrowLeft,
   ShoppingBag,
   ArrowRight,
 } from 'lucide-react';
@@ -100,10 +98,13 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({
     filteredProducts = [...filteredProducts].sort((a, b) => b.price - a.price);
   }
 
+  const favoriteProducts = products.filter((p) => favorites.includes(p.id));
+  const hasNoFavoritesAtAll = showOnlyFavorites && favoriteProducts.length === 0;
+
   return (
     <div className="catalog-page-wrapper">
       <div className="container">
-        {/* Mobile App-Style Header (Matching Reference Image 1) */}
+        {/* Mobile App-Style Header */}
         <div className="catalog-mobile-topbar">
           <button
             type="button"
@@ -130,18 +131,22 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({
               : 'Produits Frais'}
           </h1>
 
-          <button
-            type="button"
-            onClick={() => setShowSearchBox((prev) => !prev)}
-            className={`mobile-round-action-btn ${showSearchBox || searchQuery ? 'active' : ''}`}
-            aria-label="Rechercher"
-          >
-            <Search size={18} />
-          </button>
+          {hasNoFavoritesAtAll ? (
+            <div style={{ width: '44px', height: '44px', flexShrink: 0 }} aria-hidden="true" />
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowSearchBox((prev) => !prev)}
+              className={`mobile-round-action-btn ${showSearchBox || searchQuery ? 'active' : ''}`}
+              aria-label="Rechercher"
+            >
+              <Search size={18} />
+            </button>
+          )}
         </div>
 
         {/* Collapsible Mobile Search Bar */}
-        {(showSearchBox || searchQuery) && (
+        {!hasNoFavoritesAtAll && (showSearchBox || searchQuery) && (
           <div className="catalog-search-reveal">
             <Search size={18} className="catalog-search-reveal-icon" />
             <input
@@ -165,51 +170,53 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({
           </div>
         )}
 
-        {/* Mobile Filter Chips Row (Matching Image 1: Price ∨, Brand ∨, Popularity ∨) */}
-        <div className="catalog-mobile-filter-pills">
-          {/* Price Sort Pill */}
-          <div className="mobile-filter-pill-wrap">
-            <select
-              className="mobile-filter-pill-select"
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as any)}
-              aria-label="Trier par prix"
-            >
-              <option value="default">Prix</option>
-              <option value="price_asc">Prix: Croissant</option>
-              <option value="price_desc">Prix: Décroissant</option>
-            </select>
-            <ChevronDown size={14} className="mobile-filter-pill-arrow" />
-          </div>
+        {/* Mobile Filter Chips Row */}
+        {!hasNoFavoritesAtAll && (
+          <div className="catalog-mobile-filter-pills">
+            {/* Price Sort Pill */}
+            <div className="mobile-filter-pill-wrap">
+              <select
+                className="mobile-filter-pill-select"
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as any)}
+                aria-label="Trier par prix"
+              >
+                <option value="default">Prix</option>
+                <option value="price_asc">Prix: Croissant</option>
+                <option value="price_desc">Prix: Décroissant</option>
+              </select>
+              <ChevronDown size={14} className="mobile-filter-pill-arrow" />
+            </div>
 
-          {/* Unit Pill */}
-          <div className="mobile-filter-pill-wrap">
-            <select
-              className="mobile-filter-pill-select"
-              value={selectedUnit}
-              onChange={(e) => setSelectedUnit(e.target.value)}
-              aria-label="Filtrer par unité"
-            >
-              <option value="all">Unité</option>
-              <option value="caisse">Caisse</option>
-              <option value="carton">Carton</option>
-              <option value="kg">Au Kg</option>
-              <option value="botte">Botte</option>
-              <option value="piece">Pièce</option>
-            </select>
-            <ChevronDown size={14} className="mobile-filter-pill-arrow" />
-          </div>
+            {/* Unit Pill */}
+            <div className="mobile-filter-pill-wrap">
+              <select
+                className="mobile-filter-pill-select"
+                value={selectedUnit}
+                onChange={(e) => setSelectedUnit(e.target.value)}
+                aria-label="Filtrer par unité"
+              >
+                <option value="all">Unité</option>
+                <option value="caisse">Caisse</option>
+                <option value="carton">Carton</option>
+                <option value="kg">Au Kg</option>
+                <option value="botte">Botte</option>
+                <option value="piece">Pièce</option>
+              </select>
+              <ChevronDown size={14} className="mobile-filter-pill-arrow" />
+            </div>
 
-          {/* In Stock Pill */}
-          <button
-            type="button"
-            onClick={() => setOnlyAvailable((prev) => !prev)}
-            className={`mobile-filter-pill-btn ${onlyAvailable ? 'active' : ''}`}
-          >
-            <span>En stock</span>
-            {onlyAvailable && <Check size={13} strokeWidth={2.5} />}
-          </button>
-        </div>
+            {/* In Stock Pill */}
+            <button
+              type="button"
+              onClick={() => setOnlyAvailable((prev) => !prev)}
+              className={`mobile-filter-pill-btn ${onlyAvailable ? 'active' : ''}`}
+            >
+              <span>En stock</span>
+              {onlyAvailable && <Check size={13} strokeWidth={2.5} />}
+            </button>
+          </div>
+        )}
 
         {/* Desktop Header & Filters (Hidden on Mobile) */}
         <div className="catalog-desktop-header-area">
@@ -227,6 +234,7 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({
           </div>
 
           {/* Desktop Search & Filters Bar */}
+          {!hasNoFavoritesAtAll && (
           <div className="catalog-filter-card">
             <div className="catalog-filter-top">
               <div className="catalog-search-wrap">
@@ -305,38 +313,47 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({
               </div>
             )}
           </div>
+          )}
         </div>
 
-        {/* Products Grid (2 Columns on Mobile matching Image 1) */}
+        {/* Products Grid */}
         {filteredProducts.length === 0 ? (
           <div className="catalog-empty-box">
-            <div className="catalog-empty-icon-wrap">
-              {showOnlyFavorites ? <Heart size={28} /> : <Search size={28} />}
+            <div className={`catalog-empty-icon-wrap ${hasNoFavoritesAtAll ? 'is-favorites' : ''}`}>
+              {hasNoFavoritesAtAll ? <Heart size={30} strokeWidth={2.2} /> : <Search size={28} strokeWidth={2.2} />}
             </div>
             <h3 className="catalog-empty-title">
-              {showOnlyFavorites
+              {hasNoFavoritesAtAll
                 ? 'Aucun produit favori pour le moment'
                 : 'Aucun produit ne correspond à vos critères'}
             </h3>
             <p className="catalog-empty-desc">
-              {showOnlyFavorites
-                ? 'Cliquez sur le cœur sur n’importe quel produit pour le retrouver facilement ici.'
-                : 'Vérifiez l’orthographe ou réinitialisez vos filtres pour afficher l’ensemble des arrivages.'}
+              {hasNoFavoritesAtAll
+                ? 'Appuyez sur le cœur d’un produit dans le catalogue pour le retrouver rapidement ici.'
+                : 'Vérifiez l’orthographe ou réinitialisez vos filtres pour afficher l’ensemble des produits.'}
             </p>
             <button
+              type="button"
               onClick={() => {
                 setSelectedCategory('all');
                 setSearchQuery('');
                 setOnlyAvailable(false);
                 setSelectedUnit('all');
                 setSortBy('default');
-                if (showOnlyFavorites && onNavigate) {
+                if (hasNoFavoritesAtAll && onNavigate) {
                   onNavigate('catalog');
                 }
               }}
-              className="btn btn-primary btn-sm"
+              className="catalog-empty-btn"
             >
-              {showOnlyFavorites ? 'Explorer le catalogue' : 'Réinitialiser les filtres'}
+              {hasNoFavoritesAtAll ? (
+                <>
+                  <ShoppingBag size={17} />
+                  <span>Explorer le catalogue</span>
+                </>
+              ) : (
+                <span>Réinitialiser les filtres</span>
+              )}
             </button>
           </div>
         ) : (

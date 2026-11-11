@@ -1891,7 +1891,8 @@ table.data-table td {
 
   /* Catalog Page Responsive Layout - Modern Mobile App Header */
   .catalog-page-wrapper {
-    padding: 0.5rem 0 5rem !important;
+    padding: 0.5rem 0 4rem !important;
+    min-height: calc(100vh - 140px) !important;
   }
 
   /* Hide desktop header & filters completely on mobile */
@@ -2001,15 +2002,13 @@ table.data-table td {
     flex-shrink: 0 !important;
   }
 
-  /* Horizontal Filter Pills Row (Matching Reference Image 1) */
+  /* Horizontal Filter Pills Row (Clean Fit Without Right-Edge Clipping) */
   .catalog-mobile-filter-pills {
     display: flex !important;
     align-items: center !important;
-    gap: 0.65rem !important;
-    padding: 0.35rem 0.15rem 0.85rem !important;
-    overflow-x: auto !important;
-    -webkit-overflow-scrolling: touch !important;
-    scrollbar-width: none !important;
+    flex-wrap: wrap !important;
+    gap: 0.45rem !important;
+    padding: 0.25rem 0 0.85rem !important;
     width: 100% !important;
     box-sizing: border-box !important;
   }
@@ -2031,8 +2030,8 @@ table.data-table td {
     background: #ffffff !important;
     border: 1px solid #e2e8f0 !important;
     border-radius: 9999px !important;
-    padding: 0.52rem 2.15rem 0.52rem 1.05rem !important;
-    font-size: 0.88rem !important;
+    padding: 0.46rem 1.85rem 0.46rem 0.85rem !important;
+    font-size: 0.82rem !important;
     font-weight: 600 !important;
     color: #334155 !important;
     cursor: pointer !important;
@@ -2051,7 +2050,7 @@ table.data-table td {
 
   .mobile-filter-pill-arrow {
     position: absolute !important;
-    right: 0.85rem !important;
+    right: 0.65rem !important;
     pointer-events: none !important;
     color: #475569 !important;
     display: flex !important;
@@ -2065,8 +2064,8 @@ table.data-table td {
     background: #ffffff !important;
     border: 1px solid #e2e8f0 !important;
     border-radius: 9999px !important;
-    padding: 0.52rem 1.05rem !important;
-    font-size: 0.88rem !important;
+    padding: 0.46rem 0.88rem !important;
+    font-size: 0.82rem !important;
     font-weight: 600 !important;
     color: #334155 !important;
     cursor: pointer !important;
@@ -2088,6 +2087,16 @@ table.data-table td {
     border-color: #10b981 !important;
     color: #047857 !important;
     font-weight: 700 !important;
+  }
+
+  .catalog-empty-box {
+    margin: 1.75rem auto 2rem !important;
+    padding: 2.25rem 1.35rem !important;
+  }
+
+  .catalog-empty-btn {
+    width: 100% !important;
+    max-width: 260px !important;
   }
 
   /* ========================================================================
@@ -2541,6 +2550,7 @@ table.data-table td {
 
 .catalog-page-wrapper {
   padding: 2.5rem 0 5rem;
+  min-height: calc(100vh - 200px);
 }
 
 .catalog-header {
@@ -2791,6 +2801,86 @@ table.data-table td {
 .catalog-cat-pill.active .catalog-cat-count {
   background-color: rgba(255, 255, 255, 0.28);
   color: #ffffff;
+}
+
+.catalog-count-indicator {
+  font-size: 0.85rem;
+  color: #475569;
+  margin: 0.15rem 0 0.85rem;
+  padding: 0 0.15rem;
+}
+
+.catalog-empty-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  max-width: 440px;
+  margin: 2.5rem auto 3rem;
+  padding: 2.75rem 1.75rem;
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 22px;
+  box-shadow: 0 10px 30px rgba(15, 56, 44, 0.05);
+}
+
+.catalog-empty-icon-wrap {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background-color: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #166534;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.25rem;
+}
+
+.catalog-empty-icon-wrap.is-favorites {
+  background-color: #fff1f2;
+  border-color: #fecdd3;
+  color: #e11d48;
+}
+
+.catalog-empty-title {
+  font-size: 1.18rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 0.55rem;
+  line-height: 1.35;
+}
+
+.catalog-empty-desc {
+  font-size: 0.9rem;
+  color: #64748b;
+  line-height: 1.6;
+  margin: 0 0 1.65rem;
+  max-width: 310px;
+}
+
+.catalog-empty-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background-color: #166534;
+  color: #ffffff;
+  border: none;
+  border-radius: 12px;
+  padding: 0.78rem 1.6rem;
+  font-size: 0.92rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(22, 101, 52, 0.24);
+  transition: all 0.2s ease;
+}
+
+.catalog-empty-btn:hover {
+  background-color: #15803d;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(22, 101, 52, 0.3);
 }
 
 @media (max-width: 480px) {
