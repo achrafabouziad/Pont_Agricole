@@ -1506,20 +1506,23 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
                               style={{
                                 display: 'inline-flex',
                                 alignItems: 'center',
-                                gap: '0.25rem',
-                                fontSize: '0.78rem',
-                                padding: '0.35rem 0.55rem',
-                                backgroundColor: '#fef2f2',
-                                border: '1px solid #fecaca',
-                                color: '#991b1b',
-                                fontWeight: 700,
-                                borderRadius: '6px',
+                                gap: '0.3rem',
+                                fontSize: '0.75rem',
+                                padding: '0.3rem 0.6rem',
+                                backgroundColor: 'transparent',
+                                border: '1px solid #e2e8f0',
+                                color: '#94a3b8',
+                                fontWeight: 600,
+                                borderRadius: '8px',
                                 cursor: 'pointer',
                                 whiteSpace: 'nowrap',
+                                transition: 'all 0.15s ease',
                               }}
-                              title="Annuler et supprimer définitivement cette commande"
+                              onMouseEnter={(e) => { e.currentTarget.style.color = '#dc2626'; e.currentTarget.style.borderColor = '#fca5a5'; e.currentTarget.style.backgroundColor = '#fef2f2'; }}
+                              onMouseLeave={(e) => { e.currentTarget.style.color = '#94a3b8'; e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.backgroundColor = 'transparent'; }}
+                              title="Supprimer cette commande"
                             >
-                              <Trash2 size={13} />
+                              <XCircle size={13} />
                               <span>Supprimer</span>
                             </button>
                           </div>
@@ -1888,20 +1891,23 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
                               display: 'inline-flex',
                               alignItems: 'center',
                               justifyContent: 'center',
-                              gap: '0.35rem',
-                              fontSize: '0.78rem',
-                              padding: '0.35rem 0.65rem',
-                              backgroundColor: '#fef2f2',
-                              border: '1px solid #fecaca',
-                              color: '#991b1b',
-                              fontWeight: 700,
-                              borderRadius: '6px',
+                              gap: '0.3rem',
+                              fontSize: '0.75rem',
+                              padding: '0.3rem 0.6rem',
+                              backgroundColor: 'transparent',
+                              border: '1px solid #e2e8f0',
+                              color: '#94a3b8',
+                              fontWeight: 600,
+                              borderRadius: '8px',
                               cursor: 'pointer',
+                              transition: 'all 0.15s ease',
                             }}
-                            title="Annuler et supprimer définitivement cette commande"
+                            onMouseEnter={(e) => { e.currentTarget.style.color = '#dc2626'; e.currentTarget.style.borderColor = '#fca5a5'; e.currentTarget.style.backgroundColor = '#fef2f2'; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.color = '#94a3b8'; e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.backgroundColor = 'transparent'; }}
+                            title="Supprimer cette commande"
                           >
-                            <Trash2 size={13} />
-                            <span>Annuler / Supprimer</span>
+                            <XCircle size={13} />
+                            <span>Supprimer</span>
                           </button>
                         </div>
                       </td>
@@ -2610,16 +2616,22 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
                                   onClick={() => handleDeleteClient(biz.id, biz.businessName)}
                                   className="btn btn-secondary btn-sm"
                                   style={{
-                                    color: '#dc2626',
+                                    color: '#94a3b8',
                                     fontSize: '0.75rem',
                                     padding: '0.25rem 0.5rem',
                                     display: 'inline-flex',
                                     alignItems: 'center',
                                     gap: '0.25rem',
+                                    border: '1px solid #e2e8f0',
+                                    backgroundColor: 'transparent',
+                                    borderRadius: '8px',
+                                    transition: 'all 0.15s ease',
                                   }}
+                                  onMouseEnter={(e) => { e.currentTarget.style.color = '#dc2626'; e.currentTarget.style.borderColor = '#fca5a5'; e.currentTarget.style.backgroundColor = '#fef2f2'; }}
+                                  onMouseLeave={(e) => { e.currentTarget.style.color = '#94a3b8'; e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.backgroundColor = 'transparent'; }}
                                   title="Supprimer définitivement ce compte client"
                                 >
-                                  <Trash2 size={12} />
+                                  <XCircle size={12} />
                                 </button>
                               </div>
                             </td>
@@ -2922,10 +2934,20 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
                           <button
                             onClick={() => handleDeleteClient(biz.id, biz.businessName)}
                             className="btn btn-secondary btn-sm"
-                            style={{ color: '#dc2626', fontSize: '0.75rem', padding: '0.3rem 0.6rem' }}
+                            style={{
+                              color: '#94a3b8',
+                              fontSize: '0.75rem',
+                              padding: '0.3rem 0.6rem',
+                              border: '1px solid #e2e8f0',
+                              backgroundColor: 'transparent',
+                              borderRadius: '8px',
+                              transition: 'all 0.15s ease',
+                            }}
+                            onMouseEnter={(e) => { e.currentTarget.style.color = '#dc2626'; e.currentTarget.style.borderColor = '#fca5a5'; e.currentTarget.style.backgroundColor = '#fef2f2'; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.color = '#94a3b8'; e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.backgroundColor = 'transparent'; }}
                             title="Supprimer ce compte client"
                           >
-                            <Trash2 size={13} />
+                            <XCircle size={13} />
                           </button>
                         </div>
                       </div>
@@ -3002,10 +3024,18 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
                           <button
                             onClick={() => handleDeleteProduct(p.id)}
                             className="btn btn-secondary btn-sm"
-                            style={{ color: '#dc2626' }}
+                            style={{
+                              color: '#94a3b8',
+                              border: '1px solid #e2e8f0',
+                              backgroundColor: 'transparent',
+                              borderRadius: '8px',
+                              transition: 'all 0.15s ease',
+                            }}
+                            onMouseEnter={(e) => { e.currentTarget.style.color = '#dc2626'; e.currentTarget.style.borderColor = '#fca5a5'; e.currentTarget.style.backgroundColor = '#fef2f2'; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.color = '#94a3b8'; e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.backgroundColor = 'transparent'; }}
                             title="Supprimer"
                           >
-                            <Trash2 size={14} />
+                            <XCircle size={14} />
                           </button>
                         </div>
                       </td>
@@ -3086,10 +3116,19 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
                     <button
                       onClick={() => handleDeleteProduct(p.id)}
                       className="btn btn-secondary btn-sm"
-                      style={{ color: '#dc2626', borderColor: '#fecaca', backgroundColor: '#fef2f2', padding: '0.45rem 0.75rem' }}
+                      style={{
+                        color: '#94a3b8',
+                        borderColor: '#e2e8f0',
+                        backgroundColor: 'transparent',
+                        padding: '0.45rem 0.75rem',
+                        borderRadius: '8px',
+                        transition: 'all 0.15s ease',
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.color = '#dc2626'; e.currentTarget.style.borderColor = '#fca5a5'; e.currentTarget.style.backgroundColor = '#fef2f2'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.color = '#94a3b8'; e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.backgroundColor = 'transparent'; }}
                       title="Supprimer"
                     >
-                      <Trash2 size={14} />
+                      <XCircle size={14} />
                     </button>
                   </div>
                 </div>

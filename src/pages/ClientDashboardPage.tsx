@@ -18,6 +18,7 @@ import {
   Phone,
   FileText,
   Trash2,
+  XCircle,
 } from 'lucide-react';
 import { InvoiceModal } from '../components/InvoiceModal';
 
@@ -377,15 +378,19 @@ export const ClientDashboardPage: React.FC<ClientDashboardPageProps> = ({ onNavi
                       style={{
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '0.35rem',
-                        color: '#dc2626',
-                        backgroundColor: '#fef2f2',
-                        borderColor: '#fecaca',
-                        fontWeight: 700,
+                        gap: '0.3rem',
+                        color: '#94a3b8',
+                        backgroundColor: 'transparent',
+                        borderColor: '#e2e8f0',
+                        fontWeight: 600,
+                        borderRadius: '8px',
+                        transition: 'all 0.15s ease',
                       }}
+                      onMouseEnter={(e) => { e.currentTarget.style.color = '#dc2626'; e.currentTarget.style.borderColor = '#fca5a5'; e.currentTarget.style.backgroundColor = '#fef2f2'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.color = '#94a3b8'; e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.backgroundColor = 'transparent'; }}
                       title="Supprimer cette commande"
                     >
-                      <Trash2 size={14} />
+                      <XCircle size={14} />
                       <span>Supprimer</span>
                     </button>
                   </div>
