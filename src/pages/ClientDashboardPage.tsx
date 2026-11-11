@@ -1,24 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { store } from '../services/store';
-import { Order, UserProfile, Business, OrderStatus } from '../types';
+import { Order, UserProfile, Business, OrderStatus, Product } from '../types';
 import {
   Package,
   Calendar,
-  Clock,
   MapPin,
   CheckCircle,
-  AlertTriangle,
   RotateCcw,
   ShoppingBag,
-  ExternalLink,
-  Building,
   User,
-  Truck,
-  Eye,
   Phone,
   FileText,
-  Trash2,
   XCircle,
+  LogOut,
 } from 'lucide-react';
 import { InvoiceModal } from '../components/InvoiceModal';
 
@@ -31,10 +25,14 @@ export const ClientDashboardPage: React.FC<ClientDashboardPageProps> = ({ onNavi
   const [user, setUser] = useState<UserProfile | null>(store.getCurrentUser());
   const [business, setBusiness] = useState<Business | null>(store.getCurrentBusiness());
   const [orders, setOrders] = useState<Order[]>([]);
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [invoiceOrder, setInvoiceOrder] = useState<Order | null>(null);
   const [isGlobalInvoiceOpen, setIsGlobalInvoiceOpen] = useState<boolean>(false);
   const [reorderNotice, setReorderNotice] = useState<string | null>(null);
+
+  const handleLogout = async () => {
+    await store.logout();
+    onNavigate('auth');
+  };
 
   useEffect(() => {
     store.validateSession();
@@ -110,28 +108,69 @@ export const ClientDashboardPage: React.FC<ClientDashboardPageProps> = ({ onNavi
     }
   };
 
+  const displayTitle = business?.businessName || user?.fullName || 'Mon Établissement';
+  const avatarInitials = displayTitle.trim().slice(0, 2).toUpperCase();
+  const formattedAddress = [business?.deliveryAddress, business?.city].filter(Boolean).join(', ');
+  const totalCumulative = orders.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+
   return (
     <div className="client-dashboard-wrapper">
       <div className="container">
-        {/* Account Header */}
+        {/* Account Header Card */}
         <div className="card client-account-header">
-          <div>
-            <div className="client-account-title-row">
-              <h1 className="client-business-name">
-                {business?.businessName || 'Mon Établissement'}
-              </h1>
-              <span className="badge badge-status-delivered">Compte Professionnel Actif</span>
+          <div className="client-account-top-bar">
+            <div className="client-account-identity">
+              <div className="client-avatar-badge" aria-hidden="true">
+                {avatarInitials}
+              </div>
+              <div className="client-identity-text">
+                <div className="client-account-title-row">
+                  <h1 className="client-business-name">{displayTitle}</h1>
+                  <span className="client-active-pill">
+                    <span className="client-active-dot" />
+                    Compte Actif
+                  </span>
+                </div>
+                <div className="client-account-meta-row">
+                  {user?.fullName && (
+                    <span className="client-meta-item">
+                      <User size={14} color="#166534" /> {user.fullName}
+                    </span>
+                  )}
+                  {user?.phone && (
+                    <span className="client-meta-item">
+                      <Phone size={14} color="#166534" /> {user.phone}
+                    </span>
+                  )}
+                  {formattedAddress && (
+                    <span className="client-meta-item">
+                      <MapPin size={14} color="#166534" /> {formattedAddress}
+                    </span>
+                  )}
+                </div>
+              </div>
             </div>
-            <div className="client-account-meta-row">
-              <span className="client-meta-item">
-                <User size={14} color="var(--primary-600)" /> {user?.fullName}
-              </span>
-              <span className="client-meta-item">
-                <Phone size={14} color="var(--primary-600)" /> {user?.phone}
-              </span>
-              <span className="client-meta-item">
-                <MapPin size={14} color="var(--primary-600)" /> {business?.deliveryAddress}, {business?.city}
-              </span>
+
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="client-logout-mini-btn"
+              title="Se déconnecter"
+            >
+              <LogOut size={14} />
+              <span>Déconnexion</span>
+            </button>
+          </div>
+
+          <div className="client-stats-strip">
+            <div className="client-stat-box">
+              <span className="client-stat-label">Commandes</span>
+              <strong className="client-stat-val">{orders.length}</strong>
+            </div>
+            <div className="client-stat-divider" />
+            <div className="client-stat-box">
+              <span className="client-stat-label">Total Cumulé</span>
+              <strong className="client-stat-val client-stat-price">{totalCumulative.toFixed(2)} DH</strong>
             </div>
           </div>
 
@@ -149,19 +188,7 @@ export const ClientDashboardPage: React.FC<ClientDashboardPageProps> = ({ onNavi
 
         {/* Reorder feedback notice */}
         {reorderNotice && (
-          <div
-            style={{
-              padding: '0.75rem 1rem',
-              backgroundColor: '#dcfce7',
-              color: '#166534',
-              borderRadius: 'var(--radius-md)',
-              fontSize: '0.9rem',
-              marginBottom: '1.5rem',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-            }}
-          >
+          <div className="client-reorder-notice">
             <CheckCircle size={18} />
             <span>{reorderNotice}</span>
           </div>
@@ -179,224 +206,153 @@ export const ClientDashboardPage: React.FC<ClientDashboardPageProps> = ({ onNavi
           </div>
 
           {orders.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '3.5rem 1rem', backgroundColor: '#ffffff', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-light)' }}>
-              <Package size={44} color="var(--primary-400)" style={{ margin: '0 auto 1rem' }} />
-              <h3 style={{ fontSize: '1.15rem', color: 'var(--primary-900)', marginBottom: '0.5rem' }}>
-                Aucune commande enregistrée
-              </h3>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '1.5rem' }}>
+            <div className="catalog-empty-box">
+              <div className="catalog-empty-icon-wrap">
+                <Package size={30} strokeWidth={2.2} />
+              </div>
+              <h3 className="catalog-empty-title">Aucune commande enregistrée</h3>
+              <p className="catalog-empty-desc">
                 Passez votre première commande pour approvisionner vos cuisines.
               </p>
-              <button onClick={() => onNavigate('catalog')} className="btn btn-primary">
-                Consulter les produits frais
+              <button onClick={() => onNavigate('catalog')} className="catalog-empty-btn">
+                <ShoppingBag size={17} />
+                <span>Consulter les produits frais</span>
               </button>
             </div>
           ) : (
             <>
-              {/* Facture Globale Multi-Commandes Banner */}
-              <div
-                className="card"
-                style={{
-                  backgroundColor: '#f0fdf4',
-                  border: '1.5px solid #86efac',
-                  padding: '1.25rem 1.5rem',
-                  marginBottom: '1.5rem',
-                  borderRadius: '16px',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  flexWrap: 'wrap',
-                  gap: '1rem',
-                  boxShadow: '0 4px 15px rgba(22, 101, 52, 0.07)',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
-                  <div
-                    style={{
-                      width: '44px',
-                      height: '44px',
-                      borderRadius: '12px',
-                      backgroundColor: '#166534',
-                      color: '#ffffff',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      flexShrink: 0,
-                    }}
-                  >
-                    <FileText size={22} />
+              {/* Compact Facture Globale Récapitulative Banner */}
+              <div className="client-global-invoice-card">
+                <div className="client-global-invoice-info">
+                  <div className="client-global-invoice-icon">
+                    <FileText size={19} />
                   </div>
-                  <div>
-                    <div style={{ fontWeight: 800, fontSize: '1.05rem', color: '#14532d', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                      <span>Facture Globale Récapitulative</span>
-                      <span
-                        style={{
-                          fontSize: '0.72rem',
-                          backgroundColor: '#dcfce7',
-                          color: '#166534',
-                          padding: '0.15rem 0.55rem',
-                          borderRadius: '10px',
-                          fontWeight: 800,
-                          border: '1px solid #bbf7d0',
-                        }}
-                      >
-                        {orders.length} commande{orders.length > 1 ? 's' : ''} regroupée{orders.length > 1 ? 's' : ''}
+                  <div className="client-global-invoice-text">
+                    <div className="client-global-invoice-title-row">
+                      <span>Facture Globale</span>
+                      <span className="client-global-invoice-count">
+                        {orders.length} cmd{orders.length > 1 ? 's' : ''}
                       </span>
                     </div>
-                    <p style={{ margin: '0.2rem 0 0', fontSize: '0.85rem', color: '#166534' }}>
-                      Toutes vos commandes réunies sur une seule facture commerciale avec total cumulé.
+                    <p className="client-global-invoice-sub">
+                      Récapitulatif cumulé : <strong>{totalCumulative.toFixed(2)} DH</strong>
                     </p>
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '0.72rem', color: '#166534', fontWeight: 700, textTransform: 'uppercase' }}>Total Général TTC</div>
-                    <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#14532d' }}>
-                      {orders.reduce((sum, o) => sum + (Number(o.total) || 0), 0).toFixed(2)} DH
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setInvoiceOrder(null);
-                      setIsGlobalInvoiceOpen(true);
-                    }}
-                    className="btn btn-primary"
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '0.45rem',
-                      backgroundColor: '#166534',
-                      borderColor: '#166534',
-                      fontWeight: 800,
-                      padding: '0.65rem 1.15rem',
-                      borderRadius: '10px',
-                    }}
-                  >
-                    <FileText size={16} />
-                    <span>Ouvrir la Facture Globale</span>
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setInvoiceOrder(null);
+                    setIsGlobalInvoiceOpen(true);
+                  }}
+                  className="client-global-invoice-btn"
+                >
+                  <FileText size={15} />
+                  <span>Ouvrir la Facture Globale</span>
+                </button>
               </div>
 
               <div className="client-orders-list">
-                {orders.map((order) => (
-                <div
-                  key={order.id}
-                  className="card client-order-card"
-                >
-                  {/* Top Bar of Order Card */}
-                  <div className="client-order-header">
-                    <div>
-                      <div className="client-order-num">
-                        {order.orderNumber}
+                {orders.map((order) => {
+                  const totalUnits = order.items.reduce((s, i) => s + i.quantity, 0);
+                  return (
+                    <div key={order.id} className="card client-order-card">
+                      {/* Clean 2-row Order Header */}
+                      <div className="client-order-header">
+                        <div className="client-order-row-top">
+                          <div className="client-order-num">{order.orderNumber}</div>
+                          <div className="client-order-total">{order.total.toFixed(2)} DH</div>
+                        </div>
+                        <div className="client-order-row-sub">
+                          <span className="client-order-date">
+                            Passée le{' '}
+                            {new Date(order.createdAt).toLocaleDateString('fr-FR', {
+                              day: '2-digit',
+                              month: 'long',
+                              year: 'numeric',
+                            })}
+                          </span>
+                          {getStatusBadge(order.status)}
+                        </div>
                       </div>
-                      <div className="client-order-date">
-                        Passée le {new Date(order.createdAt).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })}
+
+                      {/* Order info details (2 balanced columns) */}
+                      <div className="client-order-meta-grid">
+                        <div>
+                          <span className="client-meta-label">Date souhaitée</span>
+                          <strong className="client-meta-val">
+                            <Calendar size={14} color="#166534" /> {order.requestedDeliveryDate}
+                          </strong>
+                        </div>
+
+                        <div>
+                          <span className="client-meta-label">Ville</span>
+                          <span className="client-meta-val">
+                            <MapPin size={14} color="#166534" /> {order.deliveryCity}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Items snapshot summary */}
+                      <div className="client-order-items-box">
+                        <div className="client-order-items-head">
+                          <span>Articles commandés ({order.items.length})</span>
+                          {totalUnits > 0 && (
+                            <span className="client-order-units-count">{totalUnits} unités</span>
+                          )}
+                        </div>
+                        <div className="client-order-items-pills">
+                          {order.items.length > 0 ? (
+                            order.items.map((item, idx) => (
+                              <span key={idx} className="client-order-item-pill">
+                                <strong>{item.quantity}x</strong> {item.productNameSnapshot} (
+                                {item.unitPriceSnapshot.toFixed(2)} DH/{item.unitSnapshot})
+                              </span>
+                            ))
+                          ) : (
+                            <span className="client-order-item-pill">
+                              Articles & Produits frais ({order.total.toFixed(2)} DH)
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Clean Action Bar */}
+                      <div className="client-order-actions">
+                        <button
+                          type="button"
+                          onClick={() => setInvoiceOrder(order)}
+                          className="btn btn-sm client-order-invoice-btn"
+                          title="Télécharger ou imprimer la facture de cette commande"
+                        >
+                          <FileText size={14} />
+                          <span>Facture / BL</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleReorder(order)}
+                          className="btn btn-secondary btn-sm client-order-reorder-btn"
+                        >
+                          <RotateCcw size={14} />
+                          <span>Recommander</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteOrder(order.id, order.orderNumber)}
+                          className="client-order-delete-btn"
+                          title="Supprimer cette commande"
+                          aria-label={`Supprimer la commande ${order.orderNumber}`}
+                        >
+                          <XCircle size={17} />
+                        </button>
                       </div>
                     </div>
-
-                    <div className="client-order-status-price">
-                      {getStatusBadge(order.status)}
-                      <div className="client-order-total">
-                        {order.total.toFixed(2)} DH
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Order info details */}
-                  <div className="client-order-meta-grid">
-                    <div>
-                      <span className="client-meta-label">Date souhaitée</span>
-                      <strong className="client-meta-val">
-                        <Calendar size={14} color="var(--primary-600)" /> {order.requestedDeliveryDate}
-                      </strong>
-                    </div>
-
-                    <div>
-                      <span className="client-meta-label">Destination</span>
-                      <span className="client-meta-val">
-                        <MapPin size={14} color="var(--primary-600)" /> {order.deliveryCity}
-                      </span>
-                    </div>
-
-                    <div>
-                      <span className="client-meta-label">Volume</span>
-                      <span className="client-meta-val">
-                        {order.items.length} références ({order.items.reduce((s, i) => s + i.quantity, 0)} unités)
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Items snapshot summary */}
-                  <div className="client-order-items-box">
-                    <div style={{ fontWeight: 600, color: 'var(--primary-900)', marginBottom: '0.35rem', fontSize: '0.78rem' }}>Articles commandés :</div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.45rem' }}>
-                      {order.items.map((item, idx) => (
-                        <span key={idx} className="client-order-item-pill">
-                          <strong>{item.quantity}x</strong> {item.productNameSnapshot} ({item.unitPriceSnapshot.toFixed(2)} DH/{item.unitSnapshot})
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Actions: View Details / Reorder / Invoice */}
-                  <div className="client-order-actions">
-                    <button
-                      onClick={() => setInvoiceOrder(order)}
-                      className="btn btn-secondary btn-sm"
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.35rem',
-                        backgroundColor: '#f0fdf4',
-                        borderColor: '#bbf7d0',
-                        color: '#166534',
-                        fontWeight: 700,
-                      }}
-                      title="Télécharger ou imprimer la facture de cette commande"
-                    >
-                      <FileText size={14} />
-                      <span>Facture / BL</span>
-                    </button>
-
-                    <button
-                      onClick={() => handleReorder(order)}
-                      className="btn btn-secondary btn-sm"
-                      style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}
-                    >
-                      <RotateCcw size={14} />
-                      <span>Recommander</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteOrder(order.id, order.referenceNumber)}
-                      className="btn btn-secondary btn-sm"
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.3rem',
-                        color: '#94a3b8',
-                        backgroundColor: 'transparent',
-                        borderColor: '#e2e8f0',
-                        fontWeight: 600,
-                        borderRadius: '8px',
-                        transition: 'all 0.15s ease',
-                      }}
-                      onMouseEnter={(e) => { e.currentTarget.style.color = '#dc2626'; e.currentTarget.style.borderColor = '#fca5a5'; e.currentTarget.style.backgroundColor = '#fef2f2'; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.color = '#94a3b8'; e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.backgroundColor = 'transparent'; }}
-                      title="Supprimer cette commande"
-                    >
-                      <XCircle size={14} />
-                      <span>Supprimer</span>
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
+                  );
+                })}
+              </div>
             </>
           )}
         </div>
