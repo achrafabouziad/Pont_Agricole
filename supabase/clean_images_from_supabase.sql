@@ -9,13 +9,5 @@ UPDATE public.products
 SET image_url = 'local_storage'
 WHERE image_url LIKE 'data:image%' OR LENGTH(image_url) > 500;
 
--- 2. Nettoyer les fichiers de Supabase Storage (Buckets) si des photos y ont été uploadées
-DO $$
-BEGIN
-    IF EXISTS (SELECT FROM pg_tables WHERE schemaname = 'storage' AND tablename = 'objects') THEN
-        DELETE FROM storage.objects;
-    END IF;
-END $$;
-
--- 3. Récupérer immédiatement l'espace disque sur PostgreSQL
+-- 2. Récupérer et libérer immédiatement tout l'espace disque sur PostgreSQL
 VACUUM FULL public.products;
