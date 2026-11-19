@@ -39,6 +39,8 @@ const KEY_SETTINGS = `${STORAGE_PREFIX}settings`;
 const KEY_CART = `${STORAGE_PREFIX}cart`;
 const KEY_FAVORITES = `${STORAGE_PREFIX}favorites`;
 const KEY_DELETED_BIZ = `${STORAGE_PREFIX}deleted_biz_ids`;
+const KEY_LOCAL_IMAGES = `${STORAGE_PREFIX}local_images`;
+const IMAGE_KEY_PREFIX = `${STORAGE_PREFIX}img_`;
 
 // Helper for local storage
 function getStored<T>(key: string, defaultValue: T): T {
@@ -321,13 +323,29 @@ class StoreService {
           .then((r) => r.json())
           .then((prods) => {
             if (Array.isArray(prods) && prods.length > 0) {
+              // Sauvegarder toutes les images dans localStorage
+              for (const p of prods) {
+                if (p.id && (p.image_url || p.imageUrl)) {
+                  this.setLocalImage(String(p.id), String(p.image_url || p.imageUrl));
+                }
+              }
               const merged = this.mergeProducts(prods, storedProds);
               setStored(KEY_PRODUCTS, merged);
+              this.memoryProducts = merged;
               this.notify();
             }
           })
           .catch(() => {});
       } catch {}
+    } else {
+      // S'assurer que toutes les images des produits existants sont dans localStorage
+      for (const p of storedProds) {
+        if (p.id && (p.imageUrl || p.image_url)) {
+          if (!this.getLocalImage(p.id)) {
+            this.setLocalImage(p.id, p.imageUrl || p.image_url);
+          }
+        }
+      }
     }
     const storedCats = getStored<any[]>(KEY_CATEGORIES, []);
     if (!Array.isArray(storedCats) || storedCats.length === 0) {
@@ -339,12 +357,11 @@ class StoreService {
     if (!localStorage.getItem(KEY_SETTINGS)) {
       setStored(KEY_SETTINGS, INITIAL_COMPANY_SETTINGS);
     }
-    // Assainissement B2B multi-appareils : Vider définitivement les anciens caches locaux pour garantir 100% de parité avec Supabase Cloud
+    // Assainissement B2B multi-appareils (Conserver KEY_PRODUCTS et KEY_LOCAL_IMAGES pour préserver le catalogue et le quota Supabase)
     try {
       localStorage.removeItem(KEY_DELETED_BIZ);
       localStorage.removeItem(KEY_BUSINESSES);
       localStorage.removeItem(KEY_ORDERS);
-      localStorage.removeItem(KEY_PRODUCTS);
       localStorage.removeItem(KEY_USER_CREDS);
       localStorage.removeItem(KEY_USER);
       localStorage.removeItem(KEY_BUSINESS);
@@ -1537,22 +1554,144 @@ class StoreService {
     }
   }
 
+  // --- LOCAL IMAGES STORAGE (0 MB CONSUMED ON SUPABASE CLOUD) ---
+  public getLocalImage(id: string): string | null {
+    if (typeof window === 'undefined' || !id) return null;
+    try {
+      // 1. Clé individuelle directe (accès O(1) sans parsing JSON lourd)
+      const direct = localStorage.getItem(`${IMAGE_KEY_PREFIX}${id}`);
+      if (direct && direct !== 'local_storage') return direct;
+
+      // 2. Index global des images en secours
+      const map = getStored<Record<string, string>>(KEY_LOCAL_IMAGES, {});
+      if (map && map[id] && map[id] !== 'local_storage' && map[id] !== 'stored_local') {
+        return map[id];
+      }
+    } catch (e) {
+      console.warn('Error reading local image:', e);
+    }
+    return null;
+  }
+
+  public setLocalImage(id: string, imageData: string): void {
+    if (typeof window === 'undefined' || !id || !imageData || imageData === 'local_storage') return;
+    try {
+      // Stocker sous sa clé individuelle dans localStorage
+      localStorage.setItem(`${IMAGE_KEY_PREFIX}${id}`, imageData);
+
+      // Enregistrer la référence dans l'index local
+      const map = getStored<Record<string, string>>(KEY_LOCAL_IMAGES, {});
+      map[id] = imageData.length < 200 ? imageData : 'stored_local';
+      setStored(KEY_LOCAL_IMAGES, map);
+    } catch (e) {
+      console.warn('LocalStorage image save notice:', e);
+    }
+  }
+
+  public removeLocalImage(id: string): void {
+    if (typeof window === 'undefined' || !id) return;
+    try {
+      localStorage.removeItem(`${IMAGE_KEY_PREFIX}${id}`);
+      const map = getStored<Record<string, string>>(KEY_LOCAL_IMAGES, {});
+      if (map && map[id]) {
+        delete map[id];
+        setStored(KEY_LOCAL_IMAGES, map);
+      }
+    } catch {}
+  }
+
+  public getLocalImagesStats(): { count: number; totalBytes: number; formattedSize: string } {
+    if (typeof window === 'undefined') return { count: 0, totalBytes: 0, formattedSize: '0 Ko' };
+    let count = 0;
+    let totalBytes = 0;
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (key.startsWith(IMAGE_KEY_PREFIX) || key === KEY_LOCAL_IMAGES)) {
+          const val = localStorage.getItem(key) || '';
+          totalBytes += (key.length + val.length) * 2;
+          if (key.startsWith(IMAGE_KEY_PREFIX)) {
+            count++;
+          }
+        }
+      }
+    } catch {}
+    const formattedSize =
+      totalBytes > 1024 * 1024
+        ? `${(totalBytes / (1024 * 1024)).toFixed(2)} Mo`
+        : `${Math.round(totalBytes / 1024)} Ko`;
+    return { count, totalBytes, formattedSize };
+  }
+
+  public compressImageFile(file: File, maxWidth = 800, maxHeight = 800, quality = 0.8): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          let width = img.width;
+          let height = img.height;
+
+          if (width > maxWidth || height > maxHeight) {
+            if (width > height) {
+              height = Math.round((height * maxWidth) / width);
+              width = maxWidth;
+            } else {
+              width = Math.round((width * maxHeight) / height);
+              height = maxHeight;
+            }
+          }
+
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            resolve(event.target?.result as string);
+            return;
+          }
+
+          ctx.drawImage(img, 0, 0, width, height);
+          const compressed = canvas.toDataURL('image/jpeg', quality);
+          resolve(compressed);
+        };
+        img.onerror = (err) => reject(err);
+        img.src = event.target?.result as string;
+      };
+      reader.onerror = (err) => reject(err);
+      reader.readAsDataURL(file);
+    });
+  }
+
   // --- CATALOG METHODS ---
   public async getCategories(): Promise<Category[]> {
     if (isSupabaseConfigured && supabase) {
-      const { data, error } = await supabase.from('categories').select('*').order('display_order');
-      if (!error && data && data.length > 0) {
-        return data.map((c) => ({
-          id: c.id,
-          name: c.name,
-          slug: c.slug,
-          description: c.description,
-          imageUrl: c.image_url,
-          isActive: c.is_active,
-        }));
-      }
+      try {
+        const { data, error } = await supabase.from('categories').select('*').order('display_order');
+        if (!error && data && data.length > 0) {
+          return data.map((c) => {
+            const localImg = this.getLocalImage(`cat-${c.id}`);
+            const finalImg = localImg || c.image_url;
+            if (!localImg && finalImg) {
+              this.setLocalImage(`cat-${c.id}`, finalImg);
+            }
+            return {
+              id: c.id,
+              name: c.name,
+              slug: c.slug,
+              description: c.description,
+              imageUrl: finalImg,
+              isActive: c.is_active,
+            };
+          });
+        }
+      } catch {}
     }
-    return getStored<Category[]>(KEY_CATEGORIES, INITIAL_CATEGORIES);
+    const cats = getStored<Category[]>(KEY_CATEGORIES, INITIAL_CATEGORIES);
+    return cats.map((c) => ({
+      ...c,
+      imageUrl: this.getLocalImage(`cat-${c.id}`) || c.imageUrl,
+    }));
   }
 
   public async ensureAdminAuth(): Promise<string | null> {
@@ -1630,16 +1769,28 @@ class StoreService {
     if (!p) {
       return INITIAL_PRODUCTS[0];
     }
+    const id = String(p.id || `prod-${Date.now()}`);
+
+    // Priorité absolue à l'image stockée dans localStorage
+    const localImg = this.getLocalImage(id);
+    let finalImageUrl = localImg;
+
+    if (!finalImageUrl) {
+      const incomingImg = String(p.imageUrl || p.image_url || '');
+      if (incomingImg && incomingImg !== 'local_storage') {
+        finalImageUrl = incomingImg;
+        this.setLocalImage(id, incomingImg);
+      } else {
+        finalImageUrl = 'https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=600&q=80';
+      }
+    }
+
     return {
-      id: String(p.id || `prod-${Date.now()}`),
+      id,
       categoryId: String(p.categoryId || p.category_id || 'cat-legumes'),
       name: String(p.name || 'Produit Maraîcher'),
       description: String(p.description || ''),
-      imageUrl: String(
-        p.imageUrl ||
-        p.image_url ||
-        'https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=600&q=80'
-      ),
+      imageUrl: finalImageUrl,
       unit: (p.unit || 'caisse') as any,
       price: Number(p.price) >= 0 ? Number(p.price) : 0,
       minimumQuantity: Number(p.minimumQuantity !== undefined ? p.minimumQuantity : p.minimum_quantity) || 1,
@@ -1702,41 +1853,69 @@ class StoreService {
   }
 
   public async refreshProductsFromCloud(): Promise<Product[]> {
-    if (!isSupabaseConfigured || !supabase) {
-      return this.memoryProducts || INITIAL_PRODUCTS;
-    }
+    // 1. Charger directement depuis Supabase Cloud si disponible et quota non dépassé
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('products')
+          .select('*')
+          .order('created_at', { ascending: false });
 
-    // 1. Charger directement depuis Supabase Cloud (Source Unique de Vérité)
-    try {
-      const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (!error && Array.isArray(data) && data.length > 0) {
-        const cloudProducts = data.map((p) => this.normalizeProduct(p));
-        this.memoryProducts = cloudProducts;
-        return cloudProducts;
+        if (!error && Array.isArray(data) && data.length > 0) {
+          const cloudProducts = data.map((p) => this.normalizeProduct(p));
+          this.memoryProducts = cloudProducts;
+          setStored(KEY_PRODUCTS, cloudProducts);
+          return cloudProducts;
+        }
+      } catch (e) {
+        console.warn('Supabase query error, fallback to REST/local:', e);
       }
-    } catch (e) {
-      console.warn('Supabase query error, fallback to REST:', e);
+
+      // 2. Fallback REST direct ultra-robuste
+      try {
+        const res = await fetch('https://qovqogxhvugtgvjxxsbc.supabase.co/rest/v1/products?select=*&order=created_at.desc', {
+          headers: {
+            apikey: 'sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
+            Authorization: 'Bearer sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
+          },
+          cache: 'no-store',
+        });
+        if (res.ok) {
+          const json = await res.json();
+          if (Array.isArray(json) && json.length > 0) {
+            const cloudProducts = json.map((p) => this.normalizeProduct(p));
+            this.memoryProducts = cloudProducts;
+            setStored(KEY_PRODUCTS, cloudProducts);
+            return cloudProducts;
+          }
+        }
+      } catch {}
     }
 
-    // 2. Fallback REST direct ultra-robuste
+    // 3. Si Supabase est en dépassement de quota (ex: exceed_egress_quota) ou hors-ligne :
+    // Récupérer depuis localStorage immédiatement
+    const stored = getStored<Product[]>(KEY_PRODUCTS, []);
+    if (Array.isArray(stored) && stored.length > 0) {
+      const normalized = stored.map((p) => this.normalizeProduct(p));
+      this.memoryProducts = normalized;
+      return normalized;
+    }
+
+    // 4. Charger depuis le catalogue JSON statique (0 Ko Supabase)
     try {
-      const res = await fetch('https://qovqogxhvugtgvjxxsbc.supabase.co/rest/v1/products?select=*&order=created_at.desc', {
-        headers: {
-          apikey: 'sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
-          Authorization: 'Bearer sb_publishable_8DpZnDhY6w5hXFcdnA8vYw_uPPhefuH',
-        },
-        cache: 'no-store',
-      });
+      const res = await fetch('/products_catalog.json');
       if (res.ok) {
         const json = await res.json();
         if (Array.isArray(json) && json.length > 0) {
-          const cloudProducts = json.map((p) => this.normalizeProduct(p));
-          this.memoryProducts = cloudProducts;
-          return cloudProducts;
+          for (const item of json) {
+            if (item.id && (item.image_url || item.imageUrl)) {
+              this.setLocalImage(String(item.id), String(item.image_url || item.imageUrl));
+            }
+          }
+          const normalized = json.map((p) => this.normalizeProduct(p));
+          this.memoryProducts = normalized;
+          setStored(KEY_PRODUCTS, normalized);
+          return normalized;
         }
       }
     } catch {}
@@ -1753,13 +1932,22 @@ class StoreService {
       throw new Error("Action réservée exclusivement à l'administrateur.");
     }
 
+    // 1. Sauvegarder l'image dans le localStorage local
+    if (product.imageUrl) {
+      this.setLocalImage(product.id, product.imageUrl);
+    }
+
+    // 2. Préserver le quota Supabase : NE JAMAIS ENVOYER DE BASE64 SUR LE CLOUD
+    const isBase64 = product.imageUrl && product.imageUrl.startsWith('data:image/');
+    const cloudImageUrl = isBase64 ? 'local_storage' : (product.imageUrl || '');
+
     const now = new Date().toISOString();
     const payload = {
       id: product.id,
       category_id: product.categoryId,
       name: product.name,
       description: product.description || '',
-      image_url: product.imageUrl || '',
+      image_url: cloudImageUrl, // 0 Mo consommé sur Supabase !
       unit: product.unit,
       price: Number(product.price),
       minimum_quantity: Number(product.minimumQuantity) || 1,
@@ -2007,6 +2195,9 @@ class StoreService {
     if (this.currentUser?.role !== 'admin') {
       throw new Error("Action réservée exclusivement à l'administrateur.");
     }
+
+    // Nettoyer l'image du localStorage
+    this.removeLocalImage(productId);
 
     // 1. Mettre à jour immédiatement le cache local et notifier (0ms)
     let products = getStored<Product[]>(KEY_PRODUCTS, INITIAL_PRODUCTS);

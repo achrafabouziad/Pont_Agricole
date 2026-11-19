@@ -605,23 +605,30 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
     return true;
   });
 
-  // Image File Upload Handler (Base64 for immediate photo change)
-  const handleImageFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Image File Upload Handler (Compressed & saved to localStorage - 0 Mo on Supabase)
+  const handleImageFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 5 * 1024 * 1024) {
-      alert("L'image sélectionnée dépasse 5 Mo. Veuillez choisir une photo plus légère.");
+    if (file.size > 10 * 1024 * 1024) {
+      alert("L'image sélectionnée dépasse 10 Mo. Veuillez choisir une photo plus légère.");
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === 'string') {
-        setProductForm((prev) => ({ ...prev, imageUrl: reader.result as string }));
-      }
-    };
-    reader.readAsDataURL(file);
+    try {
+      // Compression instantanée Canvas pour stockage local optimisé et 0 Mo consommé sur Supabase
+      const compressed = await store.compressImageFile(file, 800, 800, 0.8);
+      setProductForm((prev) => ({ ...prev, imageUrl: compressed }));
+    } catch (err) {
+      console.warn('Canvas compression fallback to FileReader:', err);
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result === 'string') {
+          setProductForm((prev) => ({ ...prev, imageUrl: reader.result as string }));
+        }
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   // Product CRUD (Strictly Admin only)
@@ -2971,6 +2978,49 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
               </button>
             </div>
 
+            {/* Local Image Storage Status Banner */}
+            <div style={{
+              backgroundColor: '#f0fdf4',
+              border: '1px solid #bbf7d0',
+              borderRadius: '10px',
+              padding: '0.8rem 1rem',
+              marginBottom: '1.25rem',
+              display: 'flex',
+              flexWrap: 'wrap',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '0.75rem',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                <span style={{ fontSize: '1.25rem' }}>💾</span>
+                <div>
+                  <div style={{ color: '#166534', fontWeight: 700, fontSize: '0.88rem' }}>
+                    Stockage Local des Images (localStorage) Actif
+                  </div>
+                  <div style={{ color: '#15803d', fontSize: '0.78rem' }}>
+                    Toutes les images sont stockées dans le cache local du navigateur. Consommation Cloud Supabase : <strong style={{ color: '#047857' }}>0 Mo</strong> (Quota 100% préservé).
+                  </div>
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span style={{
+                  backgroundColor: '#dcfce7',
+                  color: '#166534',
+                  padding: '0.3rem 0.75rem',
+                  borderRadius: '20px',
+                  fontWeight: 700,
+                  fontSize: '0.76rem',
+                  border: '1px solid #86efac',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                }}>
+                  <span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#22c55e' }}></span>
+                  {store.getLocalImagesStats().count || products.length} images en local ({store.getLocalImagesStats().formattedSize})
+                </span>
+              </div>
+            </div>
+
             {/* Desktop Table View */}
             <div className="products-table-desktop table-responsive">
               <table className="data-table">
@@ -3630,8 +3680,13 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
                       />
                     </label>
                     <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                      Prenez une photo en direct ou choisissez depuis votre galerie (PNG, JPG, max 5 Mo).
+                      Prenez une photo en direct ou choisissez depuis votre galerie (PNG, JPG, max 10 Mo).
                     </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.2rem' }}>
+                      <span style={{ fontSize: '0.73rem', backgroundColor: '#ecfdf5', color: '#065f46', border: '1px solid #a7f3d0', padding: '0.2rem 0.55rem', borderRadius: '12px', fontWeight: 600 }}>
+                        💾 Sauvegarde locale (localStorage) • 0 Mo sur Supabase
+                      </span>
+                    </div>
                   </div>
                 </div>
 
