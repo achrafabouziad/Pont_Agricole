@@ -347,6 +347,8 @@ class StoreService {
         }
       }
     }
+    // Synchroniser et enregistrer toutes les photos du catalogue directement dans localStorage
+    this.syncAllImagesToLocalStorage().catch(() => {});
     const storedCats = getStored<any[]>(KEY_CATEGORIES, []);
     if (!Array.isArray(storedCats) || storedCats.length === 0) {
       setStored(KEY_CATEGORIES, INITIAL_CATEGORIES);
@@ -1659,6 +1661,36 @@ class StoreService {
       reader.onerror = (err) => reject(err);
       reader.readAsDataURL(file);
     });
+  }
+
+  public async syncAllImagesToLocalStorage(): Promise<number> {
+    try {
+      const res = await fetch('/products_catalog.json');
+      if (!res.ok) return 0;
+      const prods = await res.json();
+      if (!Array.isArray(prods)) return 0;
+
+      let savedCount = 0;
+      for (const p of prods) {
+        if (p.id && (p.image_url || p.imageUrl)) {
+          const img = String(p.image_url || p.imageUrl);
+          if (img && img !== 'local_storage') {
+            this.setLocalImage(String(p.id), img);
+            savedCount++;
+          }
+        }
+      }
+
+      // Mettre à jour memoryProducts si déjà chargé
+      if (this.memoryProducts && this.memoryProducts.length > 0) {
+        this.memoryProducts = this.memoryProducts.map((p) => this.normalizeProduct(p));
+      }
+      this.notify();
+      return savedCount;
+    } catch (e) {
+      console.warn('Error syncing images to localStorage:', e);
+      return 0;
+    }
   }
 
   // --- CATALOG METHODS ---

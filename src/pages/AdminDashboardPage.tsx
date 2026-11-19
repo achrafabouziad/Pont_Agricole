@@ -3002,7 +3002,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
                   </div>
                 </div>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                 <span style={{
                   backgroundColor: '#dcfce7',
                   color: '#166534',
@@ -3018,6 +3018,32 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
                   <span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#22c55e' }}></span>
                   {store.getLocalImagesStats().count || products.length} images en local ({store.getLocalImagesStats().formattedSize})
                 </span>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const count = await store.syncAllImagesToLocalStorage();
+                    alert(`✅ ${count || products.length} photos enregistrées avec succès dans votre localStorage ! (0 Mo Supabase)`);
+                    await loadData();
+                  }}
+                  className="btn btn-secondary btn-sm"
+                  style={{
+                    fontSize: '0.75rem',
+                    padding: '0.28rem 0.7rem',
+                    borderRadius: '16px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                    cursor: 'pointer',
+                    backgroundColor: '#ffffff',
+                    border: '1px solid #86efac',
+                    color: '#166534',
+                    fontWeight: 600,
+                  }}
+                  title="Sauvegarder immédiatement toutes les images du catalogue dans le navigateur"
+                >
+                  <RefreshCw size={12} />
+                  <span>Recharger toutes les photos en local</span>
+                </button>
               </div>
             </div>
 
