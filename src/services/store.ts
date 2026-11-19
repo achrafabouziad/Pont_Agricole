@@ -357,11 +357,9 @@ class StoreService {
     if (!localStorage.getItem(KEY_SETTINGS)) {
       setStored(KEY_SETTINGS, INITIAL_COMPANY_SETTINGS);
     }
-    // Assainissement B2B multi-appareils (Conserver KEY_PRODUCTS et KEY_LOCAL_IMAGES pour préserver le catalogue et le quota Supabase)
+    // Assainissement B2B multi-appareils (Conserver les données locales en cache pour préserver le fonctionnement hors-ligne et en cas de dépassement de quota Supabase)
     try {
       localStorage.removeItem(KEY_DELETED_BIZ);
-      localStorage.removeItem(KEY_BUSINESSES);
-      localStorage.removeItem(KEY_ORDERS);
       localStorage.removeItem(KEY_USER_CREDS);
       localStorage.removeItem(KEY_USER);
       localStorage.removeItem(KEY_BUSINESS);
@@ -3290,12 +3288,13 @@ class StoreService {
           });
 
         cloudList.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+        setStored(KEY_BUSINESSES, cloudList);
         return cloudList;
       }
     } catch (e) {
-      console.warn('Erreur chargement businesses Supabase:', e);
+      console.warn('Erreur chargement businesses Supabase (repli local):', e);
     }
-    return [];
+    return getStored<Business[]>(KEY_BUSINESSES, []);
   }
 
   public async addBusinessManual(params: {
