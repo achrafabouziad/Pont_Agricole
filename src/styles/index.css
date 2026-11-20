@@ -2,30 +2,30 @@
   --font-main: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-heading: 'Outfit', sans-serif;
 
-  /* Fresh & Luminous Agricultural Green Spectrum (Vert Maraîcher Vivant) */
-  --primary-950: #0a2618;
-  --primary-900: #103b25;
-  --primary-850: #14532d;
+  /* Thamara Fresh Botanical Spectrum (Vert Primeur & Récoltes Fraîches) */
+  --primary-950: #062211;
+  --primary-900: #0e3d1f;
+  --primary-850: #124f28;
   --primary-800: #166534;
-  --primary-700: #15803d;
-  --primary-600: #16a34a;
-  --primary-500: #22c55e;
+  --primary-700: #1a7d3f;
+  --primary-600: #1f9a4e;
+  --primary-500: #25b85d;
   --primary-400: #4ade80;
   --primary-300: #86efac;
   --primary-200: #bbf7d0;
   --primary-100: #dcfce7;
   --primary-50: #f0fdf4;
 
-  /* Fresh Sun Amber (Agrumes & Récoltes Ensoleillées) */
-  --amber-800: #92400e;
-  --amber-700: #b45309;
-  --amber-600: #d97706;
-  --amber-500: #f59e0b;
-  --amber-400: #fbbf24;
+  /* Thamara Fresh Sun Amber & Citrus (Agrumes & Carottes Primeurs) */
+  --amber-800: #9a3412;
+  --amber-700: #c2410c;
+  --amber-600: #ea580c;
+  --amber-500: #f97316;
+  --amber-400: #fb923c;
   --amber-300: #fcd34d;
   --amber-200: #fde68a;
-  --amber-100: #fef3c7;
-  --amber-50: #fffbeb;
+  --amber-100: #ffedd5;
+  --amber-50: #fff7ed;
 
   /* Action Danger (Annulations & Suppressions) */
   --danger-50: #fef2f2;
@@ -179,6 +179,13 @@ input, select, textarea {
   width: 44px;
   height: 44px;
   object-fit: contain;
+  border-radius: 50%;
+  box-shadow: 0 2px 8px rgba(14, 61, 31, 0.14);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.brand-logo:hover .brand-img {
+  transform: rotate(4deg) scale(1.06);
 }
 
 .brand-title {
@@ -4122,10 +4129,11 @@ table.data-table td {
 }
 
 .footer-logo {
-  width: 38px;
-  height: 38px;
+  width: 40px;
+  height: 40px;
   object-fit: contain;
-  filter: brightness(1.1);
+  border-radius: 50%;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
 }
 
 .footer-brand-title {
@@ -5432,6 +5440,117 @@ table.data-table td {
     border-radius: 50% !important;
     background-color: #ef4444 !important;
   }
+}
+
+/* ========================================================================
+   INSTAGRAM-STYLE VIEW TRANSITIONS & FLUID BOTTOM NAVIGATION ANIMATIONS
+   ======================================================================== */
+
+.main-content-router {
+  flex: 1;
+  position: relative;
+  overflow-x: hidden;
+  width: 100%;
+}
+
+.instagram-page-wrapper {
+  width: 100%;
+  min-height: 100%;
+  will-change: transform, opacity;
+  animation-duration: 0.28s;
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  animation-fill-mode: both;
+}
+
+/* Slide from Right (Instagram forward navigation: Accueil -> Favoris -> Profil) */
+@keyframes igSlideFromRight {
+  0% {
+    opacity: 0;
+    transform: translate3d(36px, 0, 0);
+  }
+  60% {
+    opacity: 0.85;
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+/* Slide from Left (Instagram backward navigation: Profil -> Favoris -> Accueil) */
+@keyframes igSlideFromLeft {
+  0% {
+    opacity: 0;
+    transform: translate3d(-36px, 0, 0);
+  }
+  60% {
+    opacity: 0.85;
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+/* Subtle cross-fade for same-level transitions */
+@keyframes igFadeIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.985) translate3d(0, 8px, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translate3d(0, 0, 0);
+  }
+}
+
+.instagram-slide-from-right {
+  animation-name: igSlideFromRight;
+}
+
+.instagram-slide-from-left {
+  animation-name: igSlideFromLeft;
+}
+
+.instagram-slide-fade {
+  animation-name: igFadeIn;
+}
+
+/* Instagram Tab Icon Spring Pop Animation */
+@keyframes instagramTabPop {
+  0% {
+    transform: scale(1);
+  }
+  25% {
+    transform: scale(0.76);
+  }
+  55% {
+    transform: scale(1.24);
+  }
+  78% {
+    transform: scale(0.96);
+  }
+  100% {
+    transform: scale(1.08);
+  }
+}
+
+.bottom-pill-item {
+  position: relative;
+}
+
+.bottom-pill-item:active .bottom-pill-icon-wrap {
+  transform: scale(0.78) !important;
+  transition: transform 0.08s ease !important;
+}
+
+.bottom-pill-item.active .bottom-pill-icon-wrap {
+  animation: instagramTabPop 0.36s cubic-bezier(0.175, 0.885, 0.32, 1.275) both !important;
+  color: var(--primary-700) !important;
+}
+
+.bottom-pill-item.active {
+  color: var(--primary-700) !important;
 }
 
 

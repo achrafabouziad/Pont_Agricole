@@ -17,10 +17,21 @@ import { store } from './services/store';
 import { Order, UserProfile } from './types';
 import { Lock, ShieldCheck } from 'lucide-react';
 
+const TAB_ORDER: Record<string, number> = {
+  home: 0,
+  categories: 1,
+  catalog: 1.5,
+  favorites: 2,
+  'client-dashboard': 3,
+  auth: 3,
+  admin: 3,
+};
+
 export function App() {
   const { isLoaded: isClerkLoaded, isSignedIn: isClerkSignedIn, user: clerkUser } = useUser();
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(store.getCurrentUser());
   const [currentPage, setCurrentPage] = useState<string>('home');
+  const [slideDirection, setSlideDirection] = useState<'from-right' | 'from-left' | 'fade'>('fade');
   const [selectedCatalogCategory, setSelectedCatalogCategory] = useState<string>('all');
   const [isCartOpen, setIsCartOpen] = useState<boolean>(false);
   const [lastPlacedOrder, setLastPlacedOrder] = useState<Order | null>(null);
@@ -160,6 +171,15 @@ export function App() {
     if (currentUser?.role === 'customer') {
       store.validateSession();
     }
+    const prevOrder = TAB_ORDER[currentPage] ?? 0;
+    const nextOrder = TAB_ORDER[page] ?? 0;
+    if (nextOrder > prevOrder) {
+      setSlideDirection('from-right');
+    } else if (nextOrder < prevOrder) {
+      setSlideDirection('from-left');
+    } else {
+      setSlideDirection('fade');
+    }
     setCurrentPage(page);
     // Nettoyer l'URL pour ne pas polluer l'adresse avec #admin ou #home
     // Cela garantit que lorsque l'administrateur copie le lien pour un client,
@@ -192,7 +212,7 @@ export function App() {
       <div style={{ minHeight: '100vh', backgroundColor: '#f6f7f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ textAlign: 'center' }}>
           <div style={{ width: '38px', height: '38px', border: '3px solid #bbf7d0', borderTopColor: '#15803d', borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 1rem' }} />
-          <div style={{ fontSize: '1rem', color: '#15803d', fontWeight: 700 }}>Pont Agricole B2B</div>
+          <div style={{ fontSize: '1rem', color: '#15803d', fontWeight: 700 }}>Thamara B2B</div>
           <div style={{ fontSize: '0.82rem', color: '#6b7280', marginTop: '0.25rem' }}>Connexion sécurisée en cours...</div>
         </div>
       </div>
@@ -247,70 +267,72 @@ export function App() {
         onOpenCart={() => setIsCartOpen(true)}
       />
 
-      {/* Main Content Router */}
-      <main style={{ flex: 1 }}>
-        {currentPage === 'home' && (
-          <HomePage
-            onNavigate={handleNavigate}
-            onSelectCategory={handleSelectCategory}
-            onOpenCart={() => setIsCartOpen(true)}
-          />
-        )}
-
-        {currentPage === 'catalog' && (
-          <CatalogPage
-            initialCategoryId={selectedCatalogCategory}
-            onOpenCart={() => setIsCartOpen(true)}
-            onNavigate={handleNavigate}
-          />
-        )}
-
-        {currentPage === 'categories' && (
-          <CategoriesPage
-            onSelectCategory={handleSelectCategory}
-            onNavigate={handleNavigate}
-          />
-        )}
-
-        {currentPage === 'favorites' && (
-          <CatalogPage
-            showOnlyFavorites={true}
-            onOpenCart={() => setIsCartOpen(true)}
-            onNavigate={handleNavigate}
-          />
-        )}
-
-        {currentPage === 'auth' && (
-          <AuthPage
-            onSuccess={() => {
-              const u = store.getCurrentUser();
-              if (u?.role === 'admin') {
-                handleNavigate('admin');
-              } else {
-                handleNavigate('client-dashboard');
-              }
-            }}
-          />
-        )}
-
-        {currentPage === 'client-dashboard' && (
-          <ClientDashboardPage
-            onNavigate={handleNavigate}
-            onOpenCart={() => setIsCartOpen(true)}
-          />
-        )}
-
-        {currentPage === 'admin' && (
-          currentUser?.role === 'admin' ? (
-            <AdminDashboardPage onNavigate={handleNavigate} />
-          ) : (
+      {/* Main Content Router with Instagram-Style Transitions */}
+      <main className="main-content-router">
+        <div key={currentPage} className={`instagram-page-wrapper instagram-slide-${slideDirection}`}>
+          {currentPage === 'home' && (
             <HomePage
               onNavigate={handleNavigate}
               onSelectCategory={handleSelectCategory}
               onOpenCart={() => setIsCartOpen(true)}
             />
-          )
-        )}
+          )}
+
+          {currentPage === 'catalog' && (
+            <CatalogPage
+              initialCategoryId={selectedCatalogCategory}
+              onOpenCart={() => setIsCartOpen(true)}
+              onNavigate={handleNavigate}
+            />
+          )}
+
+          {currentPage === 'categories' && (
+            <CategoriesPage
+              onSelectCategory={handleSelectCategory}
+              onNavigate={handleNavigate}
+            />
+          )}
+
+          {currentPage === 'favorites' && (
+            <CatalogPage
+              showOnlyFavorites={true}
+              onOpenCart={() => setIsCartOpen(true)}
+              onNavigate={handleNavigate}
+            />
+          )}
+
+          {currentPage === 'auth' && (
+            <AuthPage
+              onSuccess={() => {
+                const u = store.getCurrentUser();
+                if (u?.role === 'admin') {
+                  handleNavigate('admin');
+                } else {
+                  handleNavigate('client-dashboard');
+                }
+              }}
+            />
+          )}
+
+          {currentPage === 'client-dashboard' && (
+            <ClientDashboardPage
+              onNavigate={handleNavigate}
+              onOpenCart={() => setIsCartOpen(true)}
+            />
+          )}
+
+          {currentPage === 'admin' && (
+            currentUser?.role === 'admin' ? (
+              <AdminDashboardPage onNavigate={handleNavigate} />
+            ) : (
+              <HomePage
+                onNavigate={handleNavigate}
+                onSelectCategory={handleSelectCategory}
+                onOpenCart={() => setIsCartOpen(true)}
+              />
+            )
+          )}
+        </div>
       </main>
 
       {/* Slide-out Cart Drawer */}
@@ -374,8 +396,8 @@ class ErrorBoundary extends React.Component<
       return (
         <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', backgroundColor: '#f6f7f6', textAlign: 'center' }}>
           <div style={{ maxWidth: '480px', backgroundColor: '#ffffff', padding: '2rem', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}>
-            <img src="/logo.png" alt="Pont Agricole" style={{ width: '48px', height: '48px', objectFit: 'contain', margin: '0 auto 1rem' }} />
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#166534', marginBottom: '0.5rem' }}>Pont Agricole</h2>
+            <img src="/logo.png" alt="Thamara" style={{ width: '48px', height: '48px', objectFit: 'contain', margin: '0 auto 1rem' }} />
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#166534', marginBottom: '0.5rem' }}>Thamara</h2>
             <p style={{ fontSize: '0.88rem', color: '#64748b', marginBottom: '1.5rem' }}>
               Une actualisation est nécessaire pour afficher la dernière version de l'application.
             </p>

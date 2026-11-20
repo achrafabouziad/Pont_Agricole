@@ -3692,7 +3692,7 @@ class StoreService {
         const error = res?.error;
         if (!error && data) {
           return {
-            companyName: data.company_name || 'Pont Agricole',
+            companyName: data.company_name || 'Thamara',
             tagline: data.tagline || '',
             phone: data.phone || '',
             whatsapp: data.whatsapp || '',

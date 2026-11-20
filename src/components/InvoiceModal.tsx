@@ -485,7 +485,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
                 <h3 className="invoice-header-title">
                   {activeOrders.length > 1
                     ? `Facture Globale Récapitulative (${activeOrders.length} Commandes)`
-                    : 'Facture Officielle Pont Agricole'}
+                    : 'Facture Officielle Thamara'}
                 </h3>
                 <p className="invoice-header-subtitle">
                   Facture #{invoiceNumber || '---'} • {invoiceDate}
@@ -755,7 +755,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
             <div style={{ textAlign: 'center', marginBottom: '8px' }}>
               <img
                 src="/logo.png"
-                alt="Pont Agricole"
+                alt="Thamara"
                 style={{ width: '80px', height: 'auto', margin: '0 auto 2px', display: 'block', objectFit: 'contain' }}
               />
               <div

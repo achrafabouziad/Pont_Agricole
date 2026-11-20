@@ -85,7 +85,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
   const [zones, setZones] = useState<DeliveryZone[]>([]);
   const [settings, setSettings] = useState<CompanySettings | null>(null);
   const [settingsForm, setSettingsForm] = useState<CompanySettings>({
-    companyName: 'Pont Agricole',
+    companyName: 'Thamara',
     tagline: '',
     phone: '',
     whatsapp: '',
@@ -731,7 +731,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
             Accès Réservé à la Direction
           </h2>
           <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '1.75rem', lineHeight: 1.5 }}>
-            Ce tableau de bord et la gestion des cours de vente sont strictement réservés à l’administrateur de Pont Agricole. Les clients n’ont pas l’autorisation d’y accéder ni de modifier les prix.
+            Ce tableau de bord et la gestion des cours de vente sont strictement réservés à l’administrateur de Thamara. Les clients n’ont pas l’autorisation d’y accéder ni de modifier les prix.
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             <button
@@ -764,7 +764,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
               <span className="admin-status-badge">
                 <span className="admin-status-dot" /> Direction & Logistique B2B
               </span>
-              <span className="admin-brand-tag">Pont Agricole Maroc</span>
+              <span className="admin-brand-tag">Thamara Maroc</span>
             </div>
             <h1 className="admin-page-title">Tableau de Bord Administrateur</h1>
           </div>
@@ -3248,7 +3248,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
                   </h2>
                 </div>
                 <p style={{ fontSize: '0.84rem', color: 'var(--text-muted)', margin: 0, maxWidth: '780px' }}>
-                  Espace réservé exclusivement à l'administrateur. Renseignez ici les véritables coordonnées de Pont Agricole (numéros de contact, WhatsApp direct, adresse du dépôt, heure limite de commande et mentions fiscales marocaines pour les factures). Les visiteurs ne voient aucune donnée fictive.
+                  Espace réservé exclusivement à l'administrateur. Renseignez ici les véritables coordonnées de Thamara (numéros de contact, WhatsApp direct, adresse du dépôt, heure limite de commande et mentions fiscales marocaines pour les factures). Les visiteurs ne voient aucune donnée fictive.
                 </p>
               </div>
             </div>
@@ -3298,7 +3298,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
                       className="form-control"
                       value={settingsForm.companyName}
                       onChange={(e) => setSettingsForm({ ...settingsForm, companyName: e.target.value })}
-                      placeholder="Pont Agricole"
+                      placeholder="Thamara"
                     />
                   </div>
 
@@ -3595,7 +3595,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
                     {editingProduct ? 'Modifier Nom, Photo & Détails du Produit' : 'Ajouter un Nouveau Produit Frais'}
                   </h2>
                   <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>
-                    Contrôle réservé exclusivement à la Direction Pont Agricole.
+                    Contrôle réservé exclusivement à la Direction Thamara.
                   </p>
                 </div>
               </div>
@@ -4164,7 +4164,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
                     ? cleanPhone
                     : `212${cleanPhone}`;
                   const waMsg = encodeURIComponent(
-                    `Bonjour ${passwordResetClient.contactName || ''},\nVotre mot de passe pour accéder à la plateforme Pont Agricole (${passwordResetClient.businessName}) a été mis à jour.\n\nIdentifiant : ${passwordResetClient.username ? `@${passwordResetClient.username}` : passwordResetClient.phone}\nMot de passe : ${newPasswordInput.trim()}\n\nVous pouvez vous connecter dès maintenant sur notre site.`
+                    `Bonjour ${passwordResetClient.contactName || ''},\nVotre mot de passe pour accéder à la plateforme Thamara (${passwordResetClient.businessName}) a été mis à jour.\n\nIdentifiant : ${passwordResetClient.username ? `@${passwordResetClient.username}` : passwordResetClient.phone}\nMot de passe : ${newPasswordInput.trim()}\n\nVous pouvez vous connecter dès maintenant sur notre site.`
                   );
 
                   return cleanPhone && newPasswordInput.trim() ? (

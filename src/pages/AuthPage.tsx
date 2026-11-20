@@ -220,7 +220,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
 
       if (res.success) {
         setSuccessNotice(
-          `Compte créé avec succès ! Bienvenue sur la plateforme Pont Agricole.`
+          `Compte créé avec succès ! Bienvenue sur la plateforme Thamara.`
         );
         setTimeout(() => {
           onSuccess();
@@ -243,13 +243,13 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
           {/* Top Brand & Prominent Switcher Row */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <img src="/logo.png" alt="Pont Agricole" style={{ width: '30px', height: '30px', objectFit: 'contain' }} />
+              <img src="/logo.png" alt="Thamara" style={{ width: '32px', height: '32px', objectFit: 'contain' }} />
               <div>
                 <span style={{ fontWeight: 800, fontSize: '1rem', color: '#166534', letterSpacing: '-0.02em', display: 'block', lineHeight: 1.1 }}>
-                  Pont Agricole
+                  Thamara
                 </span>
                 <span style={{ fontSize: '0.62rem', letterSpacing: '0.12em', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>
-                  B2B CHR MAROC
+                  Fruits & Légumes en Gros
                 </span>
               </div>
             </div>
@@ -493,7 +493,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
                   </div>
 
                   <p style={{ fontSize: '0.78rem', color: '#475569', lineHeight: 1.45, margin: '0 0 0.8rem 0' }}>
-                    Pour des raisons de sécurité B2B, l'administrateur Pont Agricole réinitialise votre mot de passe immédiatement :
+                    Pour des raisons de sécurité B2B, l'administrateur Thamara réinitialise votre mot de passe immédiatement :
                   </p>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -786,7 +786,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
                   style={{ width: '16px', height: '16px', accentColor: '#166534', cursor: 'pointer', flexShrink: 0 }}
                 />
                 <label htmlFor="auth-terms" style={{ fontSize: '0.8rem', color: '#64748b', cursor: 'pointer', lineHeight: 1.35 }}>
-                  J'accepte les conditions d'accès B2B de la plateforme <strong style={{ color: '#166534' }}>Pont Agricole</strong>
+                  J'accepte les conditions d'accès B2B de la plateforme <strong style={{ color: '#166534' }}>Thamara</strong>
                 </label>
               </div>
 

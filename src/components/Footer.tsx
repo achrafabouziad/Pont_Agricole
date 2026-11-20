@@ -47,12 +47,12 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
             <div className="footer-brand-header">
               <img
                 src="/logo.png"
-                alt="Pont Agricole"
+                alt="Thamara"
                 className="footer-logo"
               />
               <div>
-                <span className="footer-brand-title">{settings?.companyName || 'Pont Agricole'}</span>
-                <span className="footer-brand-tagline">{settings?.tagline || 'Centrale d\'Achat B2B'}</span>
+                <span className="footer-brand-title">{settings?.companyName || 'Thamara'}</span>
+                <span className="footer-brand-tagline">{settings?.tagline || 'Fruits & Légumes en Gros'}</span>
               </div>
             </div>
             <p className="footer-desc">
@@ -144,7 +144,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
               {settings?.whatsapp?.trim() && (
                 <li>
                   <a
-                    href={`https://wa.me/${settings.whatsapp.replace(/\D/g, '')}?text=Bonjour%20${encodeURIComponent(settings.companyName || 'Pont Agricole')},%20je%20souhaite%20des%20informations`}
+                    href={`https://wa.me/${settings.whatsapp.replace(/\D/g, '')}?text=Bonjour%20${encodeURIComponent(settings.companyName || 'Thamara')},%20je%20souhaite%20des%20informations`}
                     target="_blank"
                     rel="noreferrer"
                     className="footer-contact-link highlight"
@@ -197,7 +197,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
         {/* Bottom Legal & Administration Bar */}
         <div className="footer-bottom">
           <div className="footer-copy">
-            © {new Date().getFullYear()} {settings?.companyName || 'Pont Agricole'}. Tous droits réservés.
+            © {new Date().getFullYear()} {settings?.companyName || 'Thamara'}. Tous droits réservés.
           </div>
 
           <div className="footer-legal-links">

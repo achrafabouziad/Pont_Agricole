@@ -46,15 +46,15 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, onOpenC
         >
           <img
             src="/logo.png"
-            alt="Pont Agricole Logo"
+            alt="Thamara Logo"
             className="brand-img"
           />
           <div className="brand-text">
             <div className="brand-title">
-              Pont Agricole
+              Thamara
             </div>
             <div className="brand-subtitle">
-              LE LIEN ENTRE LA TERRE ET L’AVENIR
+              FRUITS & LÉGUMES EN GROS
             </div>
           </div>
         </div>

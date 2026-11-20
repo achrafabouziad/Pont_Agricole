@@ -277,8 +277,8 @@ export const INITIAL_DELIVERY_ZONES: DeliveryZone[] = [
 ];
 
 export const INITIAL_COMPANY_SETTINGS: CompanySettings = {
-  companyName: 'Pont Agricole',
-  tagline: 'Le lien entre la terre et l’avenir',
+  companyName: 'Thamara',
+  tagline: 'Fruits & Légumes en Gros',
   phone: '0707296123',
   whatsapp: '0707296123',
   email: '',
