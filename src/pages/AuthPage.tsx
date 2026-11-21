@@ -243,7 +243,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, initialMode = 're
           {/* Top Brand & Prominent Switcher Row */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <img src="/logo.png" alt="Thamara" style={{ width: '32px', height: '32px', objectFit: 'contain' }} />
+              <img src="/logo.png" alt="Thamara" style={{ width: '38px', height: '38px', objectFit: 'contain' }} />
               <div>
                 <span style={{ fontWeight: 800, fontSize: '1rem', color: '#166534', letterSpacing: '-0.02em', display: 'block', lineHeight: 1.1 }}>
                   Thamara

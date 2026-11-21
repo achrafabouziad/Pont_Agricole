@@ -756,7 +756,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
               <img
                 src="/logo.png"
                 alt="Thamara"
-                style={{ width: '80px', height: 'auto', margin: '0 auto 2px', display: 'block', objectFit: 'contain' }}
+                style={{ width: '85px', height: '85px', margin: '0 auto 4px', display: 'block', objectFit: 'contain' }}
               />
               <div
                 style={{
