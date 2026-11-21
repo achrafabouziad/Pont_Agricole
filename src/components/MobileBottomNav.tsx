@@ -7,12 +7,14 @@ interface MobileBottomNavProps {
   currentPage: string;
   onNavigate: (page: string) => void;
   onOpenCart: () => void;
+  isCartOpen?: boolean;
 }
 
 export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   currentPage,
   onNavigate,
   onOpenCart,
+  isCartOpen = false,
 }) => {
   const [user, setUser] = useState<UserProfile | null>(store.getCurrentUser());
   const [cartCount, setCartCount] = useState<number>(
@@ -36,11 +38,11 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
         <button
           type="button"
           onClick={() => onNavigate('home')}
-          className={`bottom-pill-item ${currentPage === 'home' ? 'active' : ''}`}
+          className={`bottom-pill-item ${!isCartOpen && currentPage === 'home' ? 'active' : ''}`}
           aria-label="Accueil"
         >
           <div className="bottom-pill-icon-wrap">
-            <Home size={22} strokeWidth={currentPage === 'home' ? 2.4 : 1.8} />
+            <Home size={22} strokeWidth={!isCartOpen && currentPage === 'home' ? 2.4 : 1.8} />
           </div>
           <span className="bottom-pill-label">Accueil</span>
         </button>
@@ -49,11 +51,11 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
         <button
           type="button"
           onClick={() => onNavigate('categories')}
-          className={`bottom-pill-item ${currentPage === 'categories' ? 'active' : ''}`}
+          className={`bottom-pill-item ${!isCartOpen && currentPage === 'categories' ? 'active' : ''}`}
           aria-label="Catégories"
         >
           <div className="bottom-pill-icon-wrap">
-            <LayoutGrid size={22} strokeWidth={currentPage === 'categories' ? 2.4 : 1.8} />
+            <LayoutGrid size={22} strokeWidth={!isCartOpen && currentPage === 'categories' ? 2.4 : 1.8} />
           </div>
           <span className="bottom-pill-label">Catégories</span>
         </button>
@@ -62,11 +64,11 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
         <button
           type="button"
           onClick={onOpenCart}
-          className="bottom-pill-item cart-pill-item"
+          className={`bottom-pill-item cart-pill-item ${isCartOpen ? 'active' : ''}`}
           aria-label="Panier"
         >
           <div className="bottom-pill-icon-wrap">
-            <ShoppingBag size={22} strokeWidth={cartCount > 0 ? 2.4 : 1.8} />
+            <ShoppingBag size={22} strokeWidth={isCartOpen || cartCount > 0 ? 2.4 : 1.8} />
             {cartCount > 0 && (
               <span className="bottom-pill-badge">{cartCount}</span>
             )}
@@ -78,14 +80,14 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
         <button
           type="button"
           onClick={() => onNavigate('favorites')}
-          className={`bottom-pill-item ${currentPage === 'favorites' ? 'active' : ''}`}
+          className={`bottom-pill-item ${!isCartOpen && currentPage === 'favorites' ? 'active' : ''}`}
           aria-label="Favoris"
         >
           <div className="bottom-pill-icon-wrap">
             <Heart
               size={22}
-              strokeWidth={currentPage === 'favorites' ? 2.4 : 1.8}
-              fill={currentPage === 'favorites' ? 'currentColor' : 'none'}
+              strokeWidth={!isCartOpen && currentPage === 'favorites' ? 2.4 : 1.8}
+              fill={!isCartOpen && currentPage === 'favorites' ? 'currentColor' : 'none'}
             />
             {favCount > 0 && (
               <span className="bottom-pill-fav-dot" />
@@ -107,7 +109,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
             }
           }}
           className={`bottom-pill-item ${
-            currentPage === 'client-dashboard' || currentPage === 'auth' || currentPage === 'admin'
+            !isCartOpen && (currentPage === 'client-dashboard' || currentPage === 'auth' || currentPage === 'admin')
               ? 'active'
               : ''
           }`}
@@ -117,7 +119,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
             <User
               size={22}
               strokeWidth={
-                currentPage === 'client-dashboard' || currentPage === 'auth' || currentPage === 'admin'
+                !isCartOpen && (currentPage === 'client-dashboard' || currentPage === 'auth' || currentPage === 'admin')
                   ? 2.4
                   : 1.8
               }

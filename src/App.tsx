@@ -168,6 +168,7 @@ export function App() {
   }, []);
 
   const handleNavigate = (page: string) => {
+    setIsCartOpen(false);
     if (currentUser?.role === 'customer') {
       store.validateSession();
     }
@@ -369,7 +370,8 @@ export function App() {
       <MobileBottomNav
         currentPage={currentPage}
         onNavigate={handleNavigate}
-        onOpenCart={() => setIsCartOpen(true)}
+        onOpenCart={() => setIsCartOpen((prev) => !prev)}
+        isCartOpen={isCartOpen}
       />
     </div>
   );
