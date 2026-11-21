@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Clock, ShieldCheck, Truck, FileText } from 'lucide-react';
 
 interface HeroProps {
   onExploreCatalog: () => void;
@@ -41,8 +41,51 @@ export const Hero: React.FC<HeroProps> = ({ onExploreCatalog }) => {
                 className="hero-banner-btn"
               >
                 <span>Consulter le Catalogue & Prix du Jour</span>
-                <ArrowRight size={17} />
+                <ArrowRight size={17} className="hero-btn-arrow" />
               </button>
+            </div>
+          </div>
+        </div>
+
+        {/* High-End Wholesale Trust & Guarantees Strip */}
+        <div className="hero-trust-strip">
+          <div className="hero-trust-item">
+            <div className="hero-trust-icon-box">
+              <Clock size={16} />
+            </div>
+            <div className="hero-trust-text">
+              <span className="hero-trust-title">Commande avant minuit</span>
+              <span className="hero-trust-desc">Préparation de nuit au carreau</span>
+            </div>
+          </div>
+
+          <div className="hero-trust-item">
+            <div className="hero-trust-icon-box">
+              <Truck size={16} />
+            </div>
+            <div className="hero-trust-text">
+              <span className="hero-trust-title">Livraison 06h - 09h</span>
+              <span className="hero-trust-desc">Avant le premier service</span>
+            </div>
+          </div>
+
+          <div className="hero-trust-item">
+            <div className="hero-trust-icon-box">
+              <ShieldCheck size={16} />
+            </div>
+            <div className="hero-trust-text">
+              <span className="hero-trust-title">Sélection Primeur</span>
+              <span className="hero-trust-desc">Tri & calibrage CHR garanti</span>
+            </div>
+          </div>
+
+          <div className="hero-trust-item">
+            <div className="hero-trust-icon-box">
+              <FileText size={16} />
+            </div>
+            <div className="hero-trust-text">
+              <span className="hero-trust-title">Facturation & ICE</span>
+              <span className="hero-trust-desc">Tarifs transparents en MAD</span>
             </div>
           </div>
         </div>
