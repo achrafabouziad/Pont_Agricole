@@ -7,9 +7,10 @@ interface NavbarProps {
   currentPage: string;
   onNavigate: (page: string) => void;
   onOpenCart: () => void;
+  isCartOpen?: boolean;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, onOpenCart }) => {
+export const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, onOpenCart, isCartOpen }) => {
   const [user, setUser] = useState<UserProfile | null>(store.getCurrentUser());
   const [business, setBusiness] = useState<Business | null>(store.getCurrentBusiness());
   const [cartCount, setCartCount] = useState<number>(store.getCart().reduce((sum, i) => sum + i.quantity, 0));
@@ -109,7 +110,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, onOpenC
           {/* Cart Button */}
           <button
             onClick={onOpenCart}
-            className="btn btn-secondary btn-sm cart-btn"
+            className={`btn btn-secondary btn-sm cart-btn ${isCartOpen ? 'active' : ''}`}
             title="Consulter le panier"
           >
             <ShoppingCart size={18} />

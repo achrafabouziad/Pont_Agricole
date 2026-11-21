@@ -264,7 +264,8 @@ export function App() {
       <Navbar
         currentPage={currentPage}
         onNavigate={handleNavigate}
-        onOpenCart={() => setIsCartOpen(true)}
+        onOpenCart={() => setIsCartOpen((prev) => !prev)}
+        isCartOpen={isCartOpen}
       />
 
       {/* Main Content Router with Instagram-Style Transitions */}

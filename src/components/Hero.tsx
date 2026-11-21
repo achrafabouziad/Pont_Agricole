@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowRight, Clock, ShieldCheck, Truck, FileText } from 'lucide-react';
+import { ArrowRight, Clock, ShieldCheck, Store, FileText } from 'lucide-react';
 
 interface HeroProps {
   onExploreCatalog: () => void;
@@ -61,11 +61,11 @@ export const Hero: React.FC<HeroProps> = ({ onExploreCatalog }) => {
 
           <div className="hero-trust-item">
             <div className="hero-trust-icon-box">
-              <Truck size={16} />
+              <Store size={16} />
             </div>
             <div className="hero-trust-text">
-              <span className="hero-trust-title">Livraison 06h - 09h</span>
-              <span className="hero-trust-desc">Avant le premier service</span>
+              <span className="hero-trust-title">Prix Grossiste Direct</span>
+              <span className="hero-trust-desc">Tarifs carreau sans intermédiaire</span>
             </div>
           </div>
 

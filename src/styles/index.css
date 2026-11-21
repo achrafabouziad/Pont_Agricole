@@ -85,6 +85,9 @@
   --transition-fast: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
   --transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
   --transition-smooth: all 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Sticky Header Dimension Anchor */
+  --header-height: 71px;
 }
 
 html {
@@ -200,7 +203,7 @@ input, select, textarea {
 .site-header {
   position: sticky;
   top: 0;
-  z-index: 100;
+  z-index: 1100; /* Stays above drawer backdrop and drawer so navbar is ALWAYS visible */
   background-color: rgba(255, 255, 255, 0.94);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
@@ -301,6 +304,18 @@ input, select, textarea {
   display: flex;
   align-items: center;
   gap: 0.4rem;
+}
+
+.cart-btn.active {
+  background-color: var(--primary-800);
+  color: #ffffff;
+  border-color: var(--primary-900);
+  box-shadow: 0 2px 8px rgba(22, 101, 52, 0.35);
+}
+
+.cart-btn.active .cart-count-badge {
+  background-color: #ffffff;
+  color: var(--primary-800);
 }
 
 .cart-count-badge {
@@ -955,29 +970,35 @@ input, select, textarea {
   animation: spin 0.75s linear infinite;
 }
 
-/* Drawer Cart */
+/* Drawer Cart (Opens cleanly underneath the Navbar so Navbar is ALWAYS visible) */
 .drawer-backdrop {
   position: fixed;
-  inset: 0;
-  background-color: rgba(8, 40, 23, 0.5);
-  backdrop-filter: blur(3px);
+  top: var(--header-height, 71px);
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(8, 40, 23, 0.45);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   z-index: 1000;
   animation: fadeIn 0.2s ease-out;
 }
 
 .drawer {
   position: fixed;
-  top: 0;
+  top: var(--header-height, 71px);
   right: 0;
   bottom: 0;
   width: 100%;
   max-width: 460px;
+  max-height: calc(100vh - var(--header-height, 71px));
   background-color: #ffffff;
   box-shadow: -8px 0 24px rgba(8, 40, 23, 0.15);
   z-index: 1001;
   display: flex;
   flex-direction: column;
   animation: slideInRight 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  border-left: 1px solid var(--border-light);
 }
 
 @keyframes slideInRight {
@@ -2240,6 +2261,10 @@ table.data-table td {
    ======================================================================== */
 
 @media (max-width: 768px) {
+  :root {
+    --header-height: 56px;
+  }
+
   .site-footer {
     padding-bottom: calc(2.5rem + 82px) !important;
   }
@@ -2397,10 +2422,18 @@ table.data-table td {
   }
 
 
-  /* Full Screen Drawer on Mobile */
+  /* Drawer on Mobile (Opens smoothly underneath sticky Navbar) */
+  .drawer-backdrop {
+    top: var(--header-height, 56px) !important;
+  }
+
   .drawer {
+    top: var(--header-height, 56px) !important;
     width: 100% !important;
     max-width: 100vw !important;
+    max-height: calc(100vh - var(--header-height, 56px)) !important;
+    border-left: none !important;
+    border-top: 1px solid var(--border-light) !important;
   }
 
   .drawer-footer {

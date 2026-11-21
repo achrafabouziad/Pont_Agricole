@@ -5,7 +5,7 @@ import { store } from '../services/store';
 import { Category, Product, CartItem } from '../types';
 import {
   ArrowRight,
-  Truck,
+  Store,
   ClipboardCheck,
   MoonStar,
   ShoppingBag,
@@ -173,8 +173,8 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectCategory
             </span>
             <h2 className="home-cta-title">Prêt à approvisionner vos cuisines ?</h2>
             <p className="home-cta-sub">
-              Rejoignez les cafés, restaurants et hôtels qui reçoivent leur maraîcher chaque
-              matin — sans intermédiaire, sans mauvaise surprise.
+              Rejoignez les cafés, restaurants et hôtels qui s'approvisionnent en primeurs frais
+              au meilleur prix de gros — sans intermédiaire, sans mauvaise surprise.
             </p>
             <div className="home-cta-actions">
               <button
@@ -190,7 +190,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectCategory
                 className="btn btn-lg home-cta-btn-ghost"
                 onClick={() => onNavigate('catalog')}
               >
-                <Truck size={18} />
+                <Store size={18} />
                 <span>Voir le catalogue</span>
                 <ArrowRight size={16} />
               </button>
